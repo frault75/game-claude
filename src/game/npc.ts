@@ -79,8 +79,9 @@ export class Npc extends Entity {
     }
     this.shadowS = this.addSprite(new Sprite(shadowFrame));
     this.shadowS.mesh.renderOrder = LAYER.shadow;
-    this.markS.mesh.renderOrder = LAYER.canopy + 40;
-    this.markRed.mesh.renderOrder = LAYER.canopy + 40;
+    // above the rain and the tree crowns
+    this.markS.mesh.renderOrder = LAYER.weather + 20;
+    this.markRed.mesh.renderOrder = LAYER.weather + 20;
     w.r.scenePig.add(this.markS.mesh);
     w.r.sceneRed.add(this.markRed.mesh);
     this.sprites.push(this.markS, this.markRed);
@@ -152,7 +153,7 @@ export class Npc extends Entity {
     const top = this.y + this.frames.height + 0.2;
     if (near < 5.5 && !this.nameS) {
       this.nameS = new Sprite(brushText(this.displayName, { size: 0.32, ppu: 90, italic: true, weight: 600 }));
-      this.nameS.mesh.renderOrder = LAYER.canopy + 41;
+      this.nameS.mesh.renderOrder = LAYER.weather + 21;
       w.r.scenePig.add(this.nameS.mesh);
     }
     if (this.nameS) {

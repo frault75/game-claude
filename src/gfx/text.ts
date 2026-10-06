@@ -17,6 +17,10 @@ export interface TextOpts {
   lineHeight?: number;
   seed?: number;
   letterSpacing?: number;
+  /** Real colour (CSS) for the gouache buffer instead of pigment densities. */
+  color?: [number, number, number];
+  /** A soft paper halo around the letters so they read over anything (default on). */
+  halo?: boolean;
 }
 
 export interface TextArt extends Frame {
@@ -66,15 +70,31 @@ export function brushText(text: string, o: TextOpts): TextArt {
   const pig = o.pig ?? INK;
   const load = o.load ?? 1;
   const r = new Rng(o.seed ?? 7);
-  ctx.globalCompositeOperation = 'lighter';
+  const col = o.color;
+  const style = (a: number) => (col ? `rgba(${Math.round(col[0] * 255)},${Math.round(col[1] * 255)},${Math.round(col[2] * 255)},${a})` : pigStyle(pig, a));
+  // paper halo: zero pigment but full coverage, so whatever lies beneath is hidden around the letters
+  if (o.halo !== false && !col) {
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.lineJoin = 'round';
+    lines.forEach((l, i) => {
+      const y = pad + lh * (i + 0.5);
+      ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+      ctx.lineWidth = px * 0.42;
+      ctx.strokeText(l, x0, y);
+      ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+      ctx.lineWidth = px * 0.2;
+      ctx.strokeText(l, x0, y);
+    });
+  }
+  ctx.globalCompositeOperation = col ? 'source-over' : 'lighter';
   lines.forEach((l, i) => {
     const y = pad + lh * (i + 0.5);
     // ink spread: faint offset passes
     for (let k = 0; k < 4; k++) {
-      ctx.fillStyle = pigStyle(pig, 0.1 * load);
+      ctx.fillStyle = style(0.1 * load);
       ctx.fillText(l, x0 + r.gauss() * px * 0.025, y + r.gauss() * px * 0.025);
     }
-    ctx.fillStyle = pigStyle(pig, 0.82 * load);
+    ctx.fillStyle = style(col ? load : 0.82 * load);
     ctx.fillText(l, x0, y);
   });
   // dry brush: lift tiny specks and a few streaks

@@ -158,7 +158,7 @@ export class RoomBuilder {
       this.world.roomSprites.push(g);
     }
     for (const t of this.texts) {
-      const art = brushText(t.str, { size: t.size, ppu: 64, italic: true, pig: INK, load: t.load, maxWidth: 9 });
+      const art = brushText(t.str, { size: t.size, ppu: 64, italic: true, pig: INK, load: t.load, maxWidth: 9, halo: false });
       const s = new Sprite(art);
       s.setPos(t.x, t.y);
       s.mesh.renderOrder = LAYER.groundDetail;

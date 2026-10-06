@@ -28,7 +28,7 @@ export class Numbers {
     const red = !!opts.red;
     const f = this.frame(text, red, opts.size ?? 0.42);
     const s = new Sprite(f);
-    s.mesh.renderOrder = LAYER.canopy + 60;
+    s.mesh.renderOrder = LAYER.weather + 22;
     (red ? this.r.sceneRed : this.r.scenePig).add(s.mesh);
     const n: Num = { s, t: 0, life: opts.life ?? 0.8, vy: opts.big ? 0.8 : 1.6, x: x + (Math.random() - 0.5) * 0.4, y, scale: opts.big ? 1.6 : 1 };
     this.live.push(n);

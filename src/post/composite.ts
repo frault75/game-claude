@@ -127,12 +127,13 @@ void main() {
 
   float m = N(world * fogScale * 0.13 + fogDrift * time * 0.12).g;
   m = smoothstep(0.42, 0.78, m);
-  col = mix(col, paper * 1.02, m * fog);
+  col = mix(col, paper * 1.02, m * fog * (1.0 - uiM));
 
   vec2 vc = (vUv - 0.5) * vec2(viewSize.x / viewSize.y, 1.0);
   float v = smoothstep(0.45, 1.05, length(vc) * 1.05);
-  col *= 1.0 - v * vignette * 0.32;
-  col = mix(col, col * vec3(1.0, 0.93, 0.82), v * vignette * 0.5);
+  float vg = v * vignette * (1.0 - uiM * 0.85);
+  col *= 1.0 - vg * 0.32;
+  col = mix(col, col * vec3(1.0, 0.93, 0.82), vg * 0.5);
 
   vec2 gp = fract(vUv * res * vec2(0.1031, 0.1030) + boil * 0.17);
   gp += dot(gp, gp.yx + 33.33);

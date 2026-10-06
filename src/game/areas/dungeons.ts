@@ -29,6 +29,7 @@ import { sfx } from '../../audio/sfx';
 import { save, writeSave } from '../progression';
 import { STEP, setMain } from '../quests';
 import { giveXp, onKill, unlockInk, hasColour } from '../rewards';
+import { dropLoot } from '../loot';
 import type { InkId } from '../inks';
 
 interface FloorDef {
@@ -468,6 +469,7 @@ function buildFloor(def: FloorDef, room: RoomDef, b: Parameters<RoomDef['build']
       writeSave();
       giveXp(g, def.boss === 'mother' ? 220 : 380);
       for (let i = 0; i < 4; i++) b.add(new Pickup(boss.x, boss.y, i % 2 ? 'ink' : 'life', i % 2 ? 10 : 2));
+      dropLoot(g, boss.x, boss.y, 'boss', def.boss === 'mother' ? 4 : 8);
       for (const en of w.entities) if (en.team === 'enemy' && en !== boss && en.label !== 'urn') (en as Creature).onHit?.({ dmg: 999, fromX: boss.x, fromY: boss.y, kind: 'enso' });
       g.after(1.6, () => {
         openDoors();

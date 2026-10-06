@@ -133,7 +133,7 @@ export class Creature extends Entity {
     this.kx = (dx / l) * kb;
     this.ky = (dy / l) * kb;
     sfx.hit();
-    w.numbers?.pop(this.x, this.y + 1.1 * this.scaleK + this.z, String(Math.round(h.dmg)), { size: h.dmg >= 30 ? 0.6 : 0.42 });
+    w.numbers?.pop(this.x, this.y + 1.1 * this.scaleK + this.z, String(Math.round(h.dmg)) + (h.crit ? '!' : ''), { size: h.crit ? 0.7 : h.dmg >= 30 ? 0.6 : 0.42, red: h.crit });
     w.vfx.splat(this.x, this.y + 0.4, Math.atan2(dy, dx), h.kind === 'enso' ? 14 : 7, h.kind === 'enso' ? 1.4 : 0.9);
     if (this.hp <= 0) {
       this.dying = 0.001;
