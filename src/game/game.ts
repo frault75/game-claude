@@ -20,6 +20,9 @@ import { save, xpToNext, gear } from './progression';
 import { INKS } from './inks';
 import { Dialog, Speaker } from '../ui/dialog';
 import { Inventory } from '../ui/inventory';
+import { eff, rank, pointsLeft, cooldownOf, SkillId } from './skills';
+import { Tree } from '../ui/tree';
+import { useSkill } from './actives';
 import { questLine } from './quests';
 import { L, UI } from '../i18n/lore';
 import { lang } from '../i18n';
@@ -35,6 +38,7 @@ export class Game {
   readonly numbers: Numbers;
   readonly dialog: Dialog;
   readonly inventory: Inventory;
+  readonly tree: Tree;
   /** Radius of the child's lamp in dark places. */
   lampRadius = 6.5;
   private pigmentHintT = 0;
@@ -73,6 +77,8 @@ export class Game {
       p.ink = Math.min(p.ink, p.inkMax);
       p.pigment = Math.min(p.pigment, p.pigmentMax);
     };
+    this.tree = new Tree(r, input);
+    this.tree.onChange = () => this.inventory.onChange?.();
     this.inventory.onGrind = (pig, name) => {
       const p = this.player;
       p.pigment = Math.min(p.pigmentMax, p.pigment + pig);
@@ -88,6 +94,9 @@ export class Game {
     this.inkfx = new InkFx(this.world);
     this.inkfx.roll = (base) => this.player.roll(base);
     this.inkfx.ensoMul = () => 1 + gear().enso / 100;
+    this.inkfx.redMul = () => 1 + eff('redEnso') / 100;
+    this.inkfx.frostMul = () => 1 + eff('frost') / 100;
+    this.inkfx.chain = () => rank('chain');
     this.inkfx.onLanded = (n) => this.world.addCombo(n);
     this.player.onDeath = () => { this.deathT = 0; };
     this.input.uiRegions = [];
@@ -196,6 +205,15 @@ export class Game {
     this.onRoomLoaded?.(def);
   }
 
+  /** Use the active skill in a slot, if it is ready. */
+  useSlot(k: number): void {
+    const id = save.slots[k] as SkillId | null;
+    if (!id || this.dialog.active || this.inventory.active || this.tree.active) return;
+    const p = this.player;
+    if ((p.cool[id] ?? 0) > 0) { sfx.empty(); return; }
+    if (useSkill(this, id)) p.cool[id] = cooldownOf(id);
+  }
+
   /** Draw the thumb stick where the thumb is. */
   private showStick(): void {
     const st = this.input.stick;
@@ -227,6 +245,7 @@ export class Game {
     this.story.clear();
     this.dialog.close(false);
     this.inventory.close();
+    this.tree.close();
     await this.loadRoom(to, spawn);
     this.player.locked = false;
     this.fadeTarget = 0;
@@ -263,10 +282,16 @@ export class Game {
     }
     this.words = this.words.filter((wd) => wd.t <= 1.2);
     this.dialog.update(dt);
-    const invWas = this.inventory.active;
+    const invWas = this.inventory.active, treeWas = this.tree.active;
     this.inventory.update(dt);
+    this.tree.update();
     if (this.loading) return;
-    if (!invWas && !this.dialog.active && this.input.keyPressed('KeyI') && this.player.state !== 'dead') this.inventory.open();
+    const free = !this.dialog.active && !invWas && !treeWas && this.player.state !== 'dead';
+    if (free && this.input.keyPressed('KeyI')) this.inventory.open();
+    if (free && this.input.keyPressed('KeyC')) this.tree.open();
+    if (free && !this.inventory.active && !this.tree.active) {
+      (['KeyR', 'KeyT', 'KeyG'] as const).forEach((k, i) => { if (this.input.keyPressed(k)) this.useSlot(i); });
+    }
     const w = this.world;
     this.pigmentHintT -= dt;
     save.pigment = this.player.pigment;
@@ -277,8 +302,13 @@ export class Game {
     music.danger = pl.state === 'dead' ? 0 : pl.hp <= 1 ? 1 : pl.hp / pl.maxHp <= 0.34 ? 0.6 : 0;
     this.hud.backdrop = this.story.backdrop = Math.min(1, this.r.post.gloom * 1.5);
     this.hud.bagNew = save.newItems;
-    this.input.uiMode = this.dialog.active || this.inventory.active;
-    if (this.dialog.active || this.inventory.active) {
+    this.hud.treeNew = pointsLeft() > 0;
+    this.hud.setSkills(save.slots, save.slots.map((id) => (id ? (this.player.cool[id as SkillId] ?? 0) / Math.max(0.1, cooldownOf(id as SkillId)) : 0)), this.input.device !== 'touch');
+    this.input.uiMode = this.dialog.active || this.inventory.active || this.tree.active;
+    // coloured HUD pieces would show through a panel: step aside
+    this.hud.visible = !(this.inventory.active || this.tree.active);
+    this.hud.panelOpen = this.dialog.active || this.inventory.active || this.tree.active;
+    if (this.dialog.active || this.inventory.active || this.tree.active) {
       this.input.uiRegions = [];
       // the world holds its breath while someone speaks
       w.updateCamera(dt);
@@ -296,6 +326,9 @@ export class Game {
     this.input.uiRegions = this.hud.potRegions.map((p) => ({ x: p.x, y: p.y, r: p.r, fn: () => this.player.selectInk(p.id) }));
     const bg = this.hud.bagRegion;
     if (bg.r > 0) this.input.uiRegions.push({ x: bg.x, y: bg.y, r: bg.r, fn: () => this.inventory.open() });
+    const tr = this.hud.treeRegion;
+    if (tr.r > 0) this.input.uiRegions.push({ x: tr.x, y: tr.y, r: tr.r, fn: () => this.tree.open() });
+    for (const sk of this.hud.skillRegions) this.input.uiRegions.push({ x: sk.x, y: sk.y, r: sk.r, fn: () => this.useSlot(sk.slot) });
     this.hud.setInk(INKS[save.ink].runs ? this.player.inkFrac : this.player.pigmentFrac);
     this.showStick();
     this.hud.setCombo(w.combo, Math.max(0, w.comboT / 2.4));

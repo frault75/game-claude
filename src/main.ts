@@ -96,7 +96,7 @@ async function start() {
     if (debugMode) {
       if (input.keyPressed('KeyH')) { game.player.hp = 5; game.player.invuln = 99999; }
       if (input.keyPressed('KeyB')) renderer.boilEnabled = !renderer.boilEnabled;
-      if (input.keyPressed('KeyT')) {
+      if (input.keyPressed('KeyP')) {
         // teleport: shrines in turn, then the stone circle
         const spots = [...SHRINES.map((sh) => [sh.x, sh.y - 1.6]), [ARENA.x - ARENA.r + 2, ARENA.y]];
         const i = ((game as unknown as { _tp?: number })._tp ?? -1) + 1;

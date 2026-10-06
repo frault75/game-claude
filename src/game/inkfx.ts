@@ -18,6 +18,12 @@ export class InkFx {
   roll = (base: number): { dmg: number; crit: boolean } => ({ dmg: Math.round(base), crit: false });
   /** Extra multiplier for loops. */
   ensoMul = () => 1;
+  /** Vermilion loops only (Scarlet Ensō). */
+  redMul = () => 1;
+  /** Freezing lasts longer (Deep Frost). */
+  frostMul = () => 1;
+  /** Gold lightning leaps to this many more foes (Chain Lightning). */
+  chain = () => 0;
   onLanded?: (hits: number) => void;
 
   constructor(private w: World) {
@@ -56,7 +62,7 @@ export class InkFx {
         let hits = 0;
         for (const e of this.foesNearSeg(s, 0.7)) {
           if (e.onHit({ ...this.roll(6), fromX: (s.ax + s.bx) / 2, fromY: (s.ay + s.by) / 2, kind: 'ink' })) hits++;
-          (e as unknown as { freeze?: (t: number) => void }).freeze?.(2.2);
+          (e as unknown as { freeze?: (t: number) => void }).freeze?.(2.2 * this.frostMul());
         }
         if (hits) { sfx.clink(); this.onLanded?.(hits); }
         w.vfx.ripple((s.ax + s.bx) / 2, (s.ay + s.by) / 2, 0.5);
@@ -64,7 +70,19 @@ export class InkFx {
     } else if (s.ink === 'gold') {
       this.later(0.35, () => {
         let hits = 0;
-        for (const e of this.foesNearSeg(s, 0.8)) if (e.onHit({ ...this.roll(18), fromX: s.ax, fromY: s.ay, kind: 'ink' })) hits++;
+        const struck = this.foesNearSeg(s, 0.8);
+        for (const e of struck) if (e.onHit({ ...this.roll(18), fromX: s.ax, fromY: s.ay, kind: 'ink' })) hits++;
+        // the bolt leaps on to the nearest others
+        let from = struck[0];
+        for (let k = 0; from && k < this.chain(); k++) {
+          const next = w.entities.filter((e) => e.team === 'enemy' && !e.dead && !struck.includes(e) && Math.hypot(e.x - from!.x, e.y - from!.y) < 5)
+            .sort((a, b) => Math.hypot(a.x - from!.x, a.y - from!.y) - Math.hypot(b.x - from!.x, b.y - from!.y))[0];
+          if (!next) break;
+          this.flashLine(from.x, from.y + 0.4, next.x, next.y + 0.4, [1, 0.93, 0.6], 0.07, 0.18);
+          if (next.onHit({ ...this.roll(12), fromX: from.x, fromY: from.y, kind: 'ink' })) hits++;
+          struck.push(next);
+          from = next;
+        }
         this.flashLine(s.ax, s.ay + 0.2, s.bx, s.by + 0.2, [1, 0.93, 0.6], 0.09, 0.18);
         w.vfx.glowAt((s.ax + s.bx) / 2, (s.ay + s.by) / 2, 2.2, 0.12);
         if (hits) { w.hitstop = Math.max(w.hitstop, 0.03); this.onLanded?.(hits); }
@@ -79,11 +97,11 @@ export class InkFx {
     const em = this.ensoMul();
     let hits = 0;
     if (e.ink === 'vermilion') {
-      for (const f of this.foesIn(e.poly)) if (f.onHit({ ...this.roll(40 * em), fromX: e.cx, fromY: e.cy, kind: 'enso' })) hits++;
+      for (const f of this.foesIn(e.poly)) if (f.onHit({ ...this.roll(40 * em * this.redMul()), fromX: e.cx, fromY: e.cy, kind: 'enso' })) hits++;
     } else if (e.ink === 'indigo') {
       for (const f of this.foesIn(e.poly)) {
         if (f.onHit({ ...this.roll(20 * em), fromX: e.cx, fromY: e.cy, kind: 'ink' })) hits++;
-        (f as unknown as { freeze?: (t: number) => void }).freeze?.(3.8);
+        (f as unknown as { freeze?: (t: number) => void }).freeze?.(3.8 * this.frostMul());
       }
       for (let i = 0; i < 4; i++) w.vfx.ripple(e.cx, e.cy, 0.8 + i * 0.6);
     } else if (e.ink === 'gold') {

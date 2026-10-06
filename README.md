@@ -29,16 +29,20 @@ Pushing to `main` builds and deploys to GitHub Pages (Settings → Pages → Sou
 | Talk / read a stele | Click on them, or `F` nearby | Tap on them |
 | Read on in a dialogue | Click, `Enter`, `Space` or `F` | Tap anywhere |
 | Bag (equipment) | `I`, or the bundle under the experience line | Tap the bundle (top left) |
+| Tree of Strokes (skills) | `C`, or the little tree next to the bag | Tap the tree (top left) |
+| Active skills | `R`, `T`, `G` | Round buttons above the ink pots |
 
 Inks: vermilion (run along the stroke and cut; loops burst), indigo (freezes; loops hold everything still), gold (lightning along the stroke; loops become a storm).
 
 **Loot:** beasts (often elites, always guardians) drop brushes, robes, talismans and seals: common, magic (indigo), rare (gold) or unique (vermilion), with rolled qualities (damage, life, ink, pigment, critical strikes, parry, speed, ensō damage, healing or pigment on kill…). Walk over an item to take it; a bare slot is filled at once. In the bag, tap an item to compare it with what you wear, equip it, or grind it into pigment.
+
+**Tree of Strokes:** each level gives a point to spend in three branches. Vermilion is the blade (damage, longer strokes, scarlet loops, the *Whirl* and *Rain of Seals* attacks). Colours are pigment, ice and lightning (cheaper colours, more pigment, deeper frost, chain lightning, the *Indigo Wave* and *Storm*). Wash is survival (life, parry, quick steps, *Second Wind*, the *Mending Wash* and *Mist*). A row opens once enough points are spent in its branch; active skills recharge and sit in three slots.
 
 Vermilion flows back on its own. Coloured inks use **pigment**, which does not: refill it at shrines, with Madder the dyer in the hamlet, or from the pigment orbs some beasts drop.
 
 ## Debug
 
 - `F3` or `` ` `` toggles the debug overlay (FPS, area, boss state, thread state).
-- Add `?debug` to the URL for test keys: `H` invulnerable, `T` teleport between shrines and the stone circle, `L` +200 XP, `U` unlock inks, `K` sets enemies to 1 HP, `B` line boil.
+- Add `?debug` to the URL for test keys: `H` invulnerable, `P` teleport between shrines and the stone circle, `L` +200 XP, `U` unlock inks, `K` sets enemies to 1 HP, `B` line boil.
 - Add `?reset` to start a new save.
 - Add `?room=cave1` (or `cave2`, `temple1`, `temple2`) to start in a dungeon floor.

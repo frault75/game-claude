@@ -24,6 +24,9 @@ export function giveXp(g: Game, n: number): void {
     w.flash = Math.max(w.flash, 0.3);
     for (let i = 0; i < 6; i++) w.vfx.splat(p.x, p.y + 0.5, (i / 6) * Math.PI * 2, 6, 1.2, 'red');
     w.numbers?.pop(p.x, p.y + 2, `${t('levelUp')} ${save.level}`, { red: true, size: 0.7, life: 1.8, big: true });
+    g.after(1.2, () => g.hud.showHint(lang === 'fr'
+      ? (g.input.device === 'touch' ? 'Point de compétence ! Touche l’arbre en haut à gauche' : 'Point de compétence ! Arbre des traits : touche C')
+      : (g.input.device === 'touch' ? 'Skill point! Tap the tree, top left' : 'Skill point! Tree of Strokes: press C'), 4));
   }
 }
 
