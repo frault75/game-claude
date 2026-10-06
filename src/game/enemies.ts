@@ -148,9 +148,9 @@ export class Blot extends Creature {
     this.modeT += dt;
     const dx = p.x - this.x, dy = p.y - this.y;
     const d = Math.hypot(dx, dy);
-    let frame = frames[Math.floor(this.animT * 5) % 3];
+    let frame = frames[Math.abs(Math.floor(this.animT * 5)) % 3];
     if (this.stun > 0) {
-      frame = frames[Math.floor(this.animT * 12) % 3];
+      frame = frames[Math.abs(Math.floor(this.animT * 12)) % 3];
       this.place(frame);
       return;
     }
@@ -308,6 +308,6 @@ export class Wisp extends Creature {
     } else {
       this.walk((this.hover[0] - this.x) * 0.5 * dt, (this.hover[1] - this.y) * 0.5 * dt);
     }
-    this.place(wispFrames![Math.floor(this.animT * 6) % 4]);
+    this.place(wispFrames![Math.abs(Math.floor(this.animT * 6)) % 4]);
   }
 }
