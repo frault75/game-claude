@@ -38,7 +38,8 @@ export const BRIDGE = { x: 75, y: 64, x0: 70.5, x1: 79.5, half: 1.45 };
 /** Mountains close the north edge. */
 export const NORTH_WALL = 113.5;
 
-export type EnemyKind = 'blot' | 'mite' | 'wisp' | 'splitter' | 'brute' | 'totem';
+export type EnemyKind = 'blot' | 'mite' | 'wisp' | 'splitter' | 'brute' | 'totem'
+  | 'crow' | 'scarecrow' | 'boar' | 'fox' | 'bat' | 'grub' | 'soldier' | 'lantern';
 
 export interface CampDef {
   id: number;
@@ -94,20 +95,22 @@ export const SHRINES: ShrineDef[] = [
 ];
 
 export const CAMPS: CampDef[] = [
-  { id: 0, x: 50, y: 54, r: 4, tier: 1, members: ['blot', 'blot', 'blot'], elites: 0 },
-  { id: 1, x: 58, y: 76, r: 5, tier: 1, members: ['mite', 'mite', 'mite', 'mite', 'mite', 'blot'], elites: 0 },
-  { id: 2, x: 42, y: 92, r: 5, tier: 1, members: ['blot', 'blot', 'wisp', 'blot'], elites: 0 },
-  { id: 3, x: 64, y: 54, r: 5, tier: 1, members: ['blot', 'blot', 'blot', 'wisp'], elites: 1 },
-  { id: 4, x: 82, y: 92, r: 6, tier: 2, members: ['totem', 'blot', 'blot', 'mite', 'mite', 'mite'], elites: 0 },
-  { id: 5, x: 86, y: 74, r: 5, tier: 2, members: ['splitter', 'blot', 'wisp', 'wisp'], elites: 0 },
-  { id: 6, x: 98, y: 32, r: 6, tier: 2, members: ['splitter', 'splitter', 'mite', 'mite', 'mite', 'mite'], elites: 1 },
-  { id: 7, x: 104, y: 68, r: 5, tier: 2, members: ['brute', 'blot', 'blot', 'wisp'], elites: 0 },
-  { id: 8, x: 112, y: 46, r: 6, tier: 3, members: ['totem', 'wisp', 'wisp', 'blot', 'blot'], elites: 1 },
-  { id: 9, x: 120, y: 90, r: 6, tier: 3, members: ['brute', 'splitter', 'mite', 'mite', 'mite', 'mite', 'mite'], elites: 1 },
-  { id: 10, x: 138, y: 54, r: 6, tier: 3, members: ['brute', 'brute', 'wisp', 'wisp', 'blot'], elites: 1 },
-  { id: 11, x: 140, y: 80, r: 6, tier: 3, members: ['totem', 'splitter', 'wisp', 'blot', 'blot'], elites: 2 },
-  { id: 12, x: 134, y: 26, r: 6, tier: 3, members: ['splitter', 'wisp', 'wisp', 'mite', 'mite', 'mite'], elites: 1 },
-  { id: 13, x: 158, y: 96, r: 6, tier: 3, members: ['totem', 'brute', 'wisp', 'blot'], elites: 1 },
+  // the orchard: blots, crows over the plum trees, the scarecrow of the fields
+  { id: 0, x: 50, y: 54, r: 4, tier: 1, members: ['blot', 'blot', 'crow', 'crow'], elites: 0 },
+  { id: 1, x: 58, y: 76, r: 5, tier: 1, members: ['scarecrow', 'crow', 'crow', 'mite', 'mite'], elites: 0 },
+  { id: 2, x: 42, y: 92, r: 5, tier: 1, members: ['blot', 'mite', 'mite', 'mite', 'wisp'], elites: 0 },
+  { id: 3, x: 64, y: 54, r: 5, tier: 1, members: ['blot', 'blot', 'scarecrow', 'crow'], elites: 1 },
+  // the plain: boars, smoke foxes, rams, ink wells
+  { id: 4, x: 82, y: 92, r: 6, tier: 2, members: ['totem', 'boar', 'blot', 'mite', 'mite'], elites: 0 },
+  { id: 5, x: 86, y: 74, r: 5, tier: 2, members: ['fox', 'fox', 'wisp', 'blot'], elites: 0 },
+  { id: 6, x: 98, y: 32, r: 6, tier: 2, members: ['splitter', 'boar', 'boar', 'mite', 'mite'], elites: 1 },
+  { id: 7, x: 104, y: 68, r: 5, tier: 2, members: ['brute', 'fox', 'blot', 'wisp'], elites: 0 },
+  { id: 8, x: 112, y: 46, r: 6, tier: 3, members: ['totem', 'fox', 'wisp', 'boar'], elites: 1 },
+  { id: 9, x: 120, y: 90, r: 6, tier: 3, members: ['brute', 'splitter', 'crow', 'crow', 'crow'], elites: 1 },
+  { id: 10, x: 138, y: 54, r: 6, tier: 3, members: ['brute', 'brute', 'fox', 'wisp'], elites: 1 },
+  { id: 11, x: 140, y: 80, r: 6, tier: 3, members: ['totem', 'boar', 'boar', 'fox', 'wisp'], elites: 2 },
+  { id: 12, x: 134, y: 26, r: 6, tier: 3, members: ['fox', 'fox', 'fox', 'crow', 'crow'], elites: 1 },
+  { id: 13, x: 158, y: 96, r: 6, tier: 3, members: ['scarecrow', 'brute', 'boar', 'crow', 'crow'], elites: 1 },
 ];
 
 /** Camps the first quest asks for: the orchard east of the hamlet. */

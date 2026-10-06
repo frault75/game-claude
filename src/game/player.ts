@@ -538,6 +538,13 @@ export class Player extends Entity {
     this.world.strokes.finish(pt.seg);
   }
 
+  /** A new place: whatever was being drawn belongs to the last one (its strokes are gone). */
+  dropBrush(): void {
+    this.run = null;
+    this.paint = null;
+    if (this.state === 'dash') { this.state = 'normal'; this.stateT = 0; }
+  }
+
   // ---------- running along a stroke (vermilion) ----------
 
   private startRun(pts: V[], open: boolean, speed: number): void {

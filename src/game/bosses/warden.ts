@@ -182,7 +182,7 @@ export class DrownedWarden extends Boss {
         const px = p.x - this.x, py = p.y - this.y;
         const along = px * this.dir[0] + py * this.dir[1];
         const across = Math.abs(-px * this.dir[1] + py * this.dir[0]);
-        if (along > -0.5 && along < 8.3 && across < 1.1) p.hurt(2, this.x, this.y);
+        if (along > -0.5 && along < 8.3 && across < 1.1) p.hurt(3, this.x, this.y);
         w.shake(0.3, 0.3);
         sfx.impact(true);
         for (let k = 1; k < 8; k += 1.5) w.vfx.splat(this.x + this.dir[0] * k, this.y + this.dir[1] * k + 0.2, ang, 3, 0.8);
@@ -202,7 +202,7 @@ export class DrownedWarden extends Boss {
         onFire: () => {
           const p = w.player;
           const d = Math.hypot(p.x - this.x, p.y - this.y);
-          if (d > r0 - 0.3 && d < r1 + 0.3) p.hurt(1, this.x, this.y);
+          if (d > r0 - 0.3 && d < r1 + 0.3) p.hurt(2, this.x, this.y);
           sfx.splash();
           w.vfx.ripple(this.x, this.y, (r0 + r1) * 0.5);
         },
@@ -221,7 +221,7 @@ export class DrownedWarden extends Boss {
         const d = Math.hypot(p.x - this.x, p.y - this.y);
         let da = Math.atan2(p.y - this.y, p.x - this.x) - ang;
         da = Math.atan2(Math.sin(da), Math.cos(da));
-        if (d < 4 && Math.abs(da) < 1.25) p.hurt(1, this.x, this.y);
+        if (d < 4 && Math.abs(da) < 1.25) p.hurt(2, this.x, this.y);
         sfx.cut();
         w.shake(0.15, 0.2);
       },

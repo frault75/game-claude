@@ -45,7 +45,7 @@ export const en: Record<keyof typeof fr, string> = {
   shrine: 'Shrine: life and ink restored',
   inkFound: 'Ink found',
   inkSwitchTouch: 'Tap the ink pots at the bottom right to change colour',
-  inkSwitchKbm: 'Keys 1-4 or the mouse wheel change ink',
+  inkSwitchKbm: 'Keys 1-4, Q or the mouse wheel change ink',
   bossRam: 'The Ram King',
   bossDown: 'The Ram King returns to the paper.',
   nextRegion: 'The Rice Fields will open in the next step.',

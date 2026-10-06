@@ -49,6 +49,11 @@ export class Game {
   private fade = 0;
   private fadeTarget = 0;
   private loading = false;
+  /** Exits wake up only once the child has stepped away from where they arrived (no stair ping-pong). */
+  private exitsArmed = true;
+  /** "E" over whoever can be talked to, on a keyboard. */
+  private keyPrompt: Sprite | null = null;
+  private arrivedAt: V = [0, 0];
   private washTarget = 0;
   private washSpeed = 1;
   private timers: { t: number; fn: () => void }[] = [];
@@ -191,6 +196,10 @@ export class Game {
     this.player.attackTarget = null;
     this.player.talkTarget = null;
     this.player.lastSafe = [sx, sy];
+    this.exitsArmed = false;
+    this.arrivedAt = [sx, sy];
+    this.input.newPlace();
+    this.player.dropBrush();
     w.checkpoint = [sx, sy];
     w.camX = sx;
     w.camY = sy;
@@ -212,6 +221,23 @@ export class Game {
     const p = this.player;
     if ((p.cool[id] ?? 0) > 0) { sfx.empty(); return; }
     if (useSkill(this, id)) p.cool[id] = cooldownOf(id);
+  }
+
+  /** On a keyboard, a small "E" floats over whoever is close enough to talk to. */
+  private showKeyPrompt(): void {
+    const pl = this.player;
+    const near = this.input.device !== 'touch' && pl.state !== 'dead' && !pl.busy ? pl.nearestTalkable() : null;
+    if (!near) {
+      if (this.keyPrompt) this.keyPrompt.opacity = 0;
+      return;
+    }
+    if (!this.keyPrompt) {
+      this.keyPrompt = new Sprite(brushText('E', { size: 0.46, ppu: 90, weight: 700 }));
+      this.keyPrompt.mesh.renderOrder = LAYER.weather + 22;
+    }
+    if (!this.keyPrompt.mesh.parent) this.r.scenePig.add(this.keyPrompt.mesh);
+    this.keyPrompt.setPos(near.x, near.y + near.promptH + Math.sin(this.world.time * 4) * 0.05);
+    this.keyPrompt.opacity = 1;
   }
 
   /** Draw the thumb stick where the thumb is. */
@@ -310,12 +336,14 @@ export class Game {
     this.hud.panelOpen = this.dialog.active || this.inventory.active || this.tree.active;
     if (this.dialog.active || this.inventory.active || this.tree.active) {
       this.input.uiRegions = [];
+      if (this.keyPrompt) this.keyPrompt.opacity = 0;
       // the world holds its breath while someone speaks
       w.updateCamera(dt);
       this.hud.update(dt);
       return;
     }
     w.update(dt);
+    this.showKeyPrompt();
     this.inkfx.update(dt * w.timeScale);
     this.numbers.update(dt);
     this.r.post.flash = w.flash;
@@ -335,12 +363,12 @@ export class Game {
     this.hud.update(dt);
     if (this.room?.exits && this.player.state !== 'dead') {
       const pl = this.player;
-      for (const e of this.room.exits) {
-        if (pl.x >= e.x && pl.x <= e.x + e.w && pl.y >= e.y && pl.y <= e.y + e.h && (!e.open || e.open())) {
-          void this.travel(e.to, e.spawn);
-          break;
-        }
-      }
+      const inside = this.room.exits.find((e) => pl.x >= e.x && pl.x <= e.x + e.w && pl.y >= e.y && pl.y <= e.y + e.h);
+      if (!this.exitsArmed) {
+        const [mx, my] = this.input.move();
+        const away = Math.hypot(pl.x - this.arrivedAt[0], pl.y - this.arrivedAt[1]) > 2.5;
+        if (!inside && (away || (mx === 0 && my === 0 && !pl.moveTarget))) this.exitsArmed = true;
+      } else if (inside && (!inside.open || inside.open())) void this.travel(inside.to, inside.spawn);
     }
     if (this.deathT >= 0) {
       this.deathT += dt;

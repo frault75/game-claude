@@ -76,7 +76,7 @@ export class Hud {
   treeNew = false;
   treeRegion = { x: 0, y: 0, r: 0 };
   /** Active skill buttons (bottom right, above the ink pots). */
-  private skillBtns: { id: string; ring: Sprite; art: Sprite[]; key: Sprite | null; x: number; y: number }[] = [];
+  private skillBtns: { id: string; ring: Sprite; art: Sprite[]; key: Sprite | null; paper: Sprite; mask: Sprite; x: number; y: number }[] = [];
   skillRegions: { slot: number; x: number; y: number; r: number }[] = [];
   private skillKey = '';
   private stickRing: Sprite;
@@ -336,7 +336,7 @@ export class Hud {
     const key = slots.join(',') + (keys ? 'k' : '');
     if (key !== this.skillKey) {
       this.skillKey = key;
-      for (const b of this.skillBtns) { b.ring.dispose(); for (const s of b.art) s.dispose(); b.key?.dispose(); }
+      for (const b of this.skillBtns) { b.ring.dispose(); for (const s of b.art) s.dispose(); b.key?.dispose(); b.paper.dispose(); b.mask.dispose(); }
       this.skillBtns = [];
       this.skillSlot = [];
       slots.forEach((id, k) => {
@@ -353,14 +353,18 @@ export class Hud {
         this.r.uiAcc.add(art[2].mesh);
         this.r.uiPig.add(art[3].mesh);
         this.r.uiAcc.add(art[4].mesh);
-        for (const s of art) { s.mesh.renderOrder = LAYER.ui + 2; s.mesh.scale.set(0.82, 0.82, 1); }
+        for (const s of art) { s.mesh.renderOrder = LAYER.ui + 2; s.mesh.scale.set(1.05, 1.05, 1); }
+        // a paper medallion behind it, so it reads on the darkest ground
+        const paper = maskSprite(this.r, 120, 120, 'paper');
+        paper.mesh.renderOrder = LAYER.ui;
+        const mask = maskSprite(this.r, 150, 150);
         let ks: Sprite | null = null;
         if (keys) {
           ks = new Sprite(brushText(['R', 'T', 'G'][k], { size: 24, ppu: 1.5, weight: 700 }));
           ks.mesh.renderOrder = LAYER.ui + 3;
           this.r.uiPig.add(ks.mesh);
         }
-        this.skillBtns.push({ id, ring, art, key: ks, x: 0, y: 0 });
+        this.skillBtns.push({ id, ring, art, key: ks, paper, mask, x: 0, y: 0 });
         this.skillSlot.push(k);
       });
     }
@@ -530,13 +534,16 @@ export class Hud {
       b.x = r.uiW / 2 - 90 - (this.skillBtns.length - 1 - i) * 118;
       b.y = -r.uiH / 2 + (nPots > 1 ? 220 : 110);
       b.ring.setPos(b.x, b.y);
-      b.ring.opacity = this.visible ? 0.9 : 0;
+      b.paper.setPos(b.x, b.y);
+      b.mask.setPos(b.x, b.y);
       const frac = this.skillCool[i] ?? 0;
       const vis = this.visible && !this.panelOpen;
-      b.ring.opacity = vis ? 0.9 : 0;
+      b.ring.opacity = vis ? 1 : 0;
+      b.paper.opacity = vis ? 0.95 : 0;
+      b.mask.opacity = vis ? 1 : 0;
       b.art.forEach((s, k) => {
         s.setPos(b.x, b.y);
-        if (k >= 3) { s.opacity = vis && frac > 0 ? 0.22 : 0; return; }
+        if (k >= 3) { s.opacity = vis && frac > 0 ? 0.3 : 0; return; }
         s.reveal = frac > 0 ? Math.max(0.001, 1 - frac) : 1.5;
         s.opacity = vis ? (frac > 0 ? 0.7 : 1) : 0;
       });
