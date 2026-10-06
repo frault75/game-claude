@@ -387,8 +387,9 @@ export class Player extends Entity {
       this.startRun([[tx, ty]], false, PLAYER.dashSpeed);
     } else {
       this.startPaint([this.x + (dx / d) * 0.6, this.y + (dy / d) * 0.6]);
+      if (!this.paint) return;
       const steps = Math.ceil(dist / 0.5);
-      for (let i = 1; i <= steps; i++) this.extendPaint([this.x + (dx / d) * Math.min(dist, 0.6 + i * 0.5), this.y + (dy / d) * Math.min(dist, 0.6 + i * 0.5)]);
+      for (let i = 1; i <= steps && this.paint; i++) this.extendPaint([this.x + (dx / d) * Math.min(dist, 0.6 + i * 0.5), this.y + (dy / d) * Math.min(dist, 0.6 + i * 0.5)]);
       this.endPaint();
     }
   }
@@ -408,7 +409,9 @@ export class Player extends Entity {
 
   private extendPaint(p: V): void {
     const w = this.world;
-    const pt = this.paint!;
+    const pt = this.paint;
+    // the stroke may have ended (out of ink) or never started
+    if (!pt) return;
     const seg = pt.seg;
     const d = Math.hypot(p[0] - pt.last[0], p[1] - pt.last[1]);
     if (d < 0.05) return;
