@@ -96,6 +96,17 @@ export class Hud {
   private papers: { tl: Sprite; br: Sprite; tr: Sprite; hint: Sprite };
   /** Paper sheets behind the HUD in dark places (0..1). */
   backdrop = 0;
+  /** Copper coins, top left after the menu button. */
+  private coinS: Sprite | null = null;
+  private coinIcon: Sprite;
+  private coinN = -1;
+  private coinW = 0;
+  /** The healing gourd, left of the skill buttons. */
+  private gourdS: Sprite;
+  private gourdN: Sprite | null = null;
+  private gourdKey: Sprite | null = null;
+  private gourdShown = '';
+  gourdRegion = { x: 0, y: 0, r: 0 };
   /** The menu button (a folded scroll), top left after the tree. */
   private menuB: Sprite;
   menuRegion = { x: 0, y: 0, r: 0 };
@@ -244,6 +255,34 @@ export class Hud {
     this.stickKnob.mesh.renderOrder = LAYER.ui + 3;
     this.stickKnob.opacity = 0;
     r.uiPig.add(this.stickKnob.mesh);
+    // a copper coin
+    const cp = new Painter(50, 50, 1, -25, -25);
+    cp.over();
+    cp.ctx.fillStyle = 'rgba(176,122,52,1)';
+    cp.ctx.beginPath(); cp.ctx.arc(0, 0, 15, 0, Math.PI * 2); cp.ctx.fill();
+    cp.ctx.strokeStyle = 'rgba(110,70,30,1)'; cp.ctx.lineWidth = 2.5; cp.ctx.stroke();
+    cp.ctx.clearRect(-4.5, -4.5, 9, 9);
+    this.coinIcon = new Sprite(frameFrom(cp));
+    this.coinIcon.mesh.renderOrder = LAYER.ui + 2;
+    r.uiAcc.add(this.coinIcon.mesh);
+    // the gourd: a calabash tied with a red cord
+    const gp = new Painter(110, 120, 1, -55, -60);
+    gp.glaze();
+    const gourd: V2[] = [];
+    for (let k = 0; k <= 30; k++) {
+      const a = (k / 30) * Math.PI * 2;
+      const y = Math.sin(a), x = Math.cos(a);
+      const rr = y > 0.35 ? 13 : 24;
+      gourd.push([x * rr, (y > 0.35 ? 20 + y * 14 : -10 + y * 24)]);
+    }
+    gp.reserve(() => gourd.forEach((q, k) => (k === 0 ? gp.ctx.moveTo(q[0], q[1]) : gp.ctx.lineTo(q[0], q[1]))), 1);
+    gp.glaze();
+    washPoly(gp, gourd, { pig: INK, density: 0.4, soft: 0.05, edge: 0.9, seed: 95 });
+    stroke(gp, [[-9, 40], [9, 40]], { width: 5, load: 1, seed: 96 });
+    stroke(gp, [[-14, 12], [14, 10]], { width: 5, pig: VERMILION, load: 1, seed: 97 });
+    this.gourdS = new Sprite(frameFrom(gp));
+    this.gourdS.mesh.renderOrder = LAYER.ui + 3;
+    r.uiPig.add(this.gourdS.mesh);
     // the menu: a rolled scroll with three lines
     const mp = new Painter(110, 110, 1, -55, -55);
     mp.glaze();
@@ -464,6 +503,30 @@ export class Hud {
     this.bossVis = 0;
   }
 
+  setCoins(n: number): void {
+    if (n === this.coinN) return;
+    this.coinN = n;
+    this.coinS?.dispose();
+    const art = brushText(String(n), { size: 30, ppu: UI_PPU, weight: 700 });
+    this.coinW = art.w;
+    this.coinS = new Sprite(art);
+    this.coinS.mesh.renderOrder = LAYER.ui + 2;
+    this.r.uiPig.add(this.coinS.mesh);
+  }
+
+  setGourd(n: number, max: number, keys: boolean): void {
+    const key = `${n}/${max}/${keys}`;
+    if (key === this.gourdShown) return;
+    this.gourdShown = key;
+    this.gourdN?.dispose();
+    this.gourdKey?.dispose();
+    this.gourdN = new Sprite(brushText(`${n}/${max}`, { size: 24, ppu: UI_PPU, weight: 700 }));
+    this.gourdN.mesh.renderOrder = LAYER.ui + 4;
+    this.r.uiPig.add(this.gourdN.mesh);
+    this.gourdKey = keys ? new Sprite(brushText('H', { size: 22, ppu: UI_PPU, italic: true })) : null;
+    if (this.gourdKey) { this.gourdKey.mesh.renderOrder = LAYER.ui + 4; this.r.uiPig.add(this.gourdKey.mesh); }
+  }
+
   /** Redraw the minimap around the child (a few times a second). */
   setMinimap(src: MapSource | null, on: boolean, px: number, py: number, dir: number, goal: [number, number] | null, dt: number): void {
     const r = this.r;
@@ -497,7 +560,7 @@ export class Hud {
     const t = performance.now() / 1000;
     for (const mk of src.marks()) {
       if (Math.abs(mk.x - px) > view || Math.abs(mk.y - py) > view) continue;
-      if (mk.kind !== 'quest' && !seen(src, mk.x, mk.y)) continue;
+      if (mk.kind !== 'quest' && !mk.always && !seen(src, mk.x, mk.y)) continue;
       const [x, y] = at(mk.x, mk.y);
       drawMark(c, mk, x, y, 9, t);
     }
@@ -622,6 +685,10 @@ export class Hud {
     this.menuB.setPos(mx, by);
     this.menuB.opacity = this.visible ? 1 : 0;
     this.menuRegion = { x: mx, y: by, r: 56 };
+    const cx0 = mx + 90;
+    this.coinIcon.setPos(cx0, by + 2);
+    this.coinIcon.opacity = this.visible ? 1 : 0;
+    if (this.coinS) { this.coinS.setPos(cx0 + 22 + this.coinW / 2, by + 2); this.coinS.opacity = this.visible ? 1 : 0; }
     // active skills: the brush repaints the glyph as it recharges
     this.skillRegions = [];
     const nPots = this.pots.length;
@@ -645,6 +712,20 @@ export class Hud {
       });
       if (b.key) { b.key.setPos(b.x + 38, b.y - 40); b.key.opacity = vis ? 0.8 : 0; }
       this.skillRegions.push({ slot: this.skillSlot[i], x: b.x, y: b.y, r: 56 });
+    }
+    // the gourd, left of the skills (or of the pots)
+    {
+      const nPotsG = this.pots.length;
+      const gx = r.uiW / 2 - 90 - this.skillBtns.length * 118 - (this.skillBtns.length ? 0 : 0);
+      const gy = -r.uiH / 2 + (nPotsG > 1 ? 220 : 110);
+      const vis = this.visible && !this.panelOpen;
+      this.gourdS.setPos(gx, gy);
+      this.gourdS.opacity = vis ? 1 : 0;
+      this.gourdN?.setPos(gx + 30, gy - 40);
+      if (this.gourdN) this.gourdN.opacity = vis ? 1 : 0;
+      this.gourdKey?.setPos(gx - 34, gy - 40);
+      if (this.gourdKey) this.gourdKey.opacity = vis ? 0.8 : 0;
+      this.gourdRegion = vis ? { x: gx, y: gy, r: 56 } : { x: 0, y: 0, r: 0 };
     }
     // the thumb stick
     const sp = this.stickPos;

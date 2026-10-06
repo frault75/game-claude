@@ -41,6 +41,13 @@ export interface Save {
   perks: Record<string, number>;
   /** Chests already opened. */
   chests: number[];
+  /** Copper cash coins, and the healing gourd (charges left, most it can hold). */
+  coins: number;
+  gourd: number;
+  gourdMax: number;
+  /** The merchant's goods: seed of the current stock and when it was laid out. */
+  shopSeed: number;
+  shopBought: number[];
 }
 
 export const BAG_SIZE = 16;
@@ -51,6 +58,7 @@ const fresh = (): Save => ({
   bag: [], equip: {}, newItems: false,
   skills: {}, slots: [null, null, null],
   bestiary: [], regions: [], fog: {}, quests: {}, perks: {}, chests: [],
+  coins: 0, gourd: 2, gourdMax: 2, shopSeed: 1, shopBought: [],
 });
 
 let gearCache: Record<Stat, number> | null = null;

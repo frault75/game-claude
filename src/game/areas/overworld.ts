@@ -3,6 +3,7 @@
  * the Plum Plain with its camps and shrines, the Ram King's stone circle, the ways down into the cave and the temple.
  */
 import type { RoomDef } from '../room';
+import { Events } from '../events';
 import { buildSecrets, pondColliders } from '../secrets';
 import { NPC_NAMES } from '../sidequests';
 import type { Choice } from '../../ui/dialog';
@@ -226,6 +227,25 @@ export const overworld: RoomDef = {
       };
     }
 
+    // ---------- road events: golden blots, ink rain, champions ----------
+    const events = new Events(g, {
+      make: (kind, x, y) => makeEnemy(kind, x, y),
+      local: (x, y) => {
+        const reg = regionAt(x, y);
+        if (reg === 'village') return null;
+        if (x < riverX(y)) return { kinds: ['blot', 'mite', 'crow'], champions: ['crow', 'scarecrow', 'blot', 'splitter'], tier: 1 };
+        return { kinds: ['blot', 'fox', 'boar', 'wisp', 'mite'], champions: ['boar', 'fox', 'brute', 'splitter'], tier: x > 110 ? 3 : 2 };
+      },
+      calm: () => {
+        const p = w.player;
+        if (g.dialog.active || g.sheetOpen || p.state === 'dead' || g.hud.bossVis > 0) return false;
+        if (regionAt(p.x, p.y) === 'village') return false;
+        return !w.entities.some((e) => e.team === 'enemy' && !e.dead && (e as Creature).aggro && Math.hypot(e.x - p.x, e.y - p.y) < 16);
+      },
+    });
+    g.events = events;
+    w.scripts.push((dt) => events.update(dt));
+
     // ---------- secrets: chests, glades, frozen islets ----------
     buildSecrets(g, (e) => b.add(e), A);
 
@@ -235,6 +255,10 @@ export const overworld: RoomDef = {
       sh.onUse = (first) => {
         g.hud.showHint(t('shrine'), 3);
         g.quests.event('shrine', s.id);
+        save.gourd = save.gourdMax;
+        // the peddler lays out new goods while the child rests
+        save.shopSeed++;
+        save.shopBought = [];
         if (save.perks.lamps) {
           g.player.blessT = 60;
           g.after(1.2, () => g.hud.showHint(lang === 'fr' ? 'Le sanctuaire te bénit : ton trait frappe plus fort.' : 'The shrine blesses you: your stroke strikes harder.', 2.5));
@@ -362,6 +386,14 @@ export const overworld: RoomDef = {
       extra.push(kaze);
     }
     for (const n of extra) n.onTalk = () => speak(n, LL(IDLE[n.id as keyof typeof IDLE] ?? IDLE.prune));
+    const lun = b.add(new Npc('lun', L(NPC_NAMES.lun), {
+      seed: 20, scale: 1.1, robe: mixPig(INK, PIG_A, 0.3), robeDensity: 0.3, hair: 'short', hat: 'straw', prop: 'basket', beard: true,
+    }, 12.2, 62.4));
+    lun.onTalk = () => speak(lun, LL(IDLE.lun), undefined, [
+      { label: lang === 'fr' ? 'Voir tes marchandises' : 'See your goods', act: () => g.shop.open(lun.displayName) },
+      { label: lang === 'fr' ? 'Rien, merci' : 'Nothing, thanks', act: () => {} },
+    ]);
+    extra.push(lun);
     // quests first, unless the main story has something to say
     const mainBusiness: Record<string, () => boolean> = {
       willow: () => { const m = save.main; return m === STEP.meetWillow || m === STEP.orchardBack || m === STEP.indigoBack || m === STEP.goldBack; },
@@ -553,7 +585,7 @@ export const overworld: RoomDef = {
         music.play(R.music);
         storm.lightning = reg === 'arena';
       }
-      const targetNight = region === 'arena' ? 0.2 : region === 'village' ? 0 : 0.05;
+      const targetNight = (region === 'arena' ? 0.2 : region === 'village' ? 0 : 0.05) + g.weatherNight;
       r.post.night += (targetNight - r.post.night) * Math.min(1, dt * 1.5);
       const wt = save.main >= STEP.end ? 0 : washedFor(save.main);
       r.post.washed += (wt - r.post.washed) * Math.min(1, dt * 0.5);

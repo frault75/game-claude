@@ -10,7 +10,7 @@ export type MarkKind =
   | 'player' | 'goal' | 'shrine' | 'shrineOn' | 'camp' | 'door' | 'arena' | 'npc' | 'quest'
   | 'stele' | 'steleRead' | 'up' | 'down' | 'basin' | 'boss' | 'relic' | 'side' | 'chest';
 
-export interface Mark { x: number; y: number; kind: MarkKind; dir?: number }
+export interface Mark { x: number; y: number; kind: MarkKind; dir?: number; /** Shown even under the fog. */ always?: boolean }
 
 export interface MapSource {
   /** Fog key in the save. */

@@ -161,9 +161,10 @@ export function owMapSource(g: Game): MapSource {
       for (const s of SHRINES) out.push({ x: s.x, y: s.y, kind: save.shrines.includes(s.id) ? 'shrineOn' : 'shrine' });
       for (const c of CAMPS) if (!save.camps.includes(c.id)) out.push({ x: c.x, y: c.y, kind: 'camp' });
       STELE_SPOTS.forEach(([x, y], i) => out.push({ x, y, kind: save.steles.includes(i) ? 'steleRead' : 'stele' }));
-      for (const c of CHESTS) if (!save.chests.includes(c.id)) out.push({ x: c.x, y: c.y, kind: 'chest' });
-      for (const gl of GLADES) if (!save.chests.includes(gl.chest.id)) out.push({ x: gl.x, y: gl.y, kind: 'chest' });
-      for (const is of ISLETS) if (!save.chests.includes(is.chest.id)) out.push({ x: PONDS[is.pond].x, y: PONDS[is.pond].y, kind: 'chest' });
+      const always = !!save.perks.secretMap;
+      for (const c of CHESTS) if (!save.chests.includes(c.id)) out.push({ x: c.x, y: c.y, kind: 'chest', always });
+      for (const gl of GLADES) if (!save.chests.includes(gl.chest.id)) out.push({ x: gl.x, y: gl.y, kind: 'chest', always });
+      for (const is of ISLETS) if (!save.chests.includes(is.chest.id)) out.push({ x: PONDS[is.pond].x, y: PONDS[is.pond].y, kind: 'chest', always });
       out.push({ x: CAVE.x, y: CAVE.y, kind: 'door' }, { x: TEMPLE.x, y: TEMPLE.y + 1, kind: 'door' });
       out.push({ x: ARENA.x, y: ARENA.y, kind: save.bosses.includes('ramking') ? 'arena' : 'boss' });
       for (const e of g.world.entities) {

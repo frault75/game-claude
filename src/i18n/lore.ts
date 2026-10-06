@@ -483,7 +483,11 @@ export const JOURNAL_UI = {
 };
 
 /** What people say when they have nothing more for you. */
-export const IDLE: Record<'prune' | 'ghost' | 'lotus' | 'kaze', TrList> = {
+export const IDLE: Record<'prune' | 'ghost' | 'lotus' | 'kaze' | 'lun', TrList> = {
+  lun: {
+    fr: ['Lun, colporteur ! Des gourdes, du pigment, des pinceaux qui ont vu du pays… et des cartes que personne d’autre ne vend.', 'Les pièces de cuivre ? Les taches en avalent. Elles les recrachent quand on les crève. Ne me demande pas pourquoi.'],
+    en: ['Lun, peddler! Gourds, pigment, brushes that have seen the world… and maps nobody else sells.', 'Copper coins? The blots swallow them. They spit them out when you burst them. Don’t ask me why.'],
+  },
   prune: {
     fr: ['Assieds-toi un peu, petit trait. À mon âge, on a le temps de regarder les nuages.', 'Le maître venait boire le thé ici, autrefois. Il peignait les toits pendant que l’eau chauffait.'],
     en: ['Sit a while, little stroke. At my age, there is time to watch the clouds.', 'The master used to come here for tea. He painted the roofs while the water heated.'],

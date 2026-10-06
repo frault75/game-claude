@@ -32,6 +32,7 @@ Pushing to `main` builds and deploys to GitHub Pages (Settings → Pages → Sou
 | Tree of Strokes (skills) | `C`, or the little tree next to the bag | Tap the tree (top left) |
 | Active skills | `R`, `T`, `G` | Round buttons above the ink pots |
 | Menu (map, journal, bag, tree, settings) | `Esc`; `M` map, `J` journal | The scroll button (top left); tap the minimap for the map |
+| Drink from the gourd (heal) | `H` | The gourd button, left of the skills |
 
 Inks: vermilion (run along the stroke and cut; loops burst), indigo (freezes; loops hold everything still), gold (lightning along the stroke; loops become a storm).
 
@@ -40,6 +41,10 @@ Inks: vermilion (run along the stroke and cut; loops burst), indigo (freezes; lo
 **Side quests:** people have their own stories. Quests come in steps (ask around, find something in the world, hunt, prove yourself) and some end differently depending on your choices in dialogue. Rewards are named uniques and lasting gifts (more life, more pigment, a skill point, the shrines' blessing). In Act I: *Pip's Kite*, *The Sky Dye* (Madder), *Elm's Brother* (in the cave), *The Ghost of the Mill* (Old Plum), *The Shrine Lamps* (Sister Lotus) and *The Wandering Painter's Challenge* (Kaze). Answer with a tap, the number keys or arrows + Enter.
 
 **Secrets:** chests wait in quiet corners, and some places only open to the right stroke: ponds whose islet chest you reach once indigo freezes the water (a stroke, a loop or the Indigo Wave), glades behind ink thorns you slip through as *Mist*, bamboo thickets only *Whirl* cuts, and sealed slabs whose two braziers want gold lightning. Three hidden pages of the master's notebook lie inside. Chests and glades show on the map once seen.
+
+**Coins, gourd, peddler:** creatures and chests drop copper cash coins. The healing gourd holds a few sips (40% of your life each) and refills at shrines and basins. Lun the peddler, in the hamlet market, sells a bigger gourd, refills, fresh pigment, a map of secrets (chests and glades on your map), incense to forget your strokes (all skill points back) and a few pieces of gear that change each time you rest at a shrine; he buys what your bag carries.
+
+**On the road:** now and then something happens: a Golden Blot full of coins that runs off and dives back into the ink if you don't catch it in time, an ink rain bringing three waves of creatures (a treasure when it stops), or a named champion with two traits (swift, raging, armoured, colossus, bursting) and its escort. They show on the minimap.
 
 **Title and intro:** the game opens on its title painted over the living world (continue, new game, language). A new game begins with a painted cinematic: the master paints the world, grinds four colours, the ink storm swallows them, and his last red stroke comes alive. Each colour found has its own short sheet.
 

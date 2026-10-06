@@ -250,7 +250,7 @@ export class Menu {
     c.setLineDash([]);
     for (const lb of src.labels?.() ?? []) if (seen(src, lb.x, lb.y)) { const [x, y] = at(lb.x, lb.y); drawLabel(c, lb.text, x, y, 22 * S); }
     for (const mk of src.marks()) {
-      if (mk.kind !== 'quest' && !seen(src, mk.x, mk.y)) continue;
+      if (mk.kind !== 'quest' && !mk.always && !seen(src, mk.x, mk.y)) continue;
       const [x, y] = at(mk.x, mk.y);
       drawMark(c, mk, x, y, 11 * S);
     }

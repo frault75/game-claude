@@ -55,6 +55,10 @@ export function onKill(g: Game, e: Entity): void {
   if (Math.random() < lifeChance) g.world.add(new Pickup(e.x, e.y, 'life', c.power ?? 1));
   if (Math.random() < inkChance) g.world.add(new Pickup(e.x, e.y, 'ink', 7));
   if (hasColour() && Math.random() < (c.elite ? 1 : 0.12)) g.world.add(new Pickup(e.x, e.y, 'pigment', c.elite ? 5 : 2.5));
+  // copper coins
+  const tier = c.tier ?? 1;
+  if (c.elite) for (let i = 0; i < 3; i++) g.world.add(new Pickup(e.x, e.y, 'coin', tier * 2 + Math.floor(Math.random() * 3)));
+  else if (Math.random() < 0.3) g.world.add(new Pickup(e.x, e.y, 'coin', tier + Math.floor(Math.random() * 2)));
   // loot
   if (c.tier !== undefined && Math.random() < (c.elite ? 0.5 : 0.05)) {
     dropLoot(g, e.x, e.y, c.elite ? 'elite' : 'normal', c.tier * 2 - 1 + (c.elite ? 1 : 0) + Math.floor(Math.random() * 2));

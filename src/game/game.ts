@@ -1,5 +1,7 @@
 /** Owns the world, player and HUD; loads rooms; exits, death, ensō, combo, music, story. */
 import type { Renderer } from '../core/renderer';
+import type { Events } from './events';
+import { Shop } from '../ui/shop';
 import { Questbook } from './questbook';
 import { SIDE_QUESTS } from './sidequests';
 import { Title } from '../ui/title';
@@ -48,8 +50,13 @@ export class Game {
   readonly inventory: Inventory;
   readonly tree: Tree;
   readonly menu: Menu;
+  readonly shop: Shop;
   readonly title: Title;
   readonly quests: Questbook;
+  /** Road events (the open world sets this up). */
+  events: Events | null = null;
+  /** Extra darkness from weather (an ink rain). */
+  weatherNight = 0;
   /** Named places in the current room (dungeon floors are generated): where quests hide things. */
   roomSpot?: (name: string) => V | null;
   private comboMark = false;
@@ -112,6 +119,12 @@ export class Game {
     this.quests.register(SIDE_QUESTS);
     this.cine = new Cinematic(r, input);
     this.menu = new Menu(r, input);
+    this.shop = new Shop(r, input);
+    this.shop.hooks = {
+      pigmentOk: () => save.inks.length > 1,
+      refillPigment: () => { this.player.pigment = this.player.pigmentMax; },
+      respec: () => { save.skills = {}; save.slots = [null, null, null]; },
+    };
     this.menu.onBag = () => { this.menu.close(); this.inventory.open(); };
     this.menu.onTree = () => { this.menu.close(); this.tree.open(); };
     this.menu.device = () => this.input.device;
@@ -221,6 +234,8 @@ export class Game {
     this.words = [];
     w.strokes.reset();
     this.roomSpot = undefined;
+    this.events = null;
+    this.weatherNight = 0;
     const b = new RoomBuilder(w, def, this);
     def.build(b);
     await nextFrame();
@@ -252,7 +267,7 @@ export class Game {
     flushFog();
     const src = def.map?.(this) ?? null;
     // the place's own marks, and where the side quests lead
-    this.mapSrc = src ? { ...src, marks: () => [...src.marks(), ...this.quests.marks()] } : null;
+    this.mapSrc = src ? { ...src, marks: () => [...src.marks(), ...this.quests.marks(), ...(this.events?.marks() ?? [])] } : null;
     if (this.mapSrc) reveal(this.mapSrc, sx, sy);
     progress.room = def.id;
     progress.spawn = [sx, sy];
@@ -267,10 +282,15 @@ export class Game {
   /** Use the active skill in a slot, if it is ready. */
   useSlot(k: number): void {
     const id = save.slots[k] as SkillId | null;
-    if (!id || this.dialog.active || this.inventory.active || this.tree.active || this.menu.active) return;
+    if (!id || this.dialog.active || this.sheetOpen) return;
     const p = this.player;
     if ((p.cool[id] ?? 0) > 0) { sfx.empty(); return; }
     if (useSkill(this, id)) p.cool[id] = cooldownOf(id);
+  }
+
+  /** A sheet covers the world (bag, tree, menu, shop). */
+  get sheetOpen(): boolean {
+    return this.inventory.active || this.tree.active || this.menu.active || this.shop.active;
   }
 
   /** What the map calls the current place. */
@@ -332,6 +352,7 @@ export class Game {
     this.inventory.close();
     this.tree.close();
     this.menu.close();
+    this.shop.close();
     await this.loadRoom(to, spawn);
     this.player.locked = false;
     this.fadeTarget = 0;
@@ -408,19 +429,21 @@ export class Game {
     }
     this.words = this.words.filter((wd) => wd.t <= 1.2);
     this.dialog.update(dt);
-    const invWas = this.inventory.active, treeWas = this.tree.active, menuWas = this.menu.active;
+    const invWas = this.inventory.active, treeWas = this.tree.active, menuWas = this.menu.active || this.shop.active;
     this.inventory.update(dt);
     this.tree.update();
     this.menu.update();
+    this.shop.update();
     if (this.loading) return;
     const free = !this.dialog.active && !invWas && !treeWas && !menuWas && this.player.state !== 'dead';
     if (free && this.input.keyPressed('KeyI')) this.inventory.open();
     if (free && this.input.keyPressed('KeyC')) this.tree.open();
     if (free && this.input.keyPressed('KeyM')) this.menu.open('map');
     if (free && this.input.keyPressed('KeyJ')) this.menu.open('journal');
-    if (free && this.input.pressed('back') && !this.inventory.active && !this.tree.active && !this.menu.active) this.menu.open();
-    if (free && !this.inventory.active && !this.tree.active && !this.menu.active) {
+    if (free && this.input.pressed('back') && !this.sheetOpen) this.menu.open();
+    if (free && !this.sheetOpen) {
       (['KeyR', 'KeyT', 'KeyG'] as const).forEach((k, i) => { if (this.input.keyPressed(k)) this.useSlot(i); });
+      if (this.input.keyPressed('KeyH')) this.player.drink();
     }
     const w = this.world;
     this.pigmentHintT -= dt;
@@ -434,7 +457,7 @@ export class Game {
     this.hud.bagNew = save.newItems;
     this.hud.treeNew = pointsLeft() > 0;
     this.hud.setSkills(save.slots, save.slots.map((id) => (id ? (this.player.cool[id as SkillId] ?? 0) / Math.max(0.1, cooldownOf(id as SkillId)) : 0)), this.input.device !== 'touch');
-    const sheetOpen = this.inventory.active || this.tree.active || this.menu.active;
+    const sheetOpen = this.sheetOpen;
     this.input.uiMode = this.dialog.active || sheetOpen;
     // coloured HUD pieces would show through a panel: step aside
     this.hud.visible = !sheetOpen;
@@ -477,6 +500,10 @@ export class Game {
     if (mm.r > 0) this.input.uiRegions.push({ x: mm.x, y: mm.y, r: mm.r, fn: () => this.menu.open('map') });
     for (const sk of this.hud.skillRegions) this.input.uiRegions.push({ x: sk.x, y: sk.y, r: sk.r, fn: () => this.useSlot(sk.slot) });
     this.hud.setInk(INKS[save.ink].runs ? this.player.inkFrac : this.player.pigmentFrac);
+    this.hud.setCoins(save.coins);
+    this.hud.setGourd(save.gourd, save.gourdMax, this.input.device !== 'touch');
+    const gr = this.hud.gourdRegion;
+    if (gr.r > 0) this.input.uiRegions.push({ x: gr.x, y: gr.y, r: gr.r, fn: () => this.player.drink() });
     this.showStick();
     this.hud.setCombo(w.combo, Math.max(0, w.comboT / 2.4));
     this.hud.update(dt);
