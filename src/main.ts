@@ -6,6 +6,7 @@ import { Game } from './game/game';
 import { arena } from './game/areas/arena';
 import { overworld, prepareOverworld, shrineSpawn } from './game/areas/overworld';
 import { dungeonRooms } from './game/areas/dungeons';
+import { terraces, t2ShrineSpawn } from './game/areas/terraces';
 import { loadSave, resetSave, save, gainXp } from './game/progression';
 import { SHRINES, ARENA } from './world/layout';
 import { music } from './audio/music';
@@ -69,9 +70,11 @@ async function start() {
   game.player.ink = game.player.inkMax;
   game.player.pigment = Math.min(game.player.pigmentMax, save.pigment);
   await prepareOverworld((k) => (loadingBar.style.width = `${Math.round(k * 90)}%`));
-  game.register([arena, overworld, ...dungeonRooms()]);
-  const startRoom = params.get('room') ?? 'overworld';
+  game.register([arena, overworld, terraces, ...dungeonRooms()]);
+  // wake where the child last rested: Act I's valley or Act II's terraces
+  const startRoom = params.get('room') ?? (save.shrine >= 10 ? 'terraces' : 'overworld');
   if (startRoom === 'overworld') await game.loadRoom(overworld, shrineSpawn(save.shrine));
+  else if (startRoom === 'terraces' && !params.get('room')) await game.loadRoom(terraces, t2ShrineSpawn(save.shrine));
   else await game.loadRoom(game.rooms.has(startRoom) ? startRoom : 'overworld');
   // the title, unless a test or a debug link asks for a room directly
   if (!params.has('room') && !params.has('notitle')) {

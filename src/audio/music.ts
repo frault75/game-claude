@@ -93,6 +93,43 @@ export const THEMES: Record<string, Theme> = {
     calmLead: ['pluck'], fightLead: ['pluck'],
     pad: 0.5, padBright: 0.4, drums: 0.5, register: 5, bell: 0.05, rest: 0.6,
   },
+  // Act II: the rice terraces, the misty pass, the reed village, the bamboo, the lotus lake, the pagoda
+  terraces: {
+    root: 60, scale: [0, 2, 5, 7, 9], bpm: 76,
+    progressions: [[0, 3, 4, 0], [0, 4, 2, 3], [3, 4, 0, 2], [0, 2, 3, 4], [4, 3, 2, 0]],
+    calmLead: ['flute', 'flute', 'pluck'], fightLead: ['flute', 'bowed'],
+    pad: 0.75, padBright: 0.6, drums: 0.8, register: 5, bell: 0.12, rest: 0.28,
+  },
+  pass: {
+    root: 52, scale: SUS, bpm: 58,
+    progressions: [[0, 3, 0, 4], [0, 2, 3, 0], [4, 3, 0, 0]],
+    calmLead: ['bowed', 'flute'], fightLead: ['bowed', 'pluck'],
+    pad: 0.95, padBright: 0.3, drums: 0.65, register: 5, bell: 0.08, rest: 0.45,
+  },
+  reeds: {
+    root: 62, scale: [0, 2, 4, 7, 9], bpm: 70,
+    progressions: [[0, 3, 4, 0], [0, 2, 3, 4], [3, 0, 4, 0]],
+    calmLead: ['pluck', 'flute', 'pluck'], fightLead: ['flute'],
+    pad: 0.7, padBright: 0.55, drums: 0.7, register: 5, bell: 0.1, rest: 0.32,
+  },
+  bamboo: {
+    root: 55, scale: MINOR_PENTA, bpm: 88,
+    progressions: [[0, 3, 2, 4], [0, 0, 3, 4], [3, 4, 0, 2]],
+    calmLead: ['pluck', 'pluck', 'flute'], fightLead: ['pluck', 'bowed'],
+    pad: 0.6, padBright: 0.45, drums: 1, register: 5, bell: 0.04, rest: 0.2,
+  },
+  lake: {
+    root: 58, scale: HIRA, bpm: 54,
+    progressions: [[0, 3, 4, 0], [0, 1, 3, 2], [3, 4, 0, 1]],
+    calmLead: ['bell', 'flute', 'pluck'], fightLead: ['flute', 'bowed'],
+    pad: 1, padBright: 0.45, drums: 0.7, register: 5, bell: 0.26, rest: 0.4,
+  },
+  pagoda: {
+    root: 50, scale: HIRA, bpm: 60,
+    progressions: [[0, 4, 3, 0], [0, 1, 0, 4], [3, 1, 0, 0]],
+    calmLead: ['bell', 'bowed'], fightLead: ['bowed', 'pluck'],
+    pad: 1, padBright: 0.3, drums: 0.9, register: 5, bell: 0.3, rest: 0.38,
+  },
   practice: {
     root: 62, scale: PENTA, bpm: 70,
     progressions: [[0, 3, 4, 0]],

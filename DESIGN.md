@@ -29,6 +29,12 @@ Action-RPG en monde ouvert, vue de dessus, à la Diablo, dans un monde peint au 
 
 **Donjons** : générateur à graine (salles reliées par des couloirs, boucles), murs de roche peints avec une face éclairée, escaliers, torches ; les ennemis contournent les murs (champ de distances) et ne voient pas à travers la roche.
 
+## 0 ter. Acte II — Les Rizières en terrasses (en cours)
+
+Monde ouvert de 200 × 150 au-delà du col de l'Est (sortie à l'est du Cercle de pierres, ouverte quand l'or est rendu). Zones avec chacune leur musique et leur palette (les couleurs glissent d'une zone à l'autre) : **le Col des Brumes** (pins, brouillard ; chèvres de brume, spectres), **les Terrasses de Jade** (bandes de rizières en anneaux autour d'une colline ; grenouilles d'encre), **le Village des Roseaux** (Dame Héron-Blanc, le vieux Cheng, Tao, Mina, Lin la marchande), **le Lac aux Lotus**, **la Bambouseraie** (mantes de jade), **le Parvis de la Pagode** (Frère Gong). Carte d'acte peinte à l'arrivée. Quête principale : trouver le village, parler à la Dame Héron-Blanc, rouvrir les trois vannes (chaque bassin crache des grenouilles ; l'eau claire rend la couleur aux terrasses). Quêtes secondaires : *Le thé des brumes* (+1 gorgée de gourde), *Le filet de Mina*, *Le chapelet de Frère Gong*. À venir : le Roi Crapaud, la reine des mantes, le Héron d'encre, la Pagode du Ciel et le jade.
+
+Technique : le peintre de morceaux de monde est générique (`Land`) ; l'Acte I et l'Acte II sont deux terres.
+
 ## 0 bis. Butin, arbre des traits
 
 **Butin** : pinceaux, robes, talismans, sceaux ; commun, magique, rare, unique ; qualités tirées au sort (dégâts, vie, encre, pigment, critiques, parade, vitesse, ensō, soin ou pigment à chaque victoire). Sac de 16 places, comparaison avec l'objet porté, objets broyés en pigment.

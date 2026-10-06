@@ -48,6 +48,8 @@ export interface Save {
   /** The merchant's goods: seed of the current stock and when it was laid out. */
   shopSeed: number;
   shopBought: number[];
+  /** Act II: the terraces' sluices reopened. */
+  sluices: number[];
 }
 
 export const BAG_SIZE = 16;
@@ -58,7 +60,7 @@ const fresh = (): Save => ({
   bag: [], equip: {}, newItems: false,
   skills: {}, slots: [null, null, null],
   bestiary: [], regions: [], fog: {}, quests: {}, perks: {}, chests: [],
-  coins: 0, gourd: 2, gourdMax: 2, shopSeed: 1, shopBought: [],
+  coins: 0, gourd: 2, gourdMax: 2, shopSeed: 1, shopBought: [], sluices: [],
 });
 
 let gearCache: Record<Stat, number> | null = null;

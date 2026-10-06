@@ -39,7 +39,8 @@ export const BRIDGE = { x: 75, y: 64, x0: 70.5, x1: 79.5, half: 1.45 };
 export const NORTH_WALL = 113.5;
 
 export type EnemyKind = 'blot' | 'mite' | 'wisp' | 'splitter' | 'brute' | 'totem'
-  | 'crow' | 'scarecrow' | 'boar' | 'fox' | 'bat' | 'grub' | 'soldier' | 'lantern';
+  | 'crow' | 'scarecrow' | 'boar' | 'fox' | 'bat' | 'grub' | 'soldier' | 'lantern'
+  | 'frog' | 'goat' | 'wraith' | 'mantis';
 
 export interface CampDef {
   id: number;

@@ -3,6 +3,7 @@ import type { Frame } from '../sprite';
 import { buildBlotFrames, buildWispFrames, buildBruteFrames, buildMiteFrames } from './creatures';
 import { buildCrowFrames, buildScarecrowFrames, buildBoarFrames, buildFoxFrames, buildBatFrames, buildGrubFrames, buildSoldierFrames, buildLanternFrames } from './bestiary';
 import { getTotemFrames } from '../../game/enemies';
+import { buildFrogFrames, buildGoatFrames, buildWraithFrames, buildMantisFrames } from './bestiary2';
 import { buildWardenFrames } from '../../game/bosses/warden';
 
 const MAKERS: Record<string, () => Frame> = {
@@ -23,6 +24,10 @@ const MAKERS: Record<string, () => Frame> = {
   mother: () => buildBlotFrames(3301, 1)[0],
   'ram king': () => buildBruteFrames(2501)[0],
   warden: () => buildWardenFrames(4401)[0],
+  frog: () => buildFrogFrames(3101)[0],
+  goat: () => buildGoatFrames(3201)[0],
+  wraith: () => buildWraithFrames(3301)[0],
+  mantis: () => buildMantisFrames(3401)[0],
 };
 
 const cache = new Map<string, Frame>();

@@ -3,6 +3,9 @@
  * the Plum Plain with its camps and shrines, the Ram King's stone circle, the ways down into the cave and the temple.
  */
 import type { RoomDef } from '../room';
+import { T2_ENTRY } from '../../world/terraces';
+import { Frog, MistGoat, MistWraith, JadeMantis } from '../beasts2';
+import { ACT1 } from '../../world/act1';
 import { Events } from '../events';
 import { buildSecrets, pondColliders } from '../secrets';
 import { NPC_NAMES } from '../sidequests';
@@ -77,13 +80,17 @@ export function makeEnemy(kind: EnemyKind, x: number, y: number): Creature {
     case 'grub': return new Grub(x, y);
     case 'soldier': return new ClaySoldier(x, y);
     case 'lantern': return new Lantern(x, y);
+    case 'frog': return new Frog(x, y);
+    case 'goat': return new MistGoat(x, y);
+    case 'wraith': return new MistWraith(x, y);
+    case 'mantis': return new JadeMantis(x, y);
   }
 }
 
 let shrineArt: Frame | null = null;
 
 /** A shrine: an inkstone under two lamps. Heals, refills ink and pigment, becomes the respawn point. */
-class Shrine extends Entity {
+export class Shrine extends Entity {
   private cool = 0;
   onUse?: (first: boolean) => void;
   constructor(readonly id: number, x: number, y: number) {
@@ -172,6 +179,8 @@ export const overworld: RoomDef = {
   exits: [
     { x: CAVE.x - 1.1, y: CAVE.y - 0.1, w: 2.2, h: 1.0, to: 'cave1', open: () => save.main >= STEP.findCave },
     { x: TEMPLE.x - 1.2, y: TEMPLE.y + 0.35, w: 2.4, h: 0.9, to: 'temple1', open: () => save.bosses.includes('ramking') },
+    // the eastern pass, once the gold is back: Act II
+    { x: WORLD.w - 1.6, y: 54, w: 1.6, h: 16, to: 'terraces', spawn: T2_ENTRY, open: () => save.main >= STEP.end },
   ],
   map: (g) => owMapSource(g),
   build(b) {
@@ -182,7 +191,7 @@ export const overworld: RoomDef = {
     w.activeRadius = 40;
     g.lampRadius = 6.5;
     r.post.washed = washedFor(save.main);
-    const chunks = new Chunks(w, stamps!, A, CHUNK_PPU);
+    const chunks = new Chunks(w, stamps!, A, CHUNK_PPU, ACT1);
     w.cleanups.push(() => chunks.clear());
     w.scripts.push((dt) => chunks.update(dt, w.camX, w.camY, r.viewW / (2 * r.zoom), r.viewH / (2 * r.zoom)));
     w.onKill = (e) => onKill(g, e);
@@ -551,7 +560,8 @@ export const overworld: RoomDef = {
         return next ? [next.x, next.y] : [ARENA.x, ARENA.y];
       }
       if (m === STEP.findTemple || m === STEP.templeDeep) return [TEMPLE.x, TEMPLE.y - 1];
-      if (m >= STEP.end) {
+      if (m === STEP.end) return [WORLD.w - 2, 62];
+      if (m > STEP.end) {
         // between acts: the nearest camp still in ink
         const p = w.player;
         let best: [number, number] | null = null, bd = Infinity;
@@ -583,6 +593,7 @@ export const overworld: RoomDef = {
           });
         }
         music.play(R.music);
+        g.fadePalette(R.palette);
         storm.lightning = reg === 'arena';
       }
       const targetNight = (region === 'arena' ? 0.2 : region === 'village' ? 0 : 0.05) + g.weatherNight;

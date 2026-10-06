@@ -1,5 +1,6 @@
 /** Owns the world, player and HUD; loads rooms; exits, death, ensō, combo, music, story. */
 import type { Renderer } from '../core/renderer';
+import { SIDE_QUESTS2 } from './sidequests2';
 import type { Events } from './events';
 import { Shop } from '../ui/shop';
 import { Questbook } from './questbook';
@@ -16,7 +17,7 @@ import { Player } from './player';
 import { Hud } from '../ui/hud';
 import { Story } from '../ui/story';
 import { RoomBuilder, RoomDef } from './room';
-import { PALETTES } from './palettes';
+import { PALETTES, Palette } from './palettes';
 import { V, pointInPoly } from './physics';
 import { music } from '../audio/music';
 import { sfx } from '../audio/sfx';
@@ -57,11 +58,17 @@ export class Game {
   events: Events | null = null;
   /** Extra darkness from weather (an ink rain). */
   weatherNight = 0;
+  /** Colours drift from one region's palette to the next. */
+  private palFrom: Palette | null = null;
+  private palTo: Palette | null = null;
+  private palT = 1;
   /** Named places in the current room (dungeon floors are generated): where quests hide things. */
   roomSpot?: (name: string) => V | null;
   private comboMark = false;
   readonly cine: Cinematic;
   private titleT = 0;
+  /** The child was held still and hidden by a title or a cinematic. */
+  private held = false;
   private titleCam: V = [0, 0];
   /** Radius of the child's lamp in dark places. */
   lampRadius = 6.5;
@@ -84,7 +91,7 @@ export class Game {
   /** "E" over whoever can be talked to, on a keyboard. */
   private keyPrompt: Sprite | null = null;
   private arrivedAt: V = [0, 0];
-  private washTarget = 0;
+  washTarget = 0;
   private washSpeed = 1;
   private timers: { t: number; fn: () => void }[] = [];
   private ensoWord: Frame | null = null;
@@ -117,6 +124,7 @@ export class Game {
     this.title = new Title(r, input);
     this.quests = new Questbook(this);
     this.quests.register(SIDE_QUESTS);
+    this.quests.register(SIDE_QUESTS2);
     this.cine = new Cinematic(r, input);
     this.menu = new Menu(r, input);
     this.shop = new Shop(r, input);
@@ -241,6 +249,8 @@ export class Game {
     await nextFrame();
     b.finish();
     this.r.setPalette(PALETTES[def.palette]);
+    this.palFrom = this.palTo = PALETTES[def.palette];
+    this.palT = 1;
     const washed = this.isRestored(def.area) ? 0 : 1;
     this.washTarget = def.post?.washed ?? washed;
     Object.assign(this.r.post, { washed: this.washTarget, night: 0, fog: 0.2, fogScale: 0.12, fogDrift: [0.05, 0.02], vignette: 1, gloom: 0 }, def.post ?? {});
@@ -286,6 +296,22 @@ export class Game {
     const p = this.player;
     if ((p.cool[id] ?? 0) > 0) { sfx.empty(); return; }
     if (useSkill(this, id)) p.cool[id] = cooldownOf(id);
+  }
+
+  /** Let the colours drift to another palette over a few seconds (a new region). */
+  fadePalette(name: string): void {
+    const to = PALETTES[name];
+    if (!to || to === this.palTo) return;
+    const mix = (a: string, b: string, t: number) => {
+      const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
+      const ch = (s: number) => Math.round(((pa >> s) & 255) * (1 - t) + ((pb >> s) & 255) * t);
+      return '#' + ((ch(16) << 16) | (ch(8) << 8) | ch(0)).toString(16).padStart(6, '0');
+    };
+    const k = this.palT * this.palT * (3 - 2 * this.palT);
+    const f = this.palFrom ?? to, t0 = this.palTo ?? to;
+    this.palFrom = { paper: mix(f.paper, t0.paper, k), ink: mix(f.ink, t0.ink, k), a: mix(f.a, t0.a, k), b: mix(f.b, t0.b, k) };
+    this.palTo = to;
+    this.palT = 0;
   }
 
   /** A sheet covers the world (bag, tree, menu, shop). */
@@ -384,6 +410,7 @@ export class Game {
   update(dt: number): void {
     // the title and cinematics take the whole screen
     if (this.title.active || this.cine.active) {
+      this.held = true;
       this.player.locked = true;
       this.player.hidden = true;
       this.hud.visible = false;
@@ -404,6 +431,13 @@ export class Game {
       } else this.title.update(dt);
       this.hud.update(dt);
       return;
+    }
+    if (this.held) {
+      // the sheet is gone: give the child back
+      this.held = false;
+      this.player.locked = false;
+      this.player.hidden = false;
+      this.input.swallow();
     }
     this.story.update(dt);
     if (this.timers.length) {
@@ -473,6 +507,11 @@ export class Game {
       return;
     }
     w.update(dt);
+    if (this.palT < 1 && this.palFrom && this.palTo) {
+      this.palT = Math.min(1, this.palT + dt / 3);
+      const k = this.palT * this.palT * (3 - 2 * this.palT);
+      this.r.lerpPalette(this.palFrom, this.palTo, k);
+    }
     this.showKeyPrompt();
     if (w.combo >= 15 && !this.comboMark) { this.comboMark = true; this.quests.event('combo15'); }
     else if (w.combo < 15) this.comboMark = false;

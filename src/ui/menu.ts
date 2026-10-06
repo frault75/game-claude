@@ -69,7 +69,7 @@ const CONTROLS_TOUCH = {
   en: ['Left thumb: a stick appears', 'Right side, tap: strike or talk', 'Right side, swipe: draw (a loop = ensō)', 'Pots bottom right: ink', 'Round buttons: skills', 'Top left: bag, tree, menu', 'Tap the minimap for the map'],
 };
 
-const BEAST_ORDER = ['blot', 'mite', 'wisp', 'crow', 'scarecrow', 'splitter', 'totem', 'boar', 'fox', 'brute', 'bat', 'grub', 'soldier', 'lantern', 'mother', 'ram king', 'warden'];
+const BEAST_ORDER = ['blot', 'mite', 'wisp', 'crow', 'scarecrow', 'splitter', 'totem', 'boar', 'fox', 'brute', 'bat', 'grub', 'soldier', 'lantern', 'mother', 'ram king', 'warden', 'goat', 'wraith', 'frog', 'mantis'];
 const FLOOR_IDS = ['cave1', 'cave2', 'temple1', 'temple2'];
 
 export const MENU_TABS: MenuTab[] = ['map', 'journal', 'bag', 'tree', 'settings'];

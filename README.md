@@ -4,6 +4,8 @@ An action RPG painted in ink wash, for desktop and mobile browsers. Start in Wil
 
 **Act I:** Willow Hamlet and the orchard, the Firefly Cave (two floors, the Mother of Blots), the ink brambles on the old bridge, the Plum Plain and the Ram King, the Sunken Temple (two floors, the Drowned Warden). Eight pages of the master's notebook are carved on steles around the world.
 
+**Act II (in progress):** east of the Stone Circle, the Misty Pass climbs to the Rice Terraces of the Jade Mist: terraced paddies around a great hill, the Reed Village by the lake (Lady White Heron, Old Cheng the sluice keeper, Tao the tea master, Mina the fisher girl, Lin the merchant, Brother Gong outside the sealed pagoda), the Lotus Lake, the Bamboo Grove and the Sky Pagoda's court. New creatures (ink frogs, mist goats, mist wraiths, jade mantises), its own music and colours per zone, three sluices to reopen, three side quests. The Toad King, the pagoda and the jade come next.
+
 **Play:** https://frault75.github.io/game-claude/
 
 See [DESIGN.md](DESIGN.md) for the full design.
