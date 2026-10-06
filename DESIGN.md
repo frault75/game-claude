@@ -39,6 +39,8 @@ Action-RPG en monde ouvert, vue de dessus, à la Diablo, dans un monde peint au 
 - **Lavis** : Souffle, Garde, *Lavis de soin*, Second souffle, Pas léger, *Brume*.
 Les compétences actives (en italique) se rechargent et se rangent dans trois emplacements (R, T, G ; boutons ronds sur mobile).
 
+**Menu** (Échap, bouton rouleau en haut à gauche) : la grande carte (brouillard levé là où l'on marche, sanctuaires, camps, stèles, personnages avec une quête, gardiens, objectif), le journal (quêtes accomplies et en cours, progrès ; bestiaire : une page et un portrait par créature vaincue ; carnet du maître : stèles, fresques, histoire de chaque région parcourue), le sac, l'arbre et les réglages (volumes, secousses, mini-carte, langue, nouvelle partie, commandes). Une mini-carte ronde sous la quête, en haut à droite.
+
 ## 1. L'histoire en bref
 
 Un orage d'encre noire a renversé l'encrier du vieux maître calligraphe. Ses **encres de couleur** se sont dispersées dans sa grande peinture, gardées par des bêtes d'encre. Tu es **Shu**, son dernier trait, d'encre vermillon. Région après région, tu rends ses couleurs au monde. Au cœur de l'orage t'attend le maître lui-même. Le dernier geste du jeu est un ensō tracé lentement autour de lui, avec toutes les couleurs retrouvées.
@@ -98,6 +100,7 @@ Une grande carte continue, générée et peinte par code (graine fixe), découp�
 - **Tache-mère** : grosse ; se divise en trois Pâtés quand on la tue.
 - **Puits d'encre** : fixe, fait naître des Pâtés tant qu'il n'est pas détruit. C'est l'objectif du camp.
 - **Bélier** : cuirassé de face, charge en ligne.
+- **Par région** : Corbeaux d'encre et Épouvantail au verger ; Sangliers et Renards de fumée dans la plaine ; Chauves-souris et Larves dans la grotte ; Soldats d'argile (bouclier de face, à figer) et Lanternes de papier dans le temple.
 - **Élites** : version plus grosse et plus résistante, auréolée de lavis, avec un trait (rapide, explosive...).
 
 ### Gardien 1 : Le Bélier-Roi

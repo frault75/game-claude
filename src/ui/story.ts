@@ -23,6 +23,8 @@ export class Story {
   private nextGroup = 1;
   /** Paper behind the lines in dark places (0..1). */
   backdrop = 0;
+  /** Under an open sheet (menu, bag, tree), story lines wait hidden. */
+  hidden = false;
   constructor(private r: Renderer) {}
 
   /** Show lines together, centered; resolves when they have faded. */
@@ -74,6 +76,7 @@ export class Story {
         l.s.opacity = l.mask.opacity = Math.max(0, 1 - after / l.fade);
         l.paper.opacity = l.s.opacity * this.backdrop * 0.9;
       }
+      if (this.hidden) l.s.opacity = l.mask.opacity = l.paper.opacity = 0;
       if (after > l.fade) { l.done = true; l.s.dispose(); l.mask.dispose(); l.paper.dispose(); }
     }
     this.lines = this.lines.filter((l) => !l.done);

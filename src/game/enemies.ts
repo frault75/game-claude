@@ -645,6 +645,28 @@ export class Splitter extends Blot {
 
 let totemFrames: Frame[] | null = null;
 
+/** The ink well's two frames (shared with the bestiary). */
+export function getTotemFrames(): Frame[] {
+  if (!totemFrames) {
+    totemFrames = [];
+    for (let i = 0; i < 2; i++) {
+      const p = new Painter(2.6, 2.6, SPRITE_PPU, -1.3, -0.6);
+      const o = noisyOutline(0, 0.3, 0.95, 0.45, 0.15, 1700 + i);
+      p.reserve(() => o.forEach((q, k) => (k === 0 ? p.ctx.moveTo(q[0], q[1]) : p.ctx.lineTo(q[0], q[1]))), 1);
+      p.glaze();
+      washPoly(p, o, { pig: { ink: 1 }, density: 0.45, soft: 0.05, edge: 0.9, seed: 1700 + i });
+      washPoly(p, noisyOutline(0, 0.32, 0.65, 0.28, 0.2, 1710 + i), { pig: { ink: 1 }, density: 0.95, soft: 0.05, edge: 0.5, seed: 1710 + i, blooms: 1 });
+      // bubbles of ink rising
+      for (let k = 0; k < 4; k++) {
+        const x = (k - 1.5) * 0.3 + (i ? 0.1 : 0), y = 0.6 + ((k * 0.37 + i * 0.5) % 1) * 1.1;
+        p.circle(x, y, 0.06 + (k % 2) * 0.04, { ink: 1 }, 0.8);
+      }
+      totemFrames.push(frameFrom(p));
+    }
+  }
+  return totemFrames;
+}
+
 /** Ink well: never moves; gives birth to blots while the child is near. The heart of a camp. */
 export class Totem extends Creature {
   private spawnT = 2;
@@ -662,24 +684,8 @@ export class Totem extends Creature {
     this.label = 'totem';
   }
   init(w: World): void {
-    if (!totemFrames) {
-      totemFrames = [];
-      for (let i = 0; i < 2; i++) {
-        const p = new Painter(2.6, 2.6, SPRITE_PPU, -1.3, -0.6);
-        const o = noisyOutline(0, 0.3, 0.95, 0.45, 0.15, 1700 + i);
-        p.reserve(() => o.forEach((q, k) => (k === 0 ? p.ctx.moveTo(q[0], q[1]) : p.ctx.lineTo(q[0], q[1]))), 1);
-        p.glaze();
-        washPoly(p, o, { pig: { ink: 1 }, density: 0.45, soft: 0.05, edge: 0.9, seed: 1700 + i });
-        washPoly(p, noisyOutline(0, 0.32, 0.65, 0.28, 0.2, 1710 + i), { pig: { ink: 1 }, density: 0.95, soft: 0.05, edge: 0.5, seed: 1710 + i, blooms: 1 });
-        // bubbles of ink rising
-        for (let k = 0; k < 4; k++) {
-          const x = (k - 1.5) * 0.3 + (i ? 0.1 : 0), y = 0.6 + ((k * 0.37 + i * 0.5) % 1) * 1.1;
-          p.circle(x, y, 0.06 + (k % 2) * 0.04, { ink: 1 }, 0.8);
-        }
-        totemFrames.push(frameFrom(p));
-      }
-    }
-    this.body = this.addSprite(new Sprite(totemFrames[0]));
+    getTotemFrames();
+    this.body = this.addSprite(new Sprite(totemFrames![0]));
     this.initCommon(w, 1.0);
   }
   update(dt: number): void {

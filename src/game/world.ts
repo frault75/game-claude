@@ -1,5 +1,6 @@
 /** The running room: entities, static collision, hazards, camera, effects. */
 import type { Renderer } from '../core/renderer';
+import { settings } from './settings';
 import type { Input } from '../core/input';
 import { Entity } from './entity';
 import { Collider, pushOut, pointInPoly, distToPoly, V } from './physics';
@@ -103,6 +104,7 @@ export class World {
   }
 
   shake(amp: number, t = 0.25): void {
+    if (!settings.shake) return;
     this.shakeAmp = Math.max(this.shakeAmp, amp);
     this.shakeT = Math.max(this.shakeT, t);
   }

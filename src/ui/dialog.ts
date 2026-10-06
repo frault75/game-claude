@@ -26,6 +26,7 @@ export class Dialog {
   private panelW = 0;
   private panelH = 0;
   private mask: Sprite;
+  private cover: Sprite;
   private name: Sprite | null = null;
   private body: Sprite | null = null;
   private portrait: Sprite | null = null;
@@ -45,6 +46,8 @@ export class Dialog {
   constructor(private r: Renderer, private input: Input) {
     this.mask = maskSprite(r, 1, 1);
     this.mask.opacity = 0;
+    this.cover = maskSprite(r, 1, 1, 'cover');
+    this.cover.opacity = 0;
     const m = new Painter(60, 40, 1.5, -30, -20);
     m.glaze();
     stroke(m, [[-16, 10], [4, 0], [-16, -10]], { width: 6, pig: VERMILION, load: 1, dry: 0.3, seed: 5, taperStart: 0.05, taperEnd: 0.3 });
@@ -81,6 +84,8 @@ export class Dialog {
     this.r.uiRed.add(this.panelRed.mesh);
     this.mask.dispose();
     this.mask = maskSprite(this.r, w + 120, h + 120);
+    this.cover.dispose();
+    this.cover = maskSprite(this.r, w + 20, h + 20, 'cover');
   }
 
   open(speaker: Speaker, pages: string[], onClose?: () => void): void {
@@ -180,6 +185,8 @@ export class Dialog {
     }
     this.mask.setPos(0, cy);
     this.mask.opacity = show;
+    this.cover.setPos(0, cy);
+    this.cover.opacity = show;
     if (this.name) this.name.setPos(-this.panelW / 2 + 98 + this.nameW / 2, top - 44);
     if (this.portrait) {
       const y = cy - this.panelH / 2 + 34;

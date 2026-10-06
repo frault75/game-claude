@@ -31,12 +31,15 @@ Pushing to `main` builds and deploys to GitHub Pages (Settings → Pages → Sou
 | Bag (equipment) | `I`, or the bundle under the experience line | Tap the bundle (top left) |
 | Tree of Strokes (skills) | `C`, or the little tree next to the bag | Tap the tree (top left) |
 | Active skills | `R`, `T`, `G` | Round buttons above the ink pots |
+| Menu (map, journal, bag, tree, settings) | `Esc`; `M` map, `J` journal | The scroll button (top left); tap the minimap for the map |
 
 Inks: vermilion (run along the stroke and cut; loops burst), indigo (freezes; loops hold everything still), gold (lightning along the stroke; loops become a storm).
 
 **Loot:** beasts (often elites, always guardians) drop brushes, robes, talismans and seals: common, magic (indigo), rare (gold) or unique (vermilion), with rolled qualities (damage, life, ink, pigment, critical strikes, parry, speed, ensō damage, healing or pigment on kill…). Walk over an item to take it; a bare slot is filled at once. In the bag, tap an item to compare it with what you wear, equip it, or grind it into pigment.
 
 **Tree of Strokes:** each level gives a point to spend in three branches. Vermilion is the blade (damage, longer strokes, scarlet loops, the *Whirl* and *Rain of Seals* attacks). Colours are pigment, ice and lightning (cheaper colours, more pigment, deeper frost, chain lightning, the *Indigo Wave* and *Storm*). Wash is survival (life, parry, quick steps, *Second Wind*, the *Mending Wash* and *Mist*). A row opens once enough points are spent in its branch; active skills recharge and sit in three slots.
+
+**Menu:** the big map (the fog lifts where you walk; shrines, camps, steles, people with a quest, guardians and the goal are marked), the journal (quests done and current with your progress, the bestiary with a page and a portrait for each creature beaten, the master's notebook: steles, murals and the story of each region walked), the bag, the tree and the settings (music and sound volume, screen shake, minimap, language, new game, controls). A minimap sits under the quest, top right.
 
 Vermilion flows back on its own. Coloured inks use **pigment**, which does not: refill it at shrines, with Madder the dyer in the hamlet, or from the pigment orbs some beasts drop.
 

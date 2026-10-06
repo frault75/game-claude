@@ -1,5 +1,6 @@
 /** Room definitions and the builder that paints the ground and places everything. */
 import type { World } from './world';
+import type { MapSource } from '../ui/mapArt';
 import { Entity } from './entity';
 import { Painter, INK } from '../gfx/paint';
 import { Sprite, LAYER } from '../gfx/sprite';
@@ -37,6 +38,8 @@ export interface RoomDef {
   music?: string;
   post?: Partial<PostParams>;
   exits?: Exit[];
+  /** The place as a map (minimap, big map); none for small rooms. */
+  map?: (g: Game) => MapSource;
   build(b: RoomBuilder): void;
 }
 

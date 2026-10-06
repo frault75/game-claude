@@ -3,6 +3,7 @@
  * the Plum Plain with its camps and shrines, the Ram King's stone circle, the ways down into the cave and the temple.
  */
 import type { RoomDef } from '../room';
+import { owMapSource } from '../../world/owMap';
 import type { Game } from '../game';
 import type { World } from '../world';
 import { Entity } from '../entity';
@@ -25,7 +26,7 @@ import { stroke } from '../../gfx/brush';
 import { SPRITE_PPU } from '../../gfx/gen/flora';
 import { IS_MOBILE } from '../../core/renderer';
 import { t, lang } from '../../i18n';
-import { L, LL, NAMES, WILLOW, MADDER, ELM, PIP, LINDEN, STELES, UI } from '../../i18n/lore';
+import { L, LL, NAMES, WILLOW, MADDER, ELM, PIP, LINDEN, STELES, UI, REGION_LORE } from '../../i18n/lore';
 import { music } from '../../audio/music';
 import { sfx } from '../../audio/sfx';
 import { save, writeSave } from '../progression';
@@ -168,6 +169,7 @@ export const overworld: RoomDef = {
     { x: CAVE.x - 1.1, y: CAVE.y - 0.1, w: 2.2, h: 1.0, to: 'cave1', open: () => save.main >= STEP.findCave },
     { x: TEMPLE.x - 1.2, y: TEMPLE.y + 0.35, w: 2.4, h: 0.9, to: 'temple1', open: () => save.bosses.includes('ramking') },
   ],
+  map: (g) => owMapSource(g),
   build(b) {
     const g: Game = b.game;
     const w = b.world;
@@ -498,6 +500,12 @@ export const overworld: RoomDef = {
         region = reg;
         const R = REGIONS[reg];
         if (firstTime) void g.story.show([R.name[lang]], { size: 46, y: r.uiH / 2 - 120, hold: 1.4, italic: false });
+        // the first walk through a region tells a little of its story (kept in the journal)
+        if (!save.regions.includes(reg) && REGION_LORE[reg]) {
+          save.regions.push(reg);
+          writeSave();
+          g.after(firstTime ? 2.4 : 4, () => void g.story.show([L(REGION_LORE[reg])], { size: 30, y: r.uiH / 2 - 170, hold: 4.5 }));
+        }
         music.play(R.music);
         storm.lightning = reg === 'arena';
       }
@@ -513,6 +521,7 @@ export const overworld: RoomDef = {
       }
       music.boss = boss && !boss.defeated ? 1 : aggro ? Math.min(1, 0.4 + aggro * 0.06 + w.combo * 0.03) : 0.05;
       const target = objective();
+      g.objective = target;
       const vh = r.viewH / r.zoom, vw = vh * (r.pxW / r.pxH);
       g.hud.arrowTarget = target ? [((target[0] - w.camX) / vw) * r.uiW, ((target[1] - w.camY) / vh) * r.uiH] : null;
       w.areaName = REGIONS[region]?.id ?? region;

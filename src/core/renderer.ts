@@ -45,6 +45,8 @@ export class Renderer {
   readonly uiAcc = new THREE.Scene();
   /** Invisible UI shapes that keep darkness off the HUD (written to the red buffer's alpha only). */
   readonly uiMask = new THREE.Scene();
+  /** Sheets that hide the world's red and real-colour layers beneath them (open panels). */
+  readonly uiCover = new THREE.Scene();
   readonly camera: THREE.OrthographicCamera;
   readonly uiCamera: THREE.OrthographicCamera;
   /** World units visible vertically (grows in portrait so enough width stays visible). */
@@ -211,6 +213,7 @@ export class Renderer {
     const ctx = gl.getContext();
     ctx.colorMask(true, true, true, false);
     gl.render(this.sceneRed, cam);
+    gl.render(this.uiCover, this.uiCamera);
     ctx.colorMask(false, false, false, true);
     gl.render(this.uiMask, this.uiCamera);
     ctx.colorMask(true, true, true, true);
@@ -218,6 +221,7 @@ export class Renderer {
     gl.setRenderTarget(this.rtAcc);
     gl.clear(true, false, false);
     gl.render(this.sceneAcc, cam);
+    gl.render(this.uiCover, this.uiCamera);
     gl.render(this.uiAcc, this.uiCamera);
 
     const u = this.composite.uniforms;

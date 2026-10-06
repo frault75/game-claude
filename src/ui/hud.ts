@@ -10,6 +10,9 @@ import { noisyOutline } from '../gfx/wash';
 import { maskSprite } from './mask';
 import { skillArt } from '../gfx/gen/skillArt';
 import type { SkillId } from '../game/skills';
+import { MapSource, sheet, seen, drawMark, Mark } from './mapArt';
+import { makeTexture } from '../gfx/sprite';
+import type * as THREE from 'three';
 
 const UI_PPU = 1.5;
 
@@ -93,6 +96,14 @@ export class Hud {
   private papers: { tl: Sprite; br: Sprite; tr: Sprite; hint: Sprite };
   /** Paper sheets behind the HUD in dark places (0..1). */
   backdrop = 0;
+  /** The menu button (a folded scroll), top left after the tree. */
+  private menuB: Sprite;
+  menuRegion = { x: 0, y: 0, r: 0 };
+  /** Minimap, top right under the quest. */
+  private mini: { c: HTMLCanvasElement; ctx: CanvasRenderingContext2D; tex: THREE.Texture; s: Sprite; ring: Sprite; paper: Sprite; mask: Sprite };
+  private miniT = 0;
+  miniRegion = { x: 0, y: 0, r: 0 };
+  private miniR = 100;
 
   constructor(private r: Renderer) {
     const pf = new Painter(56, 64, UI_PPU, -28, -28);
@@ -233,6 +244,24 @@ export class Hud {
     this.stickKnob.mesh.renderOrder = LAYER.ui + 3;
     this.stickKnob.opacity = 0;
     r.uiPig.add(this.stickKnob.mesh);
+    // the menu: a rolled scroll with three lines
+    const mp = new Painter(110, 110, 1, -55, -55);
+    mp.glaze();
+    for (let k = 0; k < 3; k++) stroke(mp, [[-26, 18 - k * 18], [0, 20 - k * 18], [26, 17 - k * 18]], { width: 7, load: 0.95, dry: 0.35, seed: 90 + k, taperStart: 0.05, taperEnd: 0.4 });
+    this.menuB = new Sprite(frameFrom(mp));
+    this.menuB.mesh.renderOrder = LAYER.ui + 1;
+    r.uiPig.add(this.menuB.mesh);
+    // minimap: a canvas redrawn a few times a second, on a scrap of paper
+    const mc = document.createElement('canvas');
+    mc.width = mc.height = 256;
+    const mtex = makeTexture(mc, false);
+    const ms = new Sprite({ tex: mtex, w: 2, h: 2, ox: -1, oy: -1 });
+    ms.mesh.renderOrder = LAYER.ui + 2;
+    r.uiAcc.add(ms.mesh);
+    const mring = new Sprite(this.potRing);
+    mring.mesh.renderOrder = LAYER.ui + 3;
+    r.uiPig.add(mring.mesh);
+    this.mini = { c: mc, ctx: mc.getContext('2d')!, tex: mtex, s: ms, ring: mring, paper: maskSprite(r, 300, 300, 'paper'), mask: maskSprite(r, 330, 330) };
     this.masks = {
       tl: maskSprite(r, 900, 330),
       br: maskSprite(r, 560, 260),
@@ -435,6 +464,69 @@ export class Hud {
     this.bossVis = 0;
   }
 
+  /** Redraw the minimap around the child (a few times a second). */
+  setMinimap(src: MapSource | null, on: boolean, px: number, py: number, dir: number, goal: [number, number] | null, dt: number): void {
+    const r = this.r;
+    const m = this.mini;
+    const R = (this.miniR = Math.max(76, r.uiH * 0.105));
+    const cx = r.uiW / 2 - 40 - R, cy = r.uiH / 2 - 132 - R;
+    const vis = !!src && on && this.visible && !this.panelOpen;
+    for (const sp of [m.s, m.ring, m.paper, m.mask]) sp.setPos(cx, cy);
+    m.s.mesh.scale.set(R, R, 1);
+    m.ring.mesh.scale.set(R / 46, R / 46, 1);
+    m.paper.mesh.scale.set((R * 2.3) / 300, (R * 2.3) / 300, 1);
+    m.mask.mesh.scale.set((R * 2.4) / 330, (R * 2.4) / 330, 1);
+    m.s.opacity = vis ? 1 : 0;
+    m.ring.opacity = vis ? 0.9 : 0;
+    m.paper.opacity = vis ? 0.97 : 0;
+    m.mask.opacity = vis ? 1 : 0;
+    this.miniRegion = vis ? { x: cx, y: cy, r: R } : { x: 0, y: 0, r: 0 };
+    if (!vis || !src) return;
+    this.miniT -= dt;
+    if (this.miniT > 0) return;
+    this.miniT = 1 / 12;
+    const N = 256, c = m.ctx;
+    const view = src.view ?? 24, s = N / (view * 2);
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.clearRect(0, 0, N, N);
+    const sh = sheet(src);
+    const k = src.ppu;
+    c.imageSmoothingEnabled = true;
+    c.drawImage(sh, (px - view) * k, (src.h - py - view) * k, view * 2 * k, view * 2 * k, 0, 0, N, N);
+    const at = (x: number, y: number): [number, number] => [(x - px + view) * s, (py + view - y) * s];
+    const t = performance.now() / 1000;
+    for (const mk of src.marks()) {
+      if (Math.abs(mk.x - px) > view || Math.abs(mk.y - py) > view) continue;
+      if (mk.kind !== 'quest' && !seen(src, mk.x, mk.y)) continue;
+      const [x, y] = at(mk.x, mk.y);
+      drawMark(c, mk, x, y, 9, t);
+    }
+    if (goal) {
+      const dx = goal[0] - px, dy = goal[1] - py, d = Math.hypot(dx, dy);
+      if (d < view * 0.85) {
+        const [x, y] = at(goal[0], goal[1]);
+        drawMark(c, { x: 0, y: 0, kind: 'goal' }, x, y, 10, t);
+      } else {
+        // at the rim, pointing the way
+        const a = Math.atan2(dy, dx), rr = N / 2 - 16;
+        const g: Mark = { x: 0, y: 0, kind: 'player', dir: a };
+        c.globalAlpha = 0.8;
+        drawMark(c, g, N / 2 + Math.cos(a) * rr, N / 2 - Math.sin(a) * rr, 8, t);
+        c.globalAlpha = 1;
+      }
+    }
+    drawMark(c, { x: 0, y: 0, kind: 'player', dir }, N / 2, N / 2, 11, t);
+    // soft round edge
+    const grad = c.createRadialGradient(N / 2, N / 2, N * 0.36, N / 2, N / 2, N * 0.5);
+    grad.addColorStop(0, 'rgba(0,0,0,1)');
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    c.globalCompositeOperation = 'destination-in';
+    c.fillStyle = grad;
+    c.fillRect(0, 0, N, N);
+    c.globalCompositeOperation = 'source-over';
+    m.tex.needsUpdate = true;
+  }
+
   update(dt: number): void {
     const r = this.r;
     const left = -r.uiW / 2 + 70, top = r.uiH / 2 - 62;
@@ -496,7 +588,7 @@ export class Hud {
     this.inkBg.opacity = this.visible ? 0.9 : 0;
     this.inkBg.mesh.position.x = ix + (this.inkLow > 0 ? Math.sin(this.inkLow * 80) * 4 : 0);
     this.comboPop = Math.max(0, this.comboPop - dt);
-    const cx = r.uiW / 2 - 150, cy = r.uiH / 2 - 230;
+    const cx = r.uiW / 2 - 40 - this.miniR * 2 - 120, cy = r.uiH / 2 - 190;
     const show = this.comboN > 1 && this.visible ? 1 : 0;
     this.comboS.setPos(cx, cy);
     const sc = 1 + this.comboPop * 2.2;
@@ -510,7 +602,7 @@ export class Hud {
       const t = this.hintT;
       this.hint.setPos(0, -r.uiH / 2 + 90);
       this.hint.reveal = Math.min(1.5, t * 1.4);
-      this.hint.opacity = Math.max(0, Math.min(1, (this.hintDur - t) / 0.8));
+      this.hint.opacity = this.visible ? Math.max(0, Math.min(1, (this.hintDur - t) / 0.8)) : 0;
       if (t > this.hintDur) { this.hint.dispose(); this.hint = null; }
     }
     // the bag button, under the experience line
@@ -526,6 +618,10 @@ export class Hud {
     this.treeDot.setPos(tx + 30, by + 30);
     this.treeDot.opacity = this.visible && this.treeNew ? 0.75 + Math.sin(performance.now() / 200) * 0.25 : 0;
     this.treeRegion = { x: tx, y: by, r: 56 };
+    const mx = tx + 110;
+    this.menuB.setPos(mx, by);
+    this.menuB.opacity = this.visible ? 1 : 0;
+    this.menuRegion = { x: mx, y: by, r: 56 };
     // active skills: the brush repaints the glyph as it recharges
     this.skillRegions = [];
     const nPots = this.pots.length;
