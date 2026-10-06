@@ -321,6 +321,18 @@ export class Input {
     this.inkCycle = 0;
   }
 
+  /** Forget the current gesture and this frame's orders (dialogue opened or closed). */
+  swallow(): void {
+    this.orderTaps = [];
+    this.strokeTaps = [];
+    this.drawStart = null;
+    this.drawPoints = [];
+    this.drawEnd = false;
+    this.holdPoint = null;
+    this.leftHeld = false;
+    this.gesture = null;
+  }
+
   /** Testing helpers (CSS px). */
   testTap(x: number, y: number): void {
     this.orderTaps.push([x, y]);

@@ -24,7 +24,7 @@ export const PLAYER = {
   catchUpSpeed: 46,
   dashMin: 1.8,
   dashMax: 5.6,
-  inkRegen: 11,
+  inkRegen: 8,
   inkDelay: 0.22,
   strikeRange: 1.7,
   strikeHalf: 1.05,
@@ -63,6 +63,8 @@ export class Player extends Entity {
   moveDir: V = [0, 0];
   invuln = 0;
   ink = 22;
+  /** Pigment for coloured inks: refilled by orbs, shrines and the dyer only. */
+  pigment = 6;
   private sinceInk = 10;
   private run: Run | null = null;
   private paint: Paint | null = null;
@@ -81,10 +83,13 @@ export class Player extends Entity {
   /** Where the child is walking to, or whom it is attacking. */
   moveTarget: V | null = null;
   attackTarget: Entity | null = null;
+  /** Someone or something to talk to / read once close enough. */
+  talkTarget: Entity | null = null;
   private attackT = 0;
   onDeath?: () => void;
   onLanded?: (n: number, kind: string) => void;
   onInkChange?: (ink: InkId) => void;
+  onNoPigment?: () => void;
   reeling = false;
 
   constructor() {
@@ -108,6 +113,12 @@ export class Player extends Entity {
   }
   get inkFrac(): number {
     return this.ink / this.inkMax;
+  }
+  get pigmentMax(): number {
+    return stats.pigmentMax(save.level);
+  }
+  get pigmentFrac(): number {
+    return this.pigment / this.pigmentMax;
   }
   get currentInk(): InkId {
     return save.ink;
@@ -192,6 +203,30 @@ export class Player extends Entity {
     return best;
   }
 
+  /** Something to talk to or read under a ground point. */
+  private talkableAt(x: number, y: number): Entity | null {
+    let best: Entity | null = null;
+    let bd = Infinity;
+    for (const e of this.world.entities) {
+      if (!e.interactive || e.dead) continue;
+      const d = Math.hypot(e.x - x, e.y + 0.5 - y);
+      if (d < e.radius + 0.9 && d < bd) { bd = d; best = e; }
+    }
+    return best;
+  }
+
+  /** The nearest thing to talk to within reach (keyboard / pad). */
+  nearestTalkable(range = 2.2): Entity | null {
+    let best: Entity | null = null;
+    let bd = range;
+    for (const e of this.world.entities) {
+      if (!e.interactive || e.dead) continue;
+      const d = Math.hypot(e.x - this.x, e.y - this.y) - e.radius;
+      if (d < bd) { bd = d; best = e; }
+    }
+    return best;
+  }
+
   update(dt: number): void {
     const w = this.world;
     const inp = w.input;
@@ -229,6 +264,10 @@ export class Player extends Entity {
       if (!this.busy) {
         this.readOrders();
         this.readBrush();
+        if (inp.pressed('interact')) {
+          const e = this.nearestTalkable();
+          if (e) { this.talkTarget = null; e.interact(); }
+        }
       }
     }
     if (!this.locked && (this.state === 'normal' || this.state === 'strike') && inp.pressed('attack')) {
@@ -274,9 +313,14 @@ export class Player extends Entity {
     for (const [sx, sy] of inp.orderTaps) {
       const g = this.ground(sx, sy);
       const foe = this.foeAt(g[0], g[1] + 0.35);
+      const talk = foe ? null : this.talkableAt(g[0], g[1] + 0.35);
+      this.talkTarget = talk;
       if (foe) {
         this.attackTarget = foe;
         this.attackT = 0;
+        this.moveTarget = null;
+      } else if (talk) {
+        this.attackTarget = null;
         this.moveTarget = null;
       } else {
         this.attackTarget = null;
@@ -284,7 +328,15 @@ export class Player extends Entity {
         this.world.vfx.ripple(g[0], g[1], 0.35);
       }
     }
-    if (inp.holdPoint && !this.attackTarget) this.moveTarget = this.ground(inp.holdPoint[0], inp.holdPoint[1]);
+    if (inp.holdPoint && !this.attackTarget) {
+      const hp = this.ground(inp.holdPoint[0], inp.holdPoint[1]);
+      // a finger resting on someone still means "talk to them"
+      const tk = this.talkTarget;
+      if (!tk || Math.hypot(hp[0] - tk.x, hp[1] + 0.35 - (tk.y + 0.5)) > tk.radius + 1.2) {
+        this.moveTarget = hp;
+        this.talkTarget = null;
+      }
+    }
   }
 
   /** Desired velocity from keys, the move order or the attack order. */
@@ -293,8 +345,20 @@ export class Player extends Entity {
     if (Math.hypot(mx, my) > 0.1) {
       this.moveTarget = null;
       this.attackTarget = null;
+      this.talkTarget = null;
       this.faceTowards(mx, my);
       return [mx * PLAYER.speed, my * PLAYER.speed];
+    }
+    const tk = this.talkTarget;
+    if (tk) {
+      if (tk.dead || !tk.interactive) { this.talkTarget = null; return [0, 0]; }
+      const dx = tk.x - this.x, dy = tk.y - this.y;
+      const d = Math.hypot(dx, dy) || 1;
+      this.faceTowards(dx, dy);
+      if (d > tk.radius + 1.3) return [(dx / d) * PLAYER.speed, (dy / d) * PLAYER.speed];
+      this.talkTarget = null;
+      tk.interact();
+      return [0, 0];
     }
     const t = this.attackTarget;
     if (t) {
@@ -372,7 +436,7 @@ export class Player extends Entity {
     const dist = Math.max(PLAYER.dashMin, Math.min(PLAYER.dashMax, d));
     tx = this.x + (dx / d) * dist;
     ty = this.y + (dy / d) * dist;
-    if (this.ink < 1) { sfx.empty(); return; }
+    if (ink.runs ? this.ink < 1 : this.pigment < 0.6) { sfx.empty(); if (!ink.runs) this.onNoPigment?.(); return; }
     this.attackTarget = null;
     this.moveTarget = null;
     if (ink.runs) {
@@ -398,7 +462,7 @@ export class Player extends Entity {
 
   private startPaint(p0: V): void {
     const w = this.world;
-    if (this.ink < 0.6) { sfx.empty(); return; }
+    if (this.pigment < 0.6) { sfx.empty(); this.onNoPigment?.(); return; }
     if (this.paint) this.endPaint();
     this.paint = { ink: save.ink, seg: w.strokes.begin(p0[0], p0[1], save.ink), last: p0 };
     this.sinceInk = 0;
@@ -416,8 +480,8 @@ export class Player extends Entity {
     const d = Math.hypot(p[0] - pt.last[0], p[1] - pt.last[1]);
     if (d < 0.05) return;
     const cost = d * INKS[pt.ink].cost;
-    if (this.ink < cost) { this.endPaint(); sfx.empty(); return; }
-    this.ink -= cost;
+    if (this.pigment < cost) { this.endPaint(); sfx.empty(); return; }
+    this.pigment -= cost;
     this.sinceInk = 0;
     pt.last = p;
     w.strokes.extend(seg, p[0], p[1]);
@@ -667,6 +731,7 @@ export class Player extends Entity {
     this.paint = null;
     this.attackTarget = null;
     this.moveTarget = null;
+    this.talkTarget = null;
     this.onDeath?.();
   }
 
@@ -676,6 +741,7 @@ export class Player extends Entity {
     this.vx = 0; this.vy = 0;
     this.hp = this.maxHp;
     this.ink = this.inkMax;
+    this.pigment = Math.max(this.pigment, this.pigmentMax * 0.5);
     this.state = 'normal';
     this.stateT = 0;
     this.invuln = 1.5;

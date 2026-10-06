@@ -14,6 +14,8 @@ export const PALETTES: Record<string, Palette> = {
   hills: { paper: '#EAD9B8', ink: '#2B1E18', a: '#D08C3A', b: '#8E4A2E' },
   studio: { paper: '#F2F1EC', ink: '#191C23', a: '#98A6B6', b: '#B7AB98' },
   blank: { paper: '#F7F3E9', ink: '#8E8B85', a: '#B9B5AE', b: '#CFCBC3' },
+  cave: { paper: '#D9D1BD', ink: '#17130F', a: '#6E9A86', b: '#8A6A48' },
+  temple: { paper: '#DCD8C8', ink: '#12181B', a: '#4F807B', b: '#C29A45' },
   /** The blank page once restored: true ink returns. */
   blankInked: { paper: '#F7F3E9', ink: '#141414', a: '#D7A3A0', b: '#3F5F82' },
 };

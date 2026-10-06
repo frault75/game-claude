@@ -7,7 +7,27 @@ Action-RPG en monde ouvert, vue de dessus, à la Diablo, dans un monde peint au 
 
 > **Révision 3.** Après playtest du prototype en arène : les vagues dans une arène vide manquaient de variété, de but et d'évolution. On passe à un **monde ouvert** qu'on explore librement, avec des **camps d'ennemis**, des **niveaux**, des **boss** qui ouvrent les régions, et **plusieurs encres de couleur** qui sont autant d'armes. Le moteur (rendu lavis d'encre, audio procédural, le Trait et l'ensō) est conservé.
 
+> **Révision 4 — Acte I.** Retour de playtest : « on avance dans tous les sens, on chope tout direct ». Le jeu se rapproche d'un Diablo : une **ville** avec ses habitants, une **quête principale** qui ouvre le monde pas à pas, des **donjons** à étages, du **lore** (le carnet du maître gravé sur des stèles), et des encres de couleur **limitées** (pigment).
+
 ---
+
+## 0. Acte I (implémenté)
+
+**Le Hameau des Saules** : maisons à toits de tuiles, marché, puits, porte du hameau, rizières. Habitants : l'**Aïeule Saule** (quête principale), **Garance** la teinturière (recharge le pigment), **Orme** le garde (au vieux pont), **Pip** (rumeurs), le **vieux Tilleul** (rizières). Dialogues sur une feuille de papier, portrait et sceau ; on touche ou on clique sur un personnage pour lui parler.
+
+**La progression ouvre le monde** :
+1. Parler à l'Aïeule → purifier trois camps du verger → elle donne une lanterne.
+2. **La Grotte aux lucioles** (au nord, inaccessible sans lanterne) : deux étages générés (salles, couloirs, torches, lucioles, obscurité hors de la lanterne), une fresque par étage. Gardienne : **la Mère des Taches** (crachats, couvée, plongée sous l'encre). Elle garde l'**indigo**.
+3. **Les ronces d'encre** couvrent le vieux pont, seul passage sur la rivière : le pinceau rebondit, l'indigo les gèle et les brise.
+4. **La Plaine des pruniers**, ses sanctuaires et ses camps, puis **le Bélier-Roi** au Cercle de pierres. Sa chute fait se retirer les eaux du temple.
+5. **Le Temple englouti** (au sud) : deux étages, une vasque de soin, **le Gardien noyé**, insensible à tout tant qu'on ne l'a pas figé à l'indigo (des jarres de pigment autour de l'arène). Il garde l'**or**.
+6. Rapporter l'or à l'Aïeule : fin de l'Acte I. Les couleurs du monde reviennent au fil de l'histoire (le monde est d'abord délavé).
+
+**Pigment** : le vermillon se recharge seul ; l'indigo et l'or puisent dans une jauge de pigment qui ne remonte pas toute seule (sanctuaires, Garance, orbes de pigment).
+
+**Lore** : huit pages du **carnet du maître** sur des stèles dans le monde. Elles racontent le premier saule, le sceau vermillon, l'encre broyée avec la rivière… et que le maître a renversé l'encrier exprès.
+
+**Donjons** : générateur à graine (salles reliées par des couloirs, boucles), murs de roche peints avec une face éclairée, escaliers, torches ; les ennemis contournent les murs (champ de distances) et ne voient pas à travers la roche.
 
 ## 1. L'histoire en bref
 
@@ -98,9 +118,10 @@ Le monde est découpé en **morceaux** de 16 × 16 cases, peints à la volée au
 
 ## 9. Étapes
 
-1. **Maintenant** : monde ouvert (village + plaine), camps, élites, niveaux, ramassables, chiffres de dégâts, sanctuaires, encres vermillon et indigo, Bélier-Roi.
-2. Encres or et jade, région des Rizières et son gardien.
-3. Forêt de bambous, Col des neiges, leurs gardiens.
-4. L'Encrier, la fin, l'écran titre et la finition.
+1. ~~Monde ouvert (village + plaine), camps, élites, niveaux, ramassables, chiffres de dégâts, sanctuaires, encres vermillon et indigo, Bélier-Roi.~~
+2. ~~Acte I : ville, habitants, quêtes, lore, pigment, donjons (grotte, temple), deux nouveaux gardiens, encre or.~~
+3. **Prochaine** : Acte II, les Rizières, l'encre jade, le Héron d'encre ; objets et équipement.
+4. Forêt de bambous, Col des neiges, leurs gardiens.
+5. L'Encrier, la fin, l'écran titre et la finition.
 
 Overlay de debug sur `F3`. Déploiement automatique sur GitHub Pages à chaque fusion sur `main`.

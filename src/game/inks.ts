@@ -20,12 +20,12 @@ export const INKS: Record<InkId, InkDef> = {
     verb: { fr: 'Le trait tranche, la boucle explose.', en: 'The stroke cuts, the loop bursts.' },
   },
   indigo: {
-    id: 'indigo', rgb: [0.2, 0.33, 0.58], runs: false, cost: 0.8,
+    id: 'indigo', rgb: [0.2, 0.33, 0.58], runs: false, cost: 1.4,
     name: { fr: 'Indigo', en: 'Indigo' },
     verb: { fr: 'Le trait gèle, la boucle fige tout.', en: 'The stroke freezes, the loop holds all still.' },
   },
   gold: {
-    id: 'gold', rgb: [0.86, 0.66, 0.2], runs: false, cost: 1.2,
+    id: 'gold', rgb: [0.86, 0.66, 0.2], runs: false, cost: 1.8,
     name: { fr: 'Or', en: 'Gold' },
     verb: { fr: 'La foudre suit le trait, la boucle devient orage.', en: 'Lightning follows the stroke, the loop becomes a storm.' },
   },

@@ -7,6 +7,7 @@ import { stroke, dot } from '../gfx/brush';
 import { washPoly, noisyOutline } from '../gfx/wash';
 import { drawGrassClump, drawGrassTuft } from '../gfx/gen/flora';
 import { Rng } from '../gfx/rng';
+import { drawShoots } from '../gfx/gen/town';
 
 export interface Stamp {
   canvas: HTMLCanvasElement;
@@ -24,6 +25,7 @@ export interface StampSet {
   flowers: Stamp[];
   pebbles: Stamp[];
   reeds: Stamp[];
+  shoots: Stamp[];
 }
 
 function make(w: number, h: number, ppu: number, ax: number, ay: number, paint: (p: Painter) => void): Stamp {
@@ -77,7 +79,9 @@ export function buildStamps(ppu: number): StampSet {
       }
     }));
   }
-  return { grass, tufts, stones, flowers, pebbles, reeds };
+  const shoots: Stamp[] = [];
+  for (let i = 0; i < 5; i++) shoots.push(make(0.8, 0.7, ppu, 0.4, 0.15, (p) => drawShoots(p, 0, 0, r.int(1, 1e6))));
+  return { grass, tufts, stones, flowers, pebbles, reeds, shoots };
 }
 
 /** Draw a stamp into a world-unit painter (y up) at (x, y). */

@@ -7,6 +7,7 @@ import { stroke, V2 } from '../gfx/brush';
 import { brushText } from '../gfx/text';
 import { INKS, InkId, INK_ORDER } from '../game/inks';
 import { noisyOutline } from '../gfx/wash';
+import { maskSprite } from './mask';
 
 const UI_PPU = 1.5;
 
@@ -61,6 +62,16 @@ export class Hud {
   private comboPop = 0;
   comboFrac = 0;
   visible = true;
+  private questT: Sprite | null = null;
+  private questG: Sprite | null = null;
+  private questKey = '';
+  private questW = 0;
+  private questGW = 0;
+  private questPop = 0;
+  private masks: { tl: Sprite; br: Sprite; tr: Sprite; hint: Sprite; boss: Sprite };
+  private papers: { tl: Sprite; br: Sprite; tr: Sprite; hint: Sprite };
+  /** Paper sheets behind the HUD in dark places (0..1). */
+  backdrop = 0;
 
   constructor(private r: Renderer) {
     const pf = new Painter(56, 64, UI_PPU, -28, -28);
@@ -143,6 +154,45 @@ export class Hud {
     this.comboBar = new Sprite(bar);
     this.comboBar.mesh.renderOrder = LAYER.ui;
     r.uiRed.add(this.comboBar.mesh);
+    this.masks = {
+      tl: maskSprite(r, 900, 330),
+      br: maskSprite(r, 560, 260),
+      tr: maskSprite(r, 900, 230),
+      hint: maskSprite(r, 1300, 150),
+      boss: maskSprite(r, 1100, 210),
+    };
+    this.papers = {
+      tl: maskSprite(r, 560, 210, 'paper'),
+      br: maskSprite(r, 460, 210, 'paper'),
+      tr: maskSprite(r, 700, 160, 'paper'),
+      hint: maskSprite(r, 1200, 120, 'paper'),
+    };
+    for (const s of Object.values(this.papers)) s.opacity = 0;
+  }
+
+  /** The current quest, top right. */
+  setQuest(title: string, goal: string): void {
+    const key = title + '|' + goal;
+    if (key === this.questKey) return;
+    const titleChanged = !this.questKey.startsWith(title + '|');
+    this.questKey = key;
+    if (titleChanged) {
+      this.questT?.dispose();
+      const a = brushText(title, { size: 30, ppu: 1.5, weight: 700, align: 'right' });
+      this.questW = a.w;
+      this.questT = new Sprite(a);
+      this.questT.mesh.renderOrder = LAYER.ui;
+      this.r.uiPig.add(this.questT.mesh);
+      this.questT.reveal = 0;
+    }
+    this.questG?.dispose();
+    const g = brushText(goal, { size: 25, ppu: 1.5, italic: true, align: 'right', maxWidth: Math.min(640, this.r.uiW * 0.4) });
+    this.questGW = g.w;
+    this.questG = new Sprite(g);
+    this.questG.mesh.renderOrder = LAYER.ui;
+    this.r.uiPig.add(this.questG.mesh);
+    this.questG.reveal = 0;
+    this.questPop = 0;
   }
 
   private comboFrame(n: number): Frame {
@@ -316,7 +366,7 @@ export class Hud {
     this.inkBg.opacity = this.visible ? 0.9 : 0;
     this.inkBg.mesh.position.x = ix + (this.inkLow > 0 ? Math.sin(this.inkLow * 80) * 4 : 0);
     this.comboPop = Math.max(0, this.comboPop - dt);
-    const cx = r.uiW / 2 - 150, cy = r.uiH / 2 - 90;
+    const cx = r.uiW / 2 - 150, cy = r.uiH / 2 - 230;
     const show = this.comboN > 1 && this.visible ? 1 : 0;
     this.comboS.setPos(cx, cy);
     const sc = 1 + this.comboPop * 2.2;
@@ -333,6 +383,37 @@ export class Hud {
       this.hint.opacity = Math.max(0, Math.min(1, (this.hintDur - t) / 0.8));
       if (t > this.hintDur) { this.hint.dispose(); this.hint = null; }
     }
+    // quest tracker
+    this.questPop += dt;
+    const qx = r.uiW / 2 - 40, qy = r.uiH / 2 - 52;
+    if (this.questT) {
+      this.questT.setPos(qx - this.questW / 2, qy);
+      this.questT.reveal = Math.min(1.5, this.questPop * 1.5);
+      this.questT.opacity = this.visible ? 1 : 0;
+    }
+    if (this.questG) {
+      this.questG.setPos(qx - this.questGW / 2, qy - 46);
+      this.questG.reveal = Math.min(1.5, this.questPop * 1.2);
+      this.questG.opacity = this.visible ? 0.9 : 0;
+    }
+    const m = this.masks;
+    m.tl.setPos(-r.uiW / 2 + 400, r.uiH / 2 - 150);
+    m.br.setPos(r.uiW / 2 - 230, -r.uiH / 2 + 110);
+    m.br.opacity = this.pots.length > 1 ? 1 : 0;
+    m.tr.setPos(r.uiW / 2 - 400, r.uiH / 2 - 90);
+    m.hint.setPos(0, -r.uiH / 2 + 90);
+    m.hint.opacity = this.hint ? 1 : 0;
+    m.boss.setPos(0, -r.uiH / 2 + 110);
+    m.boss.opacity = this.bossVis;
+    const pp = this.papers, bd = this.visible ? this.backdrop * 0.85 : 0;
+    pp.tl.setPos(-r.uiW / 2 + 250, r.uiH / 2 - 100);
+    pp.tl.opacity = bd;
+    pp.br.setPos(r.uiW / 2 - 230, -r.uiH / 2 + 100);
+    pp.br.opacity = this.pots.length > 1 ? bd : 0;
+    pp.tr.setPos(r.uiW / 2 - 300, r.uiH / 2 - 70);
+    pp.tr.opacity = bd;
+    pp.hint.setPos(0, -r.uiH / 2 + 90);
+    pp.hint.opacity = this.hint ? bd * this.hint.opacity : 0;
     if (this.bossName && this.bossBar) {
       this.bossNameT += dt;
       const showB = this.bossVis;

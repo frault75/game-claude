@@ -4,6 +4,7 @@ import { DebugOverlay } from './ui/debug';
 import { Game } from './game/game';
 import { arena } from './game/areas/arena';
 import { overworld, prepareOverworld, shrineSpawn } from './game/areas/overworld';
+import { dungeonRooms } from './game/areas/dungeons';
 import { loadSave, resetSave, save, gainXp } from './game/progression';
 import { SHRINES, ARENA } from './world/layout';
 import { music } from './audio/music';
@@ -58,8 +59,12 @@ if (debugMode) (window as unknown as Record<string, unknown>).__v = { game, inpu
 async function start() {
   if (params.has('reset')) resetSave();
   else loadSave();
+  // the child was made before the save was read
+  game.player.hp = game.player.maxHp;
+  game.player.ink = game.player.inkMax;
+  game.player.pigment = Math.min(game.player.pigmentMax, save.pigment);
   await prepareOverworld((k) => (loadingBar.style.width = `${Math.round(k * 90)}%`));
-  game.register([arena, overworld]);
+  game.register([arena, overworld, ...dungeonRooms()]);
   const startRoom = params.get('room') ?? 'overworld';
   if (startRoom === 'overworld') await game.loadRoom(overworld, shrineSpawn(save.shrine));
   else await game.loadRoom(game.rooms.has(startRoom) ? startRoom : 'overworld');

@@ -42,6 +42,9 @@ export class Entity {
   sprites: Sprite[] = [];
   /** Shown in the debug overlay. */
   label = 'entity';
+  /** Can be talked to or read (tap on it, or F nearby). */
+  interactive = false;
+  interact(): void {}
 
   init(_w: World): void {}
   update(_dt: number): void {}

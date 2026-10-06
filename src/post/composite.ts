@@ -36,6 +36,8 @@ uniform float vignette;
 uniform float fade;
 uniform float flash;
 uniform float edgeTaps;
+uniform float gloom;
+uniform vec3 lamp;
 varying vec2 vUv;
 
 vec4 N(vec2 p) { return texture2D(tNoise, p); }
@@ -82,8 +84,10 @@ void main() {
   vec4 R = texture2D(tRed, uv);
   float light = clamp(R.g, 0.0, 1.5);
   float erase = clamp(R.b, 0.0, 1.0);
+  // UI shapes are kept out of the dark
+  float uiM = clamp(R.a, 0.0, 1.0);
 
-  float dark = night * (0.75 + 0.25 * N(world * 0.02 + time * 0.003).a);
+  float dark = night * (0.75 + 0.25 * N(world * 0.02 + time * 0.003).a) * (1.0 - uiM);
   d.r += dark * clamp(1.0 - light, 0.0, 1.0);
   d *= 1.0 - erase;
   d = min(d, vec3(1.35, 1.6, 1.6));
@@ -109,7 +113,17 @@ void main() {
     col = mix(col, ac * (0.88 + 0.18 * fib), clamp(Ac.a, 0.0, 1.0));
   }
 
-  col += vec3(1.0, 0.86, 0.6) * 0.08 * light * (0.4 + night);
+  col += vec3(1.0, 0.86, 0.6) * 0.08 * light * (0.4 + night + gloom * 1.5) * (1.0 - uiM);
+
+  // dungeons: darkness beyond the lamp and the torches
+  if (gloom > 0.001) {
+    vec2 dl = (world - lamp.xy) * vec2(1.0, 1.15);
+    float flick = (N(world * 0.11 + vec2(time * 0.07, time * 0.05)).r - 0.5) * 0.9;
+    float lk = 1.0 - smoothstep(lamp.z * 0.4, lamp.z, length(dl) + flick);
+    float lit = max(lk, clamp(light * 1.4, 0.0, 1.0));
+    float g = gloom * (1.0 - lit) * (1.0 - uiM);
+    col = mix(col, cInk * 0.4 + cPaper * 0.03, g);
+  }
 
   float m = N(world * fogScale * 0.13 + fogDrift * time * 0.12).g;
   m = smoothstep(0.42, 0.78, m);
