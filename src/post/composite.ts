@@ -14,6 +14,7 @@ export const compositeFrag = /* glsl */ `
 precision highp float;
 uniform sampler2D tPig;
 uniform sampler2D tRed;
+uniform sampler2D tAcc;
 uniform sampler2D tNoise;
 uniform vec2 res;
 uniform vec2 camPos;
@@ -100,6 +101,13 @@ void main() {
   float red = clamp(R.r, 0.0, 1.0);
   vec3 redCol = cRed * (0.9 + 0.15 * fib);
   col = mix(col, redCol, red);
+
+  // coloured inks: opaque gouache with paper texture
+  vec4 Ac = texture2D(tAcc, uv);
+  if (Ac.a > 0.003) {
+    vec3 ac = Ac.rgb / Ac.a;
+    col = mix(col, ac * (0.88 + 0.18 * fib), clamp(Ac.a, 0.0, 1.0));
+  }
 
   col += vec3(1.0, 0.86, 0.6) * 0.08 * light * (0.4 + night);
 

@@ -36,6 +36,9 @@ export class Renderer {
   readonly sceneRed = new THREE.Scene();
   readonly uiPig = new THREE.Scene();
   readonly uiRed = new THREE.Scene();
+  /** Coloured inks (gouache): real RGB, premultiplied. */
+  readonly sceneAcc = new THREE.Scene();
+  readonly uiAcc = new THREE.Scene();
   readonly camera: THREE.OrthographicCamera;
   readonly uiCamera: THREE.OrthographicCamera;
   /** World units visible vertically (grows in portrait so enough width stays visible). */
@@ -49,6 +52,7 @@ export class Renderer {
   uiW = 1920;
   private rtPig: THREE.WebGLRenderTarget;
   private rtRed: THREE.WebGLRenderTarget;
+  private rtAcc: THREE.WebGLRenderTarget;
   private quad: THREE.Mesh;
   private quadScene = new THREE.Scene();
   private quadCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
@@ -83,6 +87,7 @@ export class Renderer {
     };
     this.rtPig = new THREE.WebGLRenderTarget(1, 1, rtOpts);
     this.rtRed = new THREE.WebGLRenderTarget(1, 1, rtOpts);
+    this.rtAcc = new THREE.WebGLRenderTarget(1, 1, { ...rtOpts, type: THREE.UnsignedByteType });
     this.composite = new THREE.ShaderMaterial({
       vertexShader: compositeVert,
       fragmentShader: compositeFrag,
@@ -91,6 +96,7 @@ export class Renderer {
       uniforms: {
         tPig: { value: this.rtPig.texture },
         tRed: { value: this.rtRed.texture },
+        tAcc: { value: this.rtAcc.texture },
         tNoise: { value: makeNoiseTexture() },
         edgeTaps: { value: IS_MOBILE ? 4 : 8 },
         res: { value: new THREE.Vector2(1, 1) },
@@ -139,6 +145,7 @@ export class Renderer {
     this.canvas.style.height = h + 'px';
     this.rtPig.setSize(this.pxW, this.pxH);
     this.rtRed.setSize(this.pxW, this.pxH);
+    this.rtAcc.setSize(this.pxW, this.pxH);
     this.composite.uniforms.res.value.set(this.pxW, this.pxH);
     const ui = uiSize(w, h);
     this.uiW = ui.w;
@@ -193,6 +200,10 @@ export class Renderer {
     gl.clear(true, false, false);
     gl.render(this.sceneRed, cam);
     gl.render(this.uiRed, this.uiCamera);
+    gl.setRenderTarget(this.rtAcc);
+    gl.clear(true, false, false);
+    gl.render(this.sceneAcc, cam);
+    gl.render(this.uiAcc, this.uiCamera);
 
     const u = this.composite.uniforms;
     const p = this.post;

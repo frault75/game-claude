@@ -7,6 +7,7 @@ import { Telegraphs } from './telegraph';
 import { Vfx } from './vfx';
 import type { Player } from './player';
 import { Strokes } from './stroke';
+import type { Numbers } from './numbers';
 import { Sprite } from '../gfx/sprite';
 
 export interface Hazard {
@@ -16,9 +17,17 @@ export interface Hazard {
 
 export interface Bounds { x: number; y: number; w: number; h: number }
 
+const CELL = 4;
+const ck = (ix: number, iy: number) => ix * 100003 + iy;
+
 export class World {
   entities: Entity[] = [];
   colliders: Collider[] = [];
+  /** Spatial grid of static colliders owned by world chunks. */
+  private grid = new Map<number, Collider[]>();
+  private owned = new Map<string, { c: Collider; cells: number[] }[]>();
+  /** Only entities within this distance of the child are updated (open world). */
+  activeRadius = 40;
   hazards: Hazard[] = [];
   bounds: Bounds = { x: 0, y: 0, w: 30, h: 20 };
   player!: Player;
@@ -45,6 +54,8 @@ export class World {
   bossState = 'none';
   /** Called every frame after entities update (room scripts). */
   scripts: ((dt: number) => void)[] = [];
+  /** Called when the room is cleared (free chunks, etc.). */
+  cleanups: (() => void)[] = [];
 
   constructor(readonly r: Renderer, readonly input: Input) {
     this.tele = new Telegraphs(r);
@@ -70,6 +81,9 @@ export class World {
     this.kickY += dy;
   }
   flash = 0;
+  numbers: Numbers | null = null;
+  /** A creature was defeated (experience, drops, camp bookkeeping). */
+  onKill?: (e: Entity) => void;
   /** Current combo (hits chained with no more than ~2.4 s between). */
   combo = 0;
   comboT = 0;
@@ -92,6 +106,59 @@ export class World {
     this.shakeT = Math.max(this.shakeT, t);
   }
 
+  addCollider(c: Collider, owner: string): void {
+    let minX: number, minY: number, maxX: number, maxY: number;
+    if (c.kind === 'circle') { minX = c.x - c.r; maxX = c.x + c.r; minY = c.y - c.r; maxY = c.y + c.r; }
+    else { minX = Math.min(c.ax, c.bx) - c.r; maxX = Math.max(c.ax, c.bx) + c.r; minY = Math.min(c.ay, c.by) - c.r; maxY = Math.max(c.ay, c.by) + c.r; }
+    const cells: number[] = [];
+    for (let ix = Math.floor(minX / CELL); ix <= Math.floor(maxX / CELL); ix++) {
+      for (let iy = Math.floor(minY / CELL); iy <= Math.floor(maxY / CELL); iy++) {
+        const k = ck(ix, iy);
+        let list = this.grid.get(k);
+        if (!list) { list = []; this.grid.set(k, list); }
+        list.push(c);
+        cells.push(k);
+      }
+    }
+    let o = this.owned.get(owner);
+    if (!o) { o = []; this.owned.set(owner, o); }
+    o.push({ c, cells });
+  }
+
+  removeColliders(owner: string): void {
+    const o = this.owned.get(owner);
+    if (!o) return;
+    for (const { c, cells } of o) {
+      for (const k of cells) {
+        const list = this.grid.get(k);
+        if (!list) continue;
+        const i = list.indexOf(c);
+        if (i >= 0) list.splice(i, 1);
+        if (!list.length) this.grid.delete(k);
+      }
+    }
+    this.owned.delete(owner);
+  }
+
+  /** Static colliders near a point (grid + room colliders). */
+  collidersNear(x: number, y: number, r: number): Collider[] {
+    const out: Collider[] = this.colliders.length ? this.colliders.slice() : [];
+    const seen = new Set<Collider>();
+    for (let ix = Math.floor((x - r) / CELL); ix <= Math.floor((x + r) / CELL); ix++) {
+      for (let iy = Math.floor((y - r) / CELL); iy <= Math.floor((y + r) / CELL); iy++) {
+        const list = this.grid.get(ck(ix, iy));
+        if (!list) continue;
+        for (const c of list) if (!seen.has(c)) { seen.add(c); out.push(c); }
+      }
+    }
+    return out;
+  }
+
+  clearGrid(): void {
+    this.grid.clear();
+    this.owned.clear();
+  }
+
   /** Move a circle with collision against walls and solid entities. */
   move(e: Entity, dx: number, dy: number): void {
     const steps = Math.max(1, Math.ceil(Math.hypot(dx, dy) / (e.radius * 0.8)));
@@ -103,8 +170,9 @@ export class World {
   }
 
   resolve(e: Entity): void {
+    const near = this.collidersNear(e.x, e.y, e.radius + 1);
     for (let it = 0; it < 2; it++) {
-      for (const c of this.colliders) {
+      for (const c of near) {
         const p = pushOut(e.x, e.y, e.radius, c);
         if (p) { e.x = p[0]; e.y = p[1]; }
       }
@@ -158,7 +226,13 @@ export class World {
       this.comboT -= dt;
       if (this.comboT <= 0) this.combo = 0;
     }
-    for (const e of this.entities) if (!e.dead) e.update(dt);
+    const p = this.player;
+    const ar2 = this.activeRadius * this.activeRadius;
+    for (const e of this.entities) {
+      if (e.dead) continue;
+      if (e !== p && (e.x - p.x) ** 2 + (e.y - p.y) ** 2 > ar2) continue;
+      e.update(dt);
+    }
     for (const s of this.scripts) s(dt);
     this.strokes.update(dt);
     this.tele.update(dt);
@@ -212,6 +286,9 @@ export class World {
     this.entities = this.entities.filter((e) => keep.includes(e));
     for (const s of this.roomSprites) s.dispose();
     this.roomSprites = [];
+    for (const c of this.cleanups) c();
+    this.cleanups = [];
+    this.clearGrid();
     this.colliders = [];
     this.hazards = [];
     this.scripts = [];

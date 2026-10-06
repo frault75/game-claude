@@ -40,12 +40,18 @@ export interface RoomDef {
 }
 
 export class RoomBuilder {
-  readonly ground: Painter;
+  private _ground: Painter | null = null;
   private texts: { x: number; y: number; str: string; size: number; load: number }[] = [];
 
-  constructor(readonly world: World, readonly def: RoomDef, readonly game: Game) {
-    this.ground = new Painter(def.w, def.h, GROUND_PPU, 0, 0);
-    this.ground.glaze();
+  constructor(readonly world: World, readonly def: RoomDef, readonly game: Game) {}
+
+  /** The room's ground canvas, created on first use (open worlds paint chunks instead). */
+  get ground(): Painter {
+    if (!this._ground) {
+      this._ground = new Painter(this.def.w, this.def.h, GROUND_PPU, 0, 0);
+      this._ground.glaze();
+    }
+    return this._ground;
   }
 
   get rect() {
@@ -144,10 +150,12 @@ export class RoomBuilder {
   }
 
   finish(): void {
-    const g = new Sprite(this.ground);
-    g.mesh.renderOrder = LAYER.ground;
-    this.world.r.scenePig.add(g.mesh);
-    this.world.roomSprites.push(g);
+    if (this._ground) {
+      const g = new Sprite(this._ground);
+      g.mesh.renderOrder = LAYER.ground;
+      this.world.r.scenePig.add(g.mesh);
+      this.world.roomSprites.push(g);
+    }
     for (const t of this.texts) {
       const art = brushText(t.str, { size: t.size, ppu: 64, italic: true, pig: INK, load: t.load, maxWidth: 9 });
       const s = new Sprite(art);
