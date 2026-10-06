@@ -1,4 +1,4 @@
-import { Renderer } from './core/renderer';
+import { Renderer, IS_MOBILE } from './core/renderer';
 import { Input } from './core/input';
 import { DebugOverlay } from './ui/debug';
 import { Game } from './game/game';
@@ -26,9 +26,22 @@ const game = new Game(renderer, input);
 const ambience = new Ambience();
 let started = false;
 
+if (IS_MOBILE) input.device = 'touch';
+
 function startAudio() {
   if (started) return;
   started = true;
+  if (IS_MOBILE) {
+    // landscape fullscreen where the browser allows it (not on iPhone Safari)
+    const el = document.documentElement as HTMLElement & { webkitRequestFullscreen?: () => void };
+    try {
+      const req = el.requestFullscreen?.bind(el) ?? el.webkitRequestFullscreen?.bind(el);
+      const p = req?.() as Promise<void> | undefined;
+      p?.then(() => (screen.orientation as unknown as { lock?: (o: string) => Promise<void> })?.lock?.('landscape').catch(() => {})).catch(() => {});
+    } catch {
+      /* not allowed */
+    }
+  }
   audio.start();
   ambience.rain(0.32);
   ambience.wind(0.16, 500);
@@ -49,12 +62,24 @@ async function start() {
   setTimeout(() => loading.remove(), 900);
   let last = performance.now();
   let time = 0;
+  // adaptive resolution: if frames are slow, paint fewer pixels
+  let perfT = 0, perfFrames = 0, perfSettle = 3;
   const frame = (now: number) => {
     // RAF timestamps can be slightly older than performance.now(): never let time run backwards.
     const dt = Math.max(0, Math.min(0.1, (now - last) / 1000));
     last = now;
     time += dt;
     input.pollPad();
+    perfT += dt; perfFrames++;
+    if (perfT > 2) {
+      const avg = perfT / perfFrames;
+      perfSettle--;
+      if (perfSettle <= 0 && avg > 1 / 48 && renderer.renderScale > 0.5) {
+        renderer.renderScale = Math.max(0.5, renderer.renderScale - 0.15);
+        renderer.resize();
+      }
+      perfT = 0; perfFrames = 0;
+    }
     if (input.pressed('debug')) debug.toggle();
     if (debugMode) {
       if (input.keyPressed('KeyH')) { game.player.hp = 5; game.player.invuln = 99999; }
@@ -65,6 +90,17 @@ async function start() {
     }
     const steps = Math.max(1, Math.ceil(dt / (1 / 60)));
     if (!(window as unknown as { __pause?: boolean }).__pause) for (let i = 0; i < steps; i++) game.update(dt / steps);
+    // touch overlay follows the input state
+    const hud = game.hud;
+    hud.touch = input.device === 'touch';
+    input.layoutButton();
+    hud.buttonPos.x = input.button.x; hud.buttonPos.y = input.button.y; hud.buttonPos.r = input.button.r;
+    hud.buttonPressed = input.isDown('attack');
+    hud.stick.active = input.stick.id >= 0;
+    if (hud.stick.active) {
+      [hud.stick.ox, hud.stick.oy] = input.toUi(input.stick.ox, input.stick.oy);
+      [hud.stick.x, hud.stick.y] = input.toUi(input.stick.x, input.stick.y);
+    }
     const [cx, cy] = game.world.cameraWithShake();
     renderer.render(time, cx, cy);
     const w = game.world;
@@ -74,7 +110,7 @@ async function start() {
     debug.set('child', `${p.x.toFixed(1)}, ${p.y.toFixed(1)}  hp ${p.hp}  ${p.state}${p.reeling ? ' (reeling)' : ''}`);
     debug.set('ink', `${p.charges} charges · combo ${w.combo}`);
     debug.set('ents', `${w.entities.length}  calls ${renderer.gl.info.render.calls}`);
-    debug.set('res', `${renderer.pxW}x${renderer.pxH}`);
+    debug.set('res', `${renderer.pxW}x${renderer.pxH} scale ${renderer.renderScale.toFixed(2)}${IS_MOBILE ? ' mobile' : ''} · ${input.device}`);
     debug.frame(dt);
     input.endFrame();
     requestAnimationFrame(frame);

@@ -9,15 +9,19 @@ import { Rng } from '../../gfx/rng';
 import { t } from '../../i18n';
 import { music } from '../../audio/music';
 import { sfx } from '../../audio/sfx';
+import { IS_MOBILE } from '../../core/renderer';
 
 type Kind = 'blot' | 'wisp' | 'brute' | 'mite';
 
+const rep = (k: Kind, n: number): Kind[] => Array.from({ length: n }, () => k);
 const WAVES: Kind[][] = [
-  ['blot', 'blot', 'blot'],
-  ['blot', 'blot', 'wisp', 'wisp', 'blot'],
-  ['mite', 'mite', 'mite', 'mite', 'mite', 'mite', 'blot', 'blot'],
-  ['brute', 'blot', 'blot', 'wisp'],
-  ['brute', 'brute', 'wisp', 'wisp', 'mite', 'mite', 'mite', 'mite', 'blot', 'blot'],
+  rep('blot', 5),
+  [...rep('blot', 4), ...rep('wisp', 3)],
+  [...rep('mite', 10), ...rep('blot', 3)],
+  ['brute', ...rep('blot', 5), ...rep('wisp', 2)],
+  ['brute', 'brute', ...rep('mite', 8), ...rep('wisp', 2)],
+  [...rep('blot', 8), ...rep('wisp', 4), ...rep('mite', 8)],
+  ['brute', 'brute', 'brute', ...rep('blot', 6), ...rep('wisp', 4), ...rep('mite', 10)],
 ];
 
 function make(kind: Kind, x: number, y: number): Creature {
@@ -67,10 +71,10 @@ function paintCourtyard(b: RoomBuilder): void {
 export const arena: RoomDef = {
   id: 'arena',
   area: 'storm',
-  w: 26,
-  h: 15,
+  w: 34,
+  h: 20,
   palette: 'storm',
-  spawn: [13, 6],
+  spawn: [17, 9],
   goal: [0, 1],
   music: 'storm',
   post: { washed: 0, night: 0.16, fog: 0.14, fogScale: 0.14, fogDrift: [0.12, 0.03] },
@@ -78,17 +82,13 @@ export const arena: RoomDef = {
     const g = b.game;
     const w = b.world;
     paintCourtyard(b);
-    b.lamp(1.6, 13.2, 911, true);
-    b.lamp(24.4, 13.2, 912, true);
-    b.lamp(1.6, 1.4, 913, true);
-    b.lamp(24.4, 1.4, 914, true);
-    b.tree(6, 14.6, 915, 'pine', 0.9);
-    b.tree(20, 14.6, 916, 'pine', 0.9);
+    const lamps: [number, number][] = [[1.6, 18.2], [32.4, 18.2], [1.6, 1.4], [32.4, 1.4], [17, 18.6]];
+    lamps.forEach(([x, y], i) => b.lamp(x, y, 911 + i, true));
+    b.tree(7, 19.4, 915, 'pine', 0.9);
+    b.tree(27, 19.4, 916, 'pine', 0.9);
     // light pools under the lamps (the court is dark)
-    for (const [x, y] of [[1.6, 13.2], [24.4, 13.2], [1.6, 1.4], [24.4, 1.4]]) {
-      w.scripts.push(() => w.vfx.glowAt(x, y + 1.2, 3.2, 0.03));
-    }
-    const storm = new Storm(w, 150);
+    for (const [x, y] of lamps) w.scripts.push(() => w.vfx.glowAt(x, y + 1.2, 3.2, 0.03));
+    const storm = new Storm(w, IS_MOBILE ? 60 : 140);
     w.scripts.push((dt) => storm.update(dt));
     // keep the centre bright enough to read
     w.scripts.push(() => w.vfx.glowAt(w.player.x, w.player.y + 0.5, 4.5, 0.03));
@@ -107,17 +107,17 @@ export const arena: RoomDef = {
       alive = [];
       const kinds = WAVES[n];
       pending = kinds.length;
-      void g.story.show([`${t('wave')} ${n + 1} / ${WAVES.length}`], { size: 44, y: 300, hold: 1.0, italic: false });
+      void g.story.show([`${t('wave')} ${n + 1} / ${WAVES.length}`], { size: 40, y: g.r.uiH / 2 - 110, hold: 0.5, italic: false });
       sfx.wave();
       kinds.forEach((k, i) => {
-        g.after(0.5 + i * 0.35, () => {
+        g.after(0.25 + i * 0.12, () => {
           let x = 0, y = 0;
           for (let tries = 0; tries < 20; tries++) {
             x = rng.range(2.5, b.def.w - 2.5);
             y = rng.range(2.2, b.def.h - 2.5);
-            if (Math.hypot(x - w.player.x, y - w.player.y) > 5) break;
+            if (Math.hypot(x - w.player.x, y - w.player.y) > 6) break;
           }
-          w.tele.add({ kind: 'circle', r: k === 'brute' ? 1.0 : 0.6 }, x, y, 0, 0.9, {
+          w.tele.add({ kind: 'circle', r: k === 'brute' ? 1.0 : 0.6 }, x, y, 0, 0.55, {
             onFire: () => {
               const e = make(k, x, y);
               e.emerge = 0.6;
@@ -139,8 +139,8 @@ export const arena: RoomDef = {
     g.onRespawn = () => {
       // the wave starts again
       clearWave();
-      void g.story.show([t('died')], { size: 40, y: 200, hold: 1.2 });
-      g.after(1.6, () => startWave(Math.max(0, wave)));
+      void g.story.show([t('died')], { size: 40, y: g.r.uiH / 2 - 220, hold: 1.0 });
+      g.after(1.0, () => startWave(Math.max(0, wave)));
     };
     g.onEnso = (_e, hits) => {
       if (hits > 0 && !g.flags.has('ensoDone')) g.flags.add('ensoDone');
@@ -151,18 +151,19 @@ export const arena: RoomDef = {
       const p = w.player;
       if (!dashedOnce && p.charges < 3) {
         dashedOnce = true;
-        g.after(1.2, () => g.hintOnce('cut', t('hintTraitCut'), 5));
-        g.after(7, () => g.hintOnce('enso', t('hintEnso'), 7));
+        g.after(1.0, () => g.hintOnce('cut', t('hintTraitCut'), 4));
+        g.after(5.5, () => g.hintOnce('enso', g.input.device === 'touch' ? t('hintTouchEnso') : t('hintEnso'), 6));
       }
       const fighting = alive.some((e) => !e.dead);
       music.boss = fighting || state === 'spawn' ? Math.min(1, 0.45 + w.combo * 0.035) : 0.1;
       switch (state) {
         case 'intro':
           if (stateT > 0.1 && stateT - dt <= 0.1) {
-            void g.story.show([t('arenaTitle'), t('arenaSub')], { size: 50, y: 250, hold: 2.2, italic: false, stagger: 0.8 });
-            g.hintOnce('trait', g.input.device === 'pad' ? t('hintPadTrait') : t('hintTrait'), 8);
+            void g.story.show([t('arenaTitle'), t('arenaSub')], { size: 48, y: g.r.uiH / 2 - 260, hold: 1.0, italic: false, stagger: 0.4 });
+            const dev = g.input.device;
+            g.hintOnce('trait', dev === 'pad' ? t('hintPadTrait') : dev === 'touch' ? t('hintTouchTrait') : t('hintTrait'), 7);
           }
-          if (stateT > 4.5) startWave(0);
+          if (stateT > 2.6) startWave(0);
           break;
         case 'spawn':
           if (pending <= 0) { state = 'fight'; stateT = 0; }
@@ -175,7 +176,7 @@ export const arena: RoomDef = {
           }
           break;
         case 'between':
-          if (stateT > 2.2) {
+          if (stateT > 0.9) {
             if (wave + 1 < WAVES.length) startWave(wave + 1);
             else {
               state = 'victory';
@@ -189,14 +190,15 @@ export const arena: RoomDef = {
           break;
         case 'victory':
           if (stateT > 5) {
-            g.hintOnce('again' + Math.floor(w.time), g.input.device === 'pad' ? t('againPad') : t('again'), 999);
+            const dev = g.input.device;
+            g.hintOnce('again' + Math.floor(w.time), dev === 'pad' ? t('againPad') : dev === 'touch' ? t('againTouch') : t('again'), 999);
             state = 'victory';
             stateT = -1e9;
           }
           if (stateT < -1e8 && g.input.pressed('attack')) {
             g.ensoCount = 0;
             w.bestCombo = 0;
-            void g.travel('arena', [13, 6]);
+            void g.travel('arena', [17, 9]);
           }
           break;
       }

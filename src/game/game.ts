@@ -91,8 +91,8 @@ export class Game {
       }
     }
     this.ensoCount++;
-    w.hitstop = Math.max(w.hitstop, hits ? 0.14 : 0.04);
-    if (hits) w.slow(0.3, 0.32);
+    w.hitstop = Math.max(w.hitstop, hits ? 0.08 : 0.03);
+    if (hits) w.slow(0.4, 0.15);
     w.punch(0.05 + Math.min(0.06, hits * 0.02));
     w.shake(hits ? 0.3 : 0.1, 0.3);
     sfx.enso(hits, e.area);

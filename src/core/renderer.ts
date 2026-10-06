@@ -1,5 +1,14 @@
 import * as THREE from 'three';
 import { compositeFrag, compositeVert } from '../post/composite';
+import { makeNoiseTexture } from '../post/noiseTex';
+
+/** UI space shared by the renderer and touch input. */
+export function uiSize(w: number, h: number): { w: number; h: number } {
+  const short = Math.max(700, Math.min(1080, Math.min(w, h) * 1.7));
+  return w >= h ? { w: short * (w / h), h: short } : { w: short, h: short * (h / w) };
+}
+
+export const IS_MOBILE = typeof window !== 'undefined' && (window.matchMedia?.('(pointer: coarse)').matches || 'ontouchstart' in window);
 import type { Palette } from '../game/palettes';
 
 THREE.ColorManagement.enabled = false;
@@ -29,11 +38,14 @@ export class Renderer {
   readonly uiRed = new THREE.Scene();
   readonly camera: THREE.OrthographicCamera;
   readonly uiCamera: THREE.OrthographicCamera;
-  /** World units visible vertically. */
-  viewH = 13;
+  /** World units visible vertically (grows in portrait so enough width stays visible). */
+  viewH = 14;
+  baseViewH = 14;
+  minViewW = 12;
   zoom = 1;
   /** UI virtual units: 1080 tall. */
-  readonly uiH = 1080;
+  /** UI virtual units: the short side of the screen is `uiShort` units (1080 on desktop, less on phones so text stays readable). */
+  uiH = 1080;
   uiW = 1920;
   private rtPig: THREE.WebGLRenderTarget;
   private rtRed: THREE.WebGLRenderTarget;
@@ -60,7 +72,7 @@ export class Renderer {
     this.camera.position.set(0, 0, 10);
     this.uiCamera = new THREE.OrthographicCamera(-960, 960, 540, -540, -100, 100);
     this.uiCamera.position.set(0, 0, 10);
-    const float = this.gl.capabilities.isWebGL2 && this.gl.extensions.has('EXT_color_buffer_float');
+    const float = this.gl.capabilities.isWebGL2 && (this.gl.extensions.has('EXT_color_buffer_float') || this.gl.extensions.has('EXT_color_buffer_half_float'));
     const rtOpts: THREE.RenderTargetOptions = {
       type: float ? THREE.HalfFloatType : THREE.UnsignedByteType,
       format: THREE.RGBAFormat,
@@ -79,6 +91,8 @@ export class Renderer {
       uniforms: {
         tPig: { value: this.rtPig.texture },
         tRed: { value: this.rtRed.texture },
+        tNoise: { value: makeNoiseTexture() },
+        edgeTaps: { value: IS_MOBILE ? 4 : 8 },
         res: { value: new THREE.Vector2(1, 1) },
         camPos: { value: new THREE.Vector2() },
         viewSize: { value: new THREE.Vector2(1, 1) },
@@ -114,8 +128,10 @@ export class Renderer {
     const w = window.innerWidth, h = window.innerHeight;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     this.gl.setPixelRatio(1);
-    // The pigment buffers cap at ~1440p: the paint shader softens everything anyway.
-    const scale = Math.min(dpr * this.renderScale, 2560 / w, 1440 / h);
+    // Pixel budget: the paint shader softens everything anyway. Phones get far fewer pixels.
+    const budget = IS_MOBILE ? 650_000 : 2_100_000;
+    const scale = Math.min(dpr * this.renderScale, Math.sqrt(budget / (w * h)));
+    this.viewH = Math.max(this.baseViewH, this.minViewW / (w / h));
     this.pxW = Math.max(1, Math.round(w * scale));
     this.pxH = Math.max(1, Math.round(h * scale));
     this.gl.setSize(this.pxW, this.pxH, false);
@@ -124,7 +140,9 @@ export class Renderer {
     this.rtPig.setSize(this.pxW, this.pxH);
     this.rtRed.setSize(this.pxW, this.pxH);
     this.composite.uniforms.res.value.set(this.pxW, this.pxH);
-    this.uiW = this.uiH * (this.pxW / this.pxH);
+    const ui = uiSize(w, h);
+    this.uiW = ui.w;
+    this.uiH = ui.h;
     const u = this.uiCamera;
     u.left = -this.uiW / 2; u.right = this.uiW / 2; u.top = this.uiH / 2; u.bottom = -this.uiH / 2;
     u.updateProjectionMatrix();

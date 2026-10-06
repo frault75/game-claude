@@ -13,7 +13,7 @@ import { closestOnSeg, distToSeg, pointInPoly, segIntersect, V } from './physics
 import { Rng } from '../gfx/rng';
 
 export const STROKE = {
-  life: 2.6,
+  life: 2.4,
   width: 0.2,
   minLoopArea: 1.1,
   snapClose: 0.75,

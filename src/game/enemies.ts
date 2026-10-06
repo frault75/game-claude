@@ -87,9 +87,9 @@ export class Creature extends Entity {
     }
     if (this.dying > 0) {
       this.dying += dt;
-      for (const s of this.sprites) s.dissolve = Math.min(1, this.dying / 0.5);
-      if (this.shadowS) this.shadowS.opacity = 1 - this.dying / 0.5;
-      if (this.dying > 0.5) this.destroy();
+      for (const s of this.sprites) s.dissolve = Math.min(1, this.dying / 0.3);
+      if (this.shadowS) this.shadowS.opacity = 1 - this.dying / 0.3;
+      if (this.dying > 0.3) this.destroy();
       return false;
     }
     return true;
@@ -174,35 +174,35 @@ export class Blot extends Creature {
           this.wanderT = 1.5 + Math.random() * 2;
         }
         this.walk(this.dir[0] * 0.5 * dt, this.dir[1] * 0.5 * dt);
-        if (d < 6.5 && p.state !== 'dead') { this.mode = 'approach'; this.modeT = 0; }
+        if (d < 14 && p.state !== 'dead') { this.mode = 'approach'; this.modeT = 0; }
         break;
       case 'approach':
-        if (d > 9 || p.state === 'dead') { this.mode = 'idle'; break; }
-        this.walk((dx / d) * 1.7 * dt, (dy / d) * 1.7 * dt);
-        if (d < 2.6 && this.modeT > 0.4) {
+        if (d > 18 || p.state === 'dead') { this.mode = 'idle'; break; }
+        this.walk((dx / d) * 3.2 * dt, (dy / d) * 3.2 * dt);
+        if (d < 3.2 && this.modeT > 0.25) {
           this.mode = 'gather';
           this.modeT = 0;
           this.dir = [dx / d, dy / d];
           const ang = Math.atan2(dy, dx);
-          this.tg = w.tele.add({ kind: 'line', length: 3.4, width: 0.9 }, this.x, this.y, ang, 0.75, { hold: 0.25 });
-          sfx.telegraph('mid', 0.7);
+          this.tg = w.tele.add({ kind: 'line', length: 4.2, width: 0.9 }, this.x, this.y, ang, 0.5, { hold: 0.2 });
+          sfx.telegraph('mid', 0.5);
         }
         break;
       case 'gather':
         frame = frames[3];
         if (this.tg) { this.tg.x = this.x; this.tg.y = this.y; }
-        if (this.modeT > 0.75) { this.mode = 'lunge'; this.modeT = 0; this.tg = null; }
+        if (this.modeT > 0.5) { this.mode = 'lunge'; this.modeT = 0; this.tg = null; }
         break;
       case 'lunge': {
         frame = frames[4];
-        const sp = 11;
+        const sp = 16;
         this.walk(this.dir[0] * sp * dt, this.dir[1] * sp * dt);
         if (Math.hypot(p.x - this.x, p.y - this.y) < this.radius + p.radius + 0.1) p.hurt(1, this.x, this.y);
-        if (this.modeT > 0.28) { this.mode = 'rest'; this.modeT = 0; w.vfx.dust(this.x, this.y, 3); }
+        if (this.modeT > 0.25) { this.mode = 'rest'; this.modeT = 0; w.vfx.dust(this.x, this.y, 3); }
         break;
       }
       case 'rest':
-        if (this.modeT > 0.9) { this.mode = 'approach'; this.modeT = 0; }
+        if (this.modeT > 0.5) { this.mode = 'approach'; this.modeT = 0; }
         break;
     }
     this.place(frame);
@@ -303,23 +303,23 @@ export class Wisp extends Creature {
     const dx = p.x - this.x, dy = p.y - this.y;
     const d = Math.hypot(dx, dy);
     // drift towards a point near the player but keep distance
-    if (d < 9 && p.state !== 'dead') {
-      const want = 4.5;
-      const k = d > want ? 1 : -0.6;
-      const tx = this.x + (dx / d) * k * 1.2 * dt + Math.cos(this.animT) * 0.4 * dt;
-      const ty = this.y + (dy / d) * k * 1.2 * dt + Math.sin(this.animT * 1.3) * 0.4 * dt;
+    if (d < 16 && p.state !== 'dead') {
+      const want = 5;
+      const k = d > want ? 1 : -0.7;
+      const tx = this.x + (dx / d) * k * 2.4 * dt + Math.cos(this.animT) * 0.4 * dt;
+      const ty = this.y + (dy / d) * k * 2.4 * dt + Math.sin(this.animT * 1.3) * 0.4 * dt;
       this.walk(tx - this.x, ty - this.y);
       this.shootT -= dt;
-      if (this.shootT <= 0.8 && !this.tg && this.shootT > 0) {
-        this.tg = w.tele.add({ kind: 'circle', r: 0.45 }, this.x, this.y + 0.7, 0, 0.8, { hold: 0 });
-        sfx.telegraph('high', 0.6);
+      if (this.shootT <= 0.5 && !this.tg && this.shootT > 0) {
+        this.tg = w.tele.add({ kind: 'circle', r: 0.45 }, this.x, this.y + 0.7, 0, 0.5, { hold: 0 });
+        sfx.telegraph('high', 0.45);
       }
       if (this.tg) { this.tg.x = this.x; this.tg.y = this.y + 0.7; }
       if (this.shootT <= 0) {
         this.tg = null;
-        const sp = 3.6;
+        const sp = 6.2;
         w.add(new InkDrop(this.x, this.y, (dx / d) * sp, (dy / d) * sp, this));
-        this.shootT = 2.6 + Math.random();
+        this.shootT = 1.5 + Math.random() * 0.6;
       }
     } else {
       this.walk((this.hover[0] - this.x) * 0.5 * dt, (this.hover[1] - this.y) * 0.5 * dt);
@@ -387,8 +387,8 @@ export class Brute extends Creature {
     switch (this.mode) {
       case 'approach':
         this.dir = [dx / d, dy / d];
-        this.walk((dx / d) * 1.3 * dt, (dy / d) * 1.3 * dt);
-        if (d < 8.5 && this.cd <= 0 && p.state !== 'dead') {
+        this.walk((dx / d) * 2.2 * dt, (dy / d) * 2.2 * dt);
+        if (d < 10 && this.cd <= 0 && p.state !== 'dead') {
           this.mode = 'prep';
           this.modeT = 0;
           const b = w.bounds;
@@ -399,19 +399,19 @@ export class Brute extends Creature {
             L += 0.25;
           }
           this.chargeLeft = L;
-          this.tg = w.tele.add({ kind: 'line', length: L, width: 1.9 }, this.x, this.y, Math.atan2(this.dir[1], this.dir[0]), 1.0, { hold: 0.2 });
-          sfx.telegraph('low', 1.0);
+          this.tg = w.tele.add({ kind: 'line', length: L, width: 1.9 }, this.x, this.y, Math.atan2(this.dir[1], this.dir[0]), 0.75, { hold: 0.2 });
+          sfx.telegraph('low', 0.75);
         }
         break;
       case 'prep':
         frame = f[2];
         this.x += Math.sin(this.modeT * 50) * 0.01;
         if (this.tg) this.tg.x = this.x;
-        if (this.modeT > 1.0) { this.mode = 'charge'; this.modeT = 0; this.tg = null; w.shake(0.08, 0.15); }
+        if (this.modeT > 0.75) { this.mode = 'charge'; this.modeT = 0; this.tg = null; w.shake(0.08, 0.15); }
         break;
       case 'charge': {
         frame = f[3];
-        const step = 14 * dt;
+        const step = 19 * dt;
         const ox = this.x, oy = this.y;
         w.move(this, this.dir[0] * step, this.dir[1] * step);
         const moved = Math.hypot(this.x - ox, this.y - oy);
@@ -433,11 +433,11 @@ export class Brute extends Creature {
       }
       case 'stunned':
         frame = f[4];
-        if (this.modeT > 1.6) { this.mode = 'approach'; this.modeT = 0; this.cd = 1.8; }
+        if (this.modeT > 1.3) { this.mode = 'approach'; this.modeT = 0; this.cd = 1.2; }
         break;
       case 'recover':
         frame = f[0];
-        if (this.modeT > 0.7) { this.mode = 'approach'; this.modeT = 0; this.cd = 2.2; }
+        if (this.modeT > 0.5) { this.mode = 'approach'; this.modeT = 0; this.cd = 1.6; }
         break;
     }
     if (this.mode === 'approach') this.face = this.dir[0] < 0 ? -1 : 1;
@@ -477,7 +477,7 @@ export class Mite extends Creature {
     const r = dart ? 0.2 : 2.6;
     const a = this.orbit + this.t * 1.4;
     const tx = p.x + Math.cos(a) * r, ty = p.y + Math.sin(a) * r * 0.8;
-    const sp = dart ? 6.5 : 3.2;
+    const sp = dart ? 9 : 4.6;
     const dx = tx - this.x, dy = ty - this.y;
     const d = Math.hypot(dx, dy) || 1;
     this.walk((dx / d) * Math.min(d, sp * dt), (dy / d) * Math.min(d, sp * dt));

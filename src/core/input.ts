@@ -1,3 +1,4 @@
+import { uiSize } from './renderer';
 /**
  * Keyboard (physical key codes, so ZQSD and WASD both work), mouse and gamepad,
  * merged into a small set of actions.
@@ -30,7 +31,15 @@ export class Input {
   mouseY = 0;
   mouseMoved = false;
   /** Last used device, to show the right hints and choose aim mode. */
-  device: 'kbm' | 'pad' = 'kbm';
+  device: 'kbm' | 'pad' | 'touch' = 'kbm';
+  /** Touch: virtual stick (CSS px) and the brush button (UI units, 1080 tall). */
+  stick = { id: -1, ox: 0, oy: 0, x: 0, y: 0 };
+  stickVec: [number, number] = [0, 0];
+  private buttonId = -1;
+  readonly button = { x: 0, y: 0, r: 105 };
+  /** Last touch that asked for a Trait (CSS px). */
+  tapX = 0;
+  tapY = 0;
   padMove: [number, number] = [0, 0];
   padAim: [number, number] = [0, 0];
   private padPrev: boolean[] = [];
@@ -61,27 +70,103 @@ export class Input {
       this.held.clear();
       this.keysHeld.clear();
     });
-    el.addEventListener('mousemove', (e) => {
-      this.mouseX = e.clientX;
-      this.mouseY = e.clientY;
-      this.mouseMoved = true;
-      this.device = 'kbm';
+    el.addEventListener('pointermove', (e) => {
+      if (e.pointerType === 'mouse') {
+        this.mouseX = e.clientX;
+        this.mouseY = e.clientY;
+        this.mouseMoved = true;
+        this.device = 'kbm';
+        return;
+      }
+      if (e.pointerId === this.stick.id) {
+        this.stick.x = e.clientX;
+        this.stick.y = e.clientY;
+        this.updateStick();
+      }
     });
-    el.addEventListener('mousedown', (e) => {
-      this.device = 'kbm';
+    el.addEventListener('pointerdown', (e) => {
       this.anyPressed = true;
-      this.mouseX = e.clientX;
-      this.mouseY = e.clientY;
-      if (e.button === 0) { this.press('attack'); this.press('confirm'); }
-      if (e.button === 2) this.press('dodge');
-      if (e.button === 1) { e.preventDefault(); this.press('release'); }
+      if (e.pointerType === 'mouse') {
+        this.device = 'kbm';
+        this.mouseX = e.clientX;
+        this.mouseY = e.clientY;
+        if (e.button === 0) { this.press('attack'); this.press('confirm'); }
+        if (e.button === 2) this.press('dodge');
+        if (e.button === 1) { e.preventDefault(); this.press('release'); }
+        return;
+      }
+      e.preventDefault();
+      this.device = 'touch';
+      const w = window.innerWidth, h = window.innerHeight;
+      const [ux, uy] = this.toUi(e.clientX, e.clientY);
+      this.layoutButton();
+      if (Math.hypot(ux - this.button.x, uy - this.button.y) < this.button.r * 1.15 && this.buttonId < 0) {
+        this.buttonId = e.pointerId;
+        this.press('attack');
+        this.press('confirm');
+      } else if (e.clientX < w * 0.42 && this.stick.id < 0 && e.clientY > h * 0.18) {
+        this.stick = { id: e.pointerId, ox: e.clientX, oy: e.clientY, x: e.clientX, y: e.clientY };
+        this.updateStick();
+      } else {
+        // a tap anywhere else: Trait towards that point
+        this.mouseX = this.tapX = e.clientX;
+        this.mouseY = this.tapY = e.clientY;
+        this.press('dodge');
+        this.press('confirm');
+        this.held.delete('dodge');
+        this.held.delete('confirm');
+      }
     });
-    el.addEventListener('mouseup', (e) => {
-      if (e.button === 0) { this.held.delete('attack'); this.held.delete('confirm'); }
-      if (e.button === 2) this.held.delete('dodge');
-      if (e.button === 1) this.held.delete('release');
-    });
+    const up = (e: PointerEvent) => {
+      if (e.pointerType === 'mouse') {
+        if (e.button === 0) { this.held.delete('attack'); this.held.delete('confirm'); }
+        if (e.button === 2) this.held.delete('dodge');
+        if (e.button === 1) this.held.delete('release');
+        return;
+      }
+      if (e.pointerId === this.stick.id) {
+        this.stick.id = -1;
+        this.stickVec = [0, 0];
+      }
+      if (e.pointerId === this.buttonId) {
+        this.buttonId = -1;
+        this.held.delete('attack');
+        this.held.delete('confirm');
+      }
+    };
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
     el.addEventListener('contextmenu', (e) => e.preventDefault());
+  }
+
+  /** CSS px to UI units (1080 tall, origin at centre). */
+  toUi(x: number, y: number): [number, number] {
+    const w = window.innerWidth, h = window.innerHeight;
+    const ui = uiSize(w, h);
+    return [(x / w - 0.5) * ui.w, (0.5 - y / h) * ui.h];
+  }
+
+  /** Where the brush button sits (UI units). */
+  layoutButton(): void {
+    const w = window.innerWidth, h = window.innerHeight;
+    const ui = uiSize(w, h);
+    this.button.r = 105;
+    this.button.x = ui.w / 2 - this.button.r - 60;
+    this.button.y = -ui.h / 2 + this.button.r + 60;
+  }
+
+  private updateStick(): void {
+    const s = this.stick;
+    const R = Math.min(window.innerWidth, window.innerHeight) * 0.12;
+    let dx = (s.x - s.ox) / R, dy = -(s.y - s.oy) / R;
+    const l = Math.hypot(dx, dy);
+    if (l > 1) {
+      // the stick base follows the thumb when dragged far
+      s.ox = s.x - (dx / l) * R;
+      s.oy = s.y + (dy / l) * R;
+      dx /= l; dy /= l;
+    }
+    this.stickVec = l < 0.15 ? [0, 0] : [dx, dy];
   }
 
   private press(a: Action): void {
@@ -119,6 +204,8 @@ export class Input {
     if (this.held.has('down')) y -= 1;
     const [px, py] = this.padMove;
     if (Math.hypot(px, py) > 0.2) { x = px; y = py; }
+    const [tx, ty] = this.stickVec;
+    if (Math.hypot(tx, ty) > 0.1) { x = tx; y = ty; }
     const l = Math.hypot(x, y);
     return l > 1 ? [x / l, y / l] : [x, y];
   }

@@ -174,8 +174,8 @@ export class World {
   updateCamera(dt: number): void {
     const p = this.player;
     const [ax, ay] = p.aim;
-    const tx = p.x + ax * 1.2, ty = p.y + 0.5 + ay * 0.9;
-    const k = Math.min(1, dt * 5);
+    const tx = p.x + ax * 1.4 + p.vx * 0.06, ty = p.y + 0.5 + ay * 1.0 + p.vy * 0.06;
+    const k = Math.min(1, dt * 9);
     this.camX += (tx - this.camX) * k;
     this.camY += (ty - this.camY) * k;
     this.clampCamera();

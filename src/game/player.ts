@@ -12,17 +12,17 @@ import { angleDiff, distToSeg, V } from './physics';
 type State = 'normal' | 'strike' | 'dash' | 'hurt' | 'fall' | 'dead' | 'frozen';
 
 export const PLAYER = {
-  speed: 6.2,
-  accel: 70,
+  speed: 8.4,
+  accel: 110,
   maxHp: 5,
-  dashSpeed: 30,
-  dashMin: 1.3,
-  dashMax: 4.3,
+  dashSpeed: 50,
+  dashMin: 1.8,
+  dashMax: 5.6,
   dashIframesExtra: 0.08,
-  charges: 3,
-  rechargeTime: 0.5,
-  rechargeDelay: 0.16,
-  strikeRange: 1.5,
+  charges: 4,
+  rechargeTime: 0.32,
+  rechargeDelay: 0.1,
+  strikeRange: 1.7,
   strikeHalf: 1.05,
 };
 
@@ -110,11 +110,32 @@ export class Player extends Entity {
         const l = Math.hypot(this.moveDir[0], this.moveDir[1]);
         this.aim = [this.moveDir[0] / l, this.moveDir[1] / l];
       }
+    } else if (inp.device === 'touch') {
+      if (Math.hypot(this.moveDir[0], this.moveDir[1]) > 0.2) {
+        const l = Math.hypot(this.moveDir[0], this.moveDir[1]);
+        this.aim = [this.moveDir[0] / l, this.moveDir[1] / l];
+      }
     } else {
       const [mx, my] = w.mouseWorld();
       const dx = mx - this.x, dy = my - (this.y + 0.45);
       const l = Math.hypot(dx, dy);
       if (l > 0.05) this.aim = [dx / l, dy / l];
+    }
+  }
+
+  /** On touch screens the brush turns towards the nearest foe. */
+  private autoAim(): void {
+    let best: Entity | null = null;
+    let bd = 3.2;
+    for (const e of this.world.entities) {
+      if (e.team !== 'enemy' || e.dead) continue;
+      const d = Math.hypot(e.x - this.x, e.y - this.y);
+      if (d < bd) { bd = d; best = e; }
+    }
+    if (best) {
+      const dx = best.x - this.x, dy = best.y - this.y;
+      const l = Math.hypot(dx, dy) || 1;
+      this.aim = [dx / l, dy / l];
     }
   }
 
@@ -192,7 +213,7 @@ export class Player extends Entity {
     if (this.state === 'dash') {
       this.updateDash(dt);
     } else {
-      if (this.state === 'hurt' && this.stateT > 0.25) { this.state = 'normal'; this.stateT = 0; }
+      if (this.state === 'hurt' && this.stateT > 0.18) { this.state = 'normal'; this.stateT = 0; }
       const k = Math.min(1, (PLAYER.accel * dt) / PLAYER.speed);
       this.vx += (tvx - this.vx) * k;
       this.vy += (tvy - this.vy) * k;
@@ -254,7 +275,7 @@ export class Player extends Entity {
       if (distToSeg(e.x, ey, ox, oy, this.x, this.y) < e.radius + 0.38) {
         ds.hit.add(e);
         if (e.onHit({ dmg: 1, fromX: ox, fromY: oy, kind: 'cut' })) {
-          w.hitstop = Math.max(w.hitstop, 0.035);
+          w.hitstop = Math.max(w.hitstop, 0.025);
           w.kick(ds.dir[0] * 0.12, ds.dir[1] * 0.12);
           sfx.cut();
           this.onLanded?.(1, 'cut');
@@ -286,16 +307,17 @@ export class Player extends Entity {
     this.combo = combo;
     this.comboQueued = false;
     this.strikeHit = false;
+    if (this.world.input.device !== 'kbm') this.autoAim();
     const [ax, ay] = this.aim;
     this.faceTowards(ax, ay);
-    this.vx = ax * 4;
-    this.vy = ay * 4;
+    this.vx = ax * 5;
+    this.vy = ay * 5;
   }
 
   private updateStrike(): void {
     const w = this.world;
     const t = this.stateT;
-    const windup = 0.04, active = 0.08;
+    const windup = 0.03, active = 0.07;
     this.vx *= 0.82; this.vy *= 0.82;
     if (t >= windup && !this.strikeHit) {
       this.strikeHit = true;
@@ -315,13 +337,13 @@ export class Player extends Entity {
         if (e.onHit({ dmg: 1, fromX: this.x, fromY: this.y, kind: 'brush' })) landed++;
       }
       if (landed) {
-        w.hitstop = Math.max(w.hitstop, 0.055);
+        w.hitstop = Math.max(w.hitstop, 0.04);
         w.kick(ax * 0.15, ay * 0.15);
         w.shake(0.06, 0.1);
         this.onLanded?.(landed, 'brush');
       }
     }
-    const end = this.combo === 0 ? windup + active + 0.12 : windup + active + 0.2;
+    const end = this.combo === 0 ? windup + active + 0.09 : windup + active + 0.15;
     if (t >= windup + active && this.comboQueued && this.combo === 0) {
       this.startStrike(1);
       return;

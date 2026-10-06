@@ -22,11 +22,13 @@ Un orage d'encre noire a renversé l'encrier du vieux maître calligraphe et noy
 
 ## 3. La mécanique : le Trait
 
-| Action | Clavier et souris | Manette |
-|--------|----------------|---------|
-| Se déplacer | ZQSD / WASD / flèches | Stick gauche |
-| **Trait** (dash vers le curseur) | Clic droit ou Espace | A (direction du stick) |
-| Coup de pinceau | Clic gauche | X |
+| Action | Clavier et souris | Manette | Mobile (tactile) |
+|--------|----------------|---------|------------------|
+| Se déplacer | ZQSD / WASD / flèches | Stick gauche | Stick virtuel sous le pouce gauche |
+| **Trait** (dash vers le curseur) | Clic droit ou Espace | A (direction du stick) | Toucher l'écran : Trait vers ce point |
+| Coup de pinceau | Clic gauche | X | Bouton pinceau en bas à droite (visée auto) |
+
+**Le jeu doit tourner sur mobile** : commandes tactiles, interface qui s'adapte au paysage comme au portrait, budget de pixels réduit et résolution adaptative, bruits du shader précalculés en texture.
 
 ### Règles
 
