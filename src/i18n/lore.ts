@@ -469,3 +469,23 @@ export const JOURNAL_UI = {
   now: { fr: 'en cours', en: 'current' },
   where: { fr: 'Lieu', en: 'Where' },
 };
+
+/** What people say when they have nothing more for you. */
+export const IDLE: Record<'prune' | 'ghost' | 'lotus' | 'kaze', TrList> = {
+  prune: {
+    fr: ['Assieds-toi un peu, petit trait. À mon âge, on a le temps de regarder les nuages.', 'Le maître venait boire le thé ici, autrefois. Il peignait les toits pendant que l’eau chauffait.'],
+    en: ['Sit a while, little stroke. At my age, there is time to watch the clouds.', 'The master used to come here for tea. He painted the roofs while the water heated.'],
+  },
+  ghost: {
+    fr: ['… La meule… tourne… tourne…'],
+    en: ['… The millstone… turns… turns…'],
+  },
+  lotus: {
+    fr: ['Que la flamme te garde sur la route.', 'Les taches craignent la lumière. Pas parce qu’elle brûle : parce qu’elle montre ce qu’elles ont pris.'],
+    en: ['May the flame keep you on the road.', 'The blots fear light. Not because it burns: because it shows what they have taken.'],
+  },
+  kaze: {
+    fr: ['Tu es encore là ? Le maître ne t’attendra pas éternellement.'],
+    en: ['Still here? The master won’t wait for you forever.'],
+  },
+};

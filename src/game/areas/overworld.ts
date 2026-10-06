@@ -3,6 +3,8 @@
  * the Plum Plain with its camps and shrines, the Ram King's stone circle, the ways down into the cave and the temple.
  */
 import type { RoomDef } from '../room';
+import { NPC_NAMES } from '../sidequests';
+import type { Choice } from '../../ui/dialog';
 import { owMapSource } from '../../world/owMap';
 import type { Game } from '../game';
 import type { World } from '../world';
@@ -26,7 +28,7 @@ import { stroke } from '../../gfx/brush';
 import { SPRITE_PPU } from '../../gfx/gen/flora';
 import { IS_MOBILE } from '../../core/renderer';
 import { t, lang } from '../../i18n';
-import { L, LL, NAMES, WILLOW, MADDER, ELM, PIP, LINDEN, STELES, UI, REGION_LORE } from '../../i18n/lore';
+import { L, LL, NAMES, WILLOW, MADDER, ELM, PIP, LINDEN, STELES, UI, REGION_LORE, IDLE } from '../../i18n/lore';
 import { music } from '../../audio/music';
 import { sfx } from '../../audio/sfx';
 import { save, writeSave } from '../progression';
@@ -234,6 +236,11 @@ export const overworld: RoomDef = {
       const sh = b.add(new Shrine(s.id, s.x, s.y));
       sh.onUse = (first) => {
         g.hud.showHint(t('shrine'), 3);
+        g.quests.event('shrine', s.id);
+        if (save.perks.lamps) {
+          g.player.blessT = 60;
+          g.after(1.2, () => g.hud.showHint(lang === 'fr' ? 'Le sanctuaire te bénit : ton trait frappe plus fort.' : 'The shrine blesses you: your stroke strikes harder.', 2.5));
+        }
         if (first && s.id > 0) {
           const line = [t('shrine1'), t('shrine2'), t('shrine3')][s.id - 1];
           if (line) void g.story.show([line], { size: 34, y: r.uiH / 2 - 200, hold: 2.8 });
@@ -260,7 +267,7 @@ export const overworld: RoomDef = {
     void steles;
 
     // ---------- the villagers ----------
-    const speak = (n: Npc, pages: string[], after?: () => void) => g.talk({ name: n.displayName, ...n.portrait() }, pages, after);
+    const speak = (n: Npc, pages: string[], after?: () => void, choices?: Choice[]) => g.talk({ name: n.displayName, ...n.portrait() }, pages, after, choices);
     const willow = b.add(new Npc('willow', L(NAMES.willow), {
       seed: 11, scale: 1.12, robe: mixPig(INK, PIG_B, 0.5), robeDensity: 0.22, hair: 'white', hat: 'none', bent: 0.8, prop: 'cane',
     }, ...NPC_SPOTS.willow));
@@ -333,11 +340,46 @@ export const overworld: RoomDef = {
       else if (save.inks.includes('indigo')) speak(linden, LL(LINDEN.indigo));
       else speak(linden, LL(LINDEN.early));
     };
+    // ---------- people of the side quests ----------
+    const extra: Npc[] = [];
+    const prune = b.add(new Npc('prune', L(NPC_NAMES.prune), {
+      seed: 16, scale: 1.0, robe: mixPig(INK, PIG_A, 0.5), robeDensity: 0.2, hair: 'white', hat: 'scarf', bent: 1, prop: 'cane',
+    }, 27.5, 57.5));
+    extra.push(prune);
+    if (!save.quests.miller?.done) {
+      const ghost = b.add(new Npc('ghost', L(NPC_NAMES.ghost), {
+        seed: 17, scale: 1.15, robe: INK, robeDensity: 0.07, hair: 'none', hat: 'straw', beard: true,
+      }, 57.6, 96.8));
+      ghost.ghostly = true;
+      extra.push(ghost);
+    }
+    const lotus = b.add(new Npc('lotus', L(NPC_NAMES.lotus), {
+      seed: 18, scale: 1.1, robe: mixPig(INK, PIG_B, 0.7), robeDensity: 0.18, hair: 'none', hat: 'none', redSash: true,
+    }, 90.6, 43.6));
+    extra.push(lotus);
+    if (!save.quests.kaze?.done) {
+      const kaze = b.add(new Npc('kaze', L(NPC_NAMES.kaze), {
+        seed: 19, scale: 1.2, robe: INK, robeDensity: 0.45, hair: 'long', hat: 'cone', prop: 'cane', redSash: true,
+      }, 111.6, 78.8));
+      extra.push(kaze);
+    }
+    for (const n of extra) n.onTalk = () => speak(n, LL(IDLE[n.id as keyof typeof IDLE] ?? IDLE.prune));
+    // quests first, unless the main story has something to say
+    const mainBusiness: Record<string, () => boolean> = {
+      willow: () => { const m = save.main; return m === STEP.meetWillow || m === STEP.orchardBack || m === STEP.indigoBack || m === STEP.goldBack; },
+      madder: () => hasColour() && !save.madder,
+      elm: () => save.inks.includes('indigo') && !save.brambles,
+    };
+    const everyone = [willow, madder, elm, pip, linden, ...extra];
+    for (const n of everyone) {
+      const base = n.onTalk;
+      n.onTalk = () => {
+        if (!mainBusiness[n.id]?.() && g.quests.talk(n.id, (pages, after, choices) => speak(n, pages, after, choices))) return;
+        base?.();
+      };
+    }
     w.scripts.push(() => {
-      const m = save.main;
-      willow.marker = m === STEP.meetWillow || m === STEP.orchardBack || m === STEP.indigoBack || m === STEP.goldBack ? 'quest' : 'none';
-      madder.marker = hasColour() && !save.madder ? 'quest' : 'none';
-      elm.marker = save.inks.includes('indigo') && !save.brambles ? 'quest' : 'none';
+      for (const n of everyone) n.marker = mainBusiness[n.id]?.() || g.quests.wants(n.id) ? 'quest' : 'none';
     });
 
     // ---------- camps ----------

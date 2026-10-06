@@ -1,5 +1,7 @@
 /** Owns the world, player and HUD; loads rooms; exits, death, ensō, combo, music, story. */
 import type { Renderer } from '../core/renderer';
+import { Questbook } from './questbook';
+import { SIDE_QUESTS } from './sidequests';
 import { Title } from '../ui/title';
 import { Cinematic } from '../ui/cinematic';
 import { Menu, MenuTab } from '../ui/menu';
@@ -24,7 +26,7 @@ import { InkFx } from './inkfx';
 import { Numbers } from './numbers';
 import { save, xpToNext, gear } from './progression';
 import { INKS } from './inks';
-import { Dialog, Speaker } from '../ui/dialog';
+import { Dialog, Speaker, Choice } from '../ui/dialog';
 import { Inventory } from '../ui/inventory';
 import { eff, rank, pointsLeft, cooldownOf, SkillId } from './skills';
 import { Tree } from '../ui/tree';
@@ -47,6 +49,10 @@ export class Game {
   readonly tree: Tree;
   readonly menu: Menu;
   readonly title: Title;
+  readonly quests: Questbook;
+  /** Named places in the current room (dungeon floors are generated): where quests hide things. */
+  roomSpot?: (name: string) => V | null;
+  private comboMark = false;
   readonly cine: Cinematic;
   private titleT = 0;
   private titleCam: V = [0, 0];
@@ -102,11 +108,19 @@ export class Game {
     this.tree = new Tree(r, input);
     this.tree.onChange = () => this.inventory.onChange?.();
     this.title = new Title(r, input);
+    this.quests = new Questbook(this);
+    this.quests.register(SIDE_QUESTS);
     this.cine = new Cinematic(r, input);
     this.menu = new Menu(r, input);
     this.menu.onBag = () => { this.menu.close(); this.inventory.open(); };
     this.menu.onTree = () => { this.menu.close(); this.tree.open(); };
     this.menu.device = () => this.input.device;
+    this.menu.sides = () => this.quests.all().filter((d) => save.quests[d.id]).map((d) => {
+      const q = save.quests[d.id];
+      const st = d.stages[Math.min(q.s, d.stages.length - 1)];
+      const goal = st.goal[lang] + (st.count && st.count > 1 && !q.done ? ` (${q.n}/${st.count})` : '');
+      return { title: d.title[lang], goal, done: !!q.done };
+    });
     const toTab = (id: MenuTab) => (id === 'bag' ? this.inventory.open() : id === 'tree' ? this.tree.open() : this.menu.open(id));
     this.inventory.onTab = toTab;
     this.tree.onTab = toTab;
@@ -182,6 +196,7 @@ export class Game {
     this.r.scenePig.add(s.mesh);
     this.words.push({ s, t: 0 });
     this.onEnso?.(e, hits);
+    if (hits >= 4) this.quests.event('enso4');
   }
 
   async loadRoom(def: RoomDef | string, spawn?: V): Promise<void> {
@@ -205,6 +220,7 @@ export class Game {
     for (const wd of this.words) wd.s.dispose();
     this.words = [];
     w.strokes.reset();
+    this.roomSpot = undefined;
     const b = new RoomBuilder(w, def, this);
     def.build(b);
     await nextFrame();
@@ -234,13 +250,16 @@ export class Game {
     this.room = def;
     this.objective = null;
     flushFog();
-    this.mapSrc = def.map?.(this) ?? null;
+    const src = def.map?.(this) ?? null;
+    // the place's own marks, and where the side quests lead
+    this.mapSrc = src ? { ...src, marks: () => [...src.marks(), ...this.quests.marks()] } : null;
     if (this.mapSrc) reveal(this.mapSrc, sx, sy);
     progress.room = def.id;
     progress.spawn = [sx, sy];
     saveProgress();
     music.play(def.music ?? def.area);
     music.boss = 0;
+    this.quests.populate();
     this.loading = false;
     this.onRoomLoaded?.(def);
   }
@@ -293,12 +312,12 @@ export class Game {
   }
 
   /** Open a dialogue; the world holds still until it closes. */
-  talk(speaker: Speaker, pages: string[], onClose?: () => void): void {
+  talk(speaker: Speaker, pages: string[], onClose?: () => void, choices?: Choice[]): void {
     this.player.attackTarget = null;
     this.player.moveTarget = null;
     this.player.vx = 0;
     this.player.vy = 0;
-    this.dialog.open(speaker, pages, onClose);
+    this.dialog.open(speaker, pages, onClose, choices);
   }
 
   async travel(to: string, spawn?: V): Promise<void> {
@@ -432,6 +451,8 @@ export class Game {
     }
     w.update(dt);
     this.showKeyPrompt();
+    if (w.combo >= 15 && !this.comboMark) { this.comboMark = true; this.quests.event('combo15'); }
+    else if (w.combo < 15) this.comboMark = false;
     // the fog lifts where the child walks
     if (this.mapSrc && (this.fogT -= dt) <= 0) {
       this.fogT = 0.25;

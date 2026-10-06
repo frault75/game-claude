@@ -35,6 +35,10 @@ export interface Save {
   regions: string[];
   /** Fog of war per map: hex bit strings (see ui/mapArt). */
   fog: Record<string, string>;
+  /** Side quests: current stage, a counter, the path chosen, done. */
+  quests: Record<string, { s: number; n: number; c?: string; done?: boolean; seen?: number[] }>;
+  /** Lasting gifts from quests (life, pigment, skill points, the shrines' blessing…). */
+  perks: Record<string, number>;
 }
 
 export const BAG_SIZE = 16;
@@ -44,7 +48,7 @@ const fresh = (): Save => ({
   main: 0, steles: [], brambles: false, madder: false, pip: 0, pigment: 0,
   bag: [], equip: {}, newItems: false,
   skills: {}, slots: [null, null, null],
-  bestiary: [], regions: [], fog: {},
+  bestiary: [], regions: [], fog: {}, quests: {}, perks: {},
 });
 
 let gearCache: Record<Stat, number> | null = null;

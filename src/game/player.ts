@@ -86,6 +86,8 @@ export class Player extends Entity {
   locked = false;
   /** Not drawn (title screen, cinematics). */
   hidden = false;
+  /** The shrines' blessing (Sister Lotus): more damage for a while. */
+  blessT = 0;
   /** Where the child is walking to, or whom it is attacking. */
   moveTarget: V | null = null;
   attackTarget: Entity | null = null;
@@ -109,7 +111,7 @@ export class Player extends Entity {
   }
 
   get maxHp(): number {
-    return stats.maxHp(save.level) + gear().hp + eff('breath');
+    return stats.maxHp(save.level) + gear().hp + eff('breath') + (save.perks.life ?? 0);
   }
   /** Skill cooldowns (seconds left). */
   cool: Partial<Record<SkillId, number>> = {};
@@ -131,7 +133,7 @@ export class Player extends Entity {
     return stats.inkMax(save.level) + gear().ink;
   }
   get dmgMul(): number {
-    return stats.dmg(save.level) * (1 + gear().dmg / 100);
+    return (this.blessT > 0 ? 1.2 : 1) * stats.dmg(save.level) * (1 + gear().dmg / 100);
   }
   /** Walking speed with what the child wears. */
   get speed(): number {
@@ -146,7 +148,7 @@ export class Player extends Entity {
     return this.ink / this.inkMax;
   }
   get pigmentMax(): number {
-    return stats.pigmentMax(save.level) + gear().pigment + eff('reserve');
+    return stats.pigmentMax(save.level) + gear().pigment + eff('reserve') + (save.perks.pigment ?? 0);
   }
   /** Coloured ink spent per unit of stroke. */
   private paintCost(ink: InkId): number {
@@ -274,6 +276,7 @@ export class Player extends Entity {
     this.sinceInk += dt;
     this.mistT = Math.max(0, this.mistT - dt);
     this.secondT = Math.max(0, this.secondT - dt);
+    this.blessT = Math.max(0, this.blessT - dt);
     for (const k of Object.keys(this.cool) as SkillId[]) this.cool[k] = Math.max(0, (this.cool[k] ?? 0) - dt);
     const [mx, my] = this.locked ? [0, 0] : inp.move();
     this.moveDir = [mx, my];

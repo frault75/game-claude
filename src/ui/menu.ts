@@ -120,6 +120,8 @@ export class Menu {
   onBag?: () => void;
   onTree?: () => void;
   view?: () => MapView;
+  /** Side quests: title, current goal, done. */
+  sides?: () => { title: string; goal: string; done: boolean }[];
   device: () => 'kbm' | 'touch' | 'pad' = () => 'kbm';
 
   constructor(private r: Renderer, private input: Input) {}
@@ -316,12 +318,18 @@ export class Menu {
       else groups.push({ title, goal: LT(MAIN[i].goal), done: i < save.main });
     }
     let y = top;
+    const sides = this.sides?.() ?? [];
     const cur = groups.filter((g) => !g.done);
-    const done = groups.filter((g) => g.done).reverse();
+    const done = [...sides.filter((q) => q.done), ...groups.filter((g) => g.done).reverse()];
     y -= this.put(L(T.current), x0, y, 24, { italic: true }).h + 4;
     for (const g of cur) {
       y -= this.put(g.title, x0, y, 32, { bold: true, color: [0.76, 0.23, 0.17], maxWidth: colW }).h;
       y -= this.put(g.goal, x0 + 16, y, 25, { italic: true, maxWidth: colW - 16 }).h + 14;
+    }
+    for (const q of sides.filter((o) => !o.done)) {
+      if (y < -ph / 2 + 120) break;
+      y -= this.put(`◆ ${q.title}`, x0, y, 27, { bold: true, maxWidth: colW }).h;
+      y -= this.put(q.goal, x0 + 26, y, 23, { italic: true, maxWidth: colW - 26 }).h + 10;
     }
     y -= 10;
     if (done.length) y -= this.put(L(T.done), x0, y, 24, { italic: true }).h + 4;
