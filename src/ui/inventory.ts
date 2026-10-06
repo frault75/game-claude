@@ -27,7 +27,8 @@ const T = {
   equip: { fr: 'Équiper', en: 'Equip' },
   remove: { fr: 'Retirer', en: 'Take off' },
   grind: { fr: 'Broyer', en: 'Grind' },
-  sure: { fr: 'Vraiment ?', en: 'Sure?' },
+  sure: { fr: 'Confirmer', en: 'Confirm' },
+  sureHint: { fr: 'Objet précieux : touche « Confirmer » pour le broyer.', en: 'A precious item: tap “Confirm” to grind it.' },
   level: { fr: 'niveau', en: 'level' },
   worn: { fr: 'Comparé à ce que tu portes :', en: 'Compared with what you wear:' },
   empty: { fr: 'Touche un objet pour le regarder.\nBroyer un objet rend du pigment.', en: 'Tap an item to look at it.\nGrinding an item gives pigment back.' },
@@ -188,15 +189,9 @@ export class Inventory {
     cell.iconRed?.dispose();
     cell.wash = cell.icon = cell.iconRed = null;
     const k = this.c * 0.78;
-    if (!it && ghost) {
-      const a = itemArt(ghost, 0, 96);
-      cell.icon = this.add(new Sprite(a.pig), 'pig', LAYER.ui + 32);
-      cell.icon.opacity = 0.18;
-    }
-    if (!it) {
-      if (cell.icon) { cell.icon.setPos(cell.x, cell.y - k * 0.5); cell.icon.mesh.scale.set(k, k, 1); }
-      return;
-    }
+    // an empty slot stays empty (its name is written under it)
+    void ghost;
+    if (!it) return;
     if (it.rarity !== 'common') {
       const [cr, cg, cb] = RARITY_RGB[it.rarity];
       const wp = new Painter(110, 110, 0.5, -55, -55);
@@ -316,6 +311,7 @@ export class Inventory {
         if (diffs.length) put(diffs.join('\n'), 23);
       }
     }
+    if (this.sureT > 0) { y -= 10; put(L(T.sureHint), 24, { italic: true, color: [0.76, 0.23, 0.17] }); }
     const by = -this.ph / 2 + 70;
     if (s?.where === 'bag') this.button(L(T.equip), x0 + 130, by, () => this.equipSel());
     else if (s?.where === 'equip') this.button(L(T.remove), x0 + 130, by, () => this.unequipSel());
