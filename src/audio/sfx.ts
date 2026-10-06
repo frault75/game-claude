@@ -1,6 +1,10 @@
 /** Sound effects. Every wind-up has a rising sound; every impact a dry brush crack. */
 import { audio } from './engine';
-import { pluck, bell, woodblock, mtof } from './instruments';
+import { pluck, bell, woodblock, drum, mtof } from './instruments';
+
+function drumHit(t: number, f: number, vel: number): void {
+  drum(f, t, { vel, dest: audio.sfx });
+}
 
 function now(): number {
   return audio.ctx ? audio.ctx.currentTime : 0;
@@ -145,6 +149,54 @@ export const sfx = {
     const t = now();
     for (let i = 0; i < 10; i++) noiseBurst(t + i * 0.04 + Math.random() * 0.03, 0.04, { f0: 2500 + Math.random() * 3000, q: 3, vol: 0.08 });
     noiseBurst(t, 0.5, { type: 'lowpass', f0: 600, vol: 0.12, attack: 0.1 });
+  },
+  /** The dash-stroke: a fast brush swish whose length follows the stroke. */
+  trait(dist = 3): void {
+    const t = now();
+    noiseBurst(t, 0.1 + dist * 0.025, { f0: 1200, f1: 4200, q: 1.4, vol: 0.32, attack: 0.01 });
+    noiseBurst(t + 0.02, 0.12, { type: 'lowpass', f0: 700, f1: 200, vol: 0.12 });
+    tone(t, 0.12, 300, 900, 0.04, 'triangle');
+  },
+  cut(): void {
+    const t = now();
+    noiseBurst(t, 0.07, { f0: 6000, f1: 2500, q: 3, vol: 0.3 });
+    tone(t, 0.18, 1200, 300, 0.12, 'sawtooth');
+    noiseBurst(t + 0.01, 0.15, { type: 'lowpass', f0: 1500, f1: 200, vol: 0.35 });
+  },
+  charge(n: number): void {
+    const t = now();
+    pluck(mtof(76 + n * 3), t, { vel: 0.25, decay: 1.2, bright: 0.7, dest: audio.sfx });
+  },
+  empty(): void {
+    const t = now();
+    noiseBurst(t, 0.06, { f0: 800, q: 2, vol: 0.08 });
+  },
+  /** Ensō: deep gong, a struck chord, a drum. Bigger loops ring longer. */
+  enso(kills: number, area: number): void {
+    const t = now();
+    const ctx = audio.ctx;
+    if (!ctx) return;
+    drumHit(t, 70, 0.9);
+    bell(mtof(45), t, { vel: 0.55 + Math.min(0.3, kills * 0.08), decay: 3 + Math.min(4, area * 0.15), dest: audio.sfx });
+    [57, 64, 69].forEach((m, i) => pluck(mtof(m + (kills > 2 ? 12 : 0)), t + 0.03 + i * 0.035, { vel: 0.4, decay: 2.5, bright: 0.7, dest: audio.sfx }));
+    noiseBurst(t, 0.5, { type: 'lowpass', f0: 2500, f1: 200, vol: 0.4, attack: 0.005 });
+  },
+  thunder(): void {
+    const t = now();
+    noiseBurst(t, 0.15, { f0: 3000, f1: 800, q: 0.5, vol: 0.35 });
+    noiseBurst(t + 0.05, 2.6, { type: 'lowpass', f0: 600, f1: 60, vol: 0.55, attack: 0.08 });
+    for (let i = 0; i < 6; i++) noiseBurst(t + 0.1 + Math.random() * 0.9, 0.3, { type: 'lowpass', f0: 400, f1: 80, vol: 0.25 });
+  },
+  spawn(): void {
+    const t = now();
+    for (let i = 0; i < 5; i++) tone(t + i * 0.07, 0.1, 200 + Math.random() * 200, 500, 0.05);
+    noiseBurst(t, 0.6, { type: 'lowpass', f0: 300, f1: 900, vol: 0.12, attack: 0.4 });
+  },
+  wave(): void {
+    const t = now();
+    drumHit(t, 60, 0.8);
+    drumHit(t + 0.22, 60, 0.6);
+    drumHit(t + 0.44, 50, 0.9);
   },
   ui(): void {
     woodblock(1100, now(), { vel: 0.25, dest: audio.sfx });

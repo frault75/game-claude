@@ -14,7 +14,7 @@ const KEYMAP: Record<string, Action[]> = {
   KeyE: ['interact'],
   KeyF: ['release'],
   KeyJ: ['attack'],
-  KeyK: ['thread'],
+  KeyK: ['dodge'],
   Escape: ['pause', 'back'],
   Enter: ['confirm'],
   F3: ['debug'],
@@ -73,12 +73,12 @@ export class Input {
       this.mouseX = e.clientX;
       this.mouseY = e.clientY;
       if (e.button === 0) { this.press('attack'); this.press('confirm'); }
-      if (e.button === 2) this.press('thread');
+      if (e.button === 2) this.press('dodge');
       if (e.button === 1) { e.preventDefault(); this.press('release'); }
     });
     el.addEventListener('mouseup', (e) => {
       if (e.button === 0) { this.held.delete('attack'); this.held.delete('confirm'); }
-      if (e.button === 2) this.held.delete('thread');
+      if (e.button === 2) this.held.delete('dodge');
       if (e.button === 1) this.held.delete('release');
     });
     el.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -136,7 +136,7 @@ export class Input {
     if (Math.hypot(mx, my) > 0.3 || Math.hypot(ax, ay) > 0.3) this.device = 'pad';
     const map: [number, Action[]][] = [
       [0, ['dodge', 'confirm']], [1, ['release', 'back']], [2, ['attack']], [3, ['interact']],
-      [7, ['thread']], [5, ['thread']], [6, ['dodge']], [9, ['pause']], [8, ['debug']],
+      [7, ['dodge']], [5, ['dodge']], [6, ['dodge']], [9, ['pause']], [8, ['debug']],
       [12, ['up']], [13, ['down']], [14, ['left']], [15, ['right']],
     ];
     for (const [i, acts] of map) {

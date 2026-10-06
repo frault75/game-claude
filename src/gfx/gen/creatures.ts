@@ -97,3 +97,78 @@ export function buildInkDropFrames(seed: number): Frame[] {
   }
   return frames;
 }
+
+/** Brute (ram): a heavy blot with curled horns. Frames: [idle0, idle1, crouch, charge, stunned]. Faces +x. */
+export function buildBruteFrames(seed: number): Frame[] {
+  const frames: Frame[] = [];
+  const poses = [
+    { sx: 1, sy: 1, lean: 0, dizzy: false },
+    { sx: 1.03, sy: 0.97, lean: 0.03, dizzy: false },
+    { sx: 1.15, sy: 0.82, lean: -0.12, dizzy: false },
+    { sx: 1.3, sy: 0.85, lean: 0.25, dizzy: false },
+    { sx: 1.05, sy: 0.92, lean: 0, dizzy: true },
+  ];
+  poses.forEach((ps, i) => {
+    const W = 3.6, H = 3.0;
+    const p = new Painter(W, H, SPRITE_PPU, -W / 2, -0.6);
+    const r = new Rng(seed + i * 17);
+    const rx = 0.85 * ps.sx, ry = 0.7 * ps.sy;
+    const cy = ry * 0.95;
+    const body = noisyOutline(ps.lean, cy, rx, ry, 0.22, seed + i);
+    p.reserve(() => body.forEach((q, k) => (k === 0 ? p.ctx.moveTo(q[0], q[1]) : p.ctx.lineTo(q[0], q[1]))), 1);
+    p.glaze();
+    washPoly(p, body, { pig: INK, density: 0.75, soft: 0.05, edge: 0.9, seed: seed + i, blooms: 1 });
+    washPoly(p, noisyOutline(ps.lean - 0.25, cy + 0.25, rx * 0.45, ry * 0.35, 0.3, seed + i + 2), { pig: INK, density: 0.3, soft: 0.6, seed: seed + i + 2 });
+    // legs
+    for (const lx of [-0.45, -0.15, 0.2, 0.5]) {
+      stroke(p, [[lx * ps.sx + ps.lean * 0.5, 0.2], [lx * ps.sx + ps.lean * 0.3 + r.gauss() * 0.04, -0.12]], { width: 0.13, load: 1, dry: 0.4, seed: r.int(1, 1e6), taperEnd: 0.4 });
+    }
+    // curled horns on the facing side
+    const hx = ps.lean + rx * 0.55, hy = cy + ry * 0.55;
+    for (const off of [0, -0.22]) {
+      const pts: [number, number][] = [];
+      for (let k = 0; k <= 10; k++) {
+        const a = Math.PI * 0.9 - k * 0.42;
+        const rr = 0.36 - k * 0.022;
+        pts.push([hx + off + Math.cos(a) * rr + 0.25, hy + Math.sin(a) * rr * 0.9]);
+      }
+      stroke(p, pts, { width: 0.14, load: 1, dry: 0.45, seed: r.int(1, 1e6), taperStart: 0.05, taperEnd: 0.7 });
+    }
+    // eyes: paper showing through (spirals when dizzy)
+    const ey = cy + ry * 0.2, ex = ps.lean + rx * 0.45;
+    if (ps.dizzy) {
+      p.over();
+      p.ctx.fillStyle = 'rgba(0,0,0,1)';
+      p.ctx.beginPath(); p.ctx.arc(ex, ey, 0.13, 0, Math.PI * 2); p.ctx.fill();
+      p.glaze();
+      const sp: [number, number][] = [];
+      for (let k = 0; k < 14; k++) { const a = k * 0.8; sp.push([ex + Math.cos(a) * k * 0.009, ey + Math.sin(a) * k * 0.009]); }
+      stroke(p, sp, { width: 0.025, load: 1, seed: 5, body: 0.5 });
+    } else {
+      p.over();
+      p.ctx.fillStyle = 'rgba(0,0,0,1)';
+      p.ctx.beginPath(); p.ctx.ellipse(ex, ey, 0.11, i === 2 || i === 3 ? 0.05 : 0.09, 0, 0, Math.PI * 2); p.ctx.fill();
+      p.glaze();
+    }
+    frames.push(frameFrom(p));
+  });
+  return frames;
+}
+
+/** Swarm mite: a small flying fleck of ink. Frames: [a, b]. */
+export function buildMiteFrames(seed: number): Frame[] {
+  const frames: Frame[] = [];
+  for (let i = 0; i < 2; i++) {
+    const p = new Painter(1, 1, SPRITE_PPU, -0.5, -0.3);
+    p.glaze();
+    washPoly(p, noisyOutline(0, 0.2, 0.14, 0.12, 0.3, seed + i), { pig: INK, density: 0.85, soft: 0.05, edge: 0.6, seed: seed + i });
+    const up = i === 0 ? 0.18 : -0.05;
+    stroke(p, [[-0.05, 0.25], [-0.3, 0.25 + up]], { width: 0.06, load: 0.7, dry: 0.6, seed: seed + 3 + i, taperEnd: 0.9 });
+    stroke(p, [[0.05, 0.25], [0.3, 0.25 + up]], { width: 0.06, load: 0.7, dry: 0.6, seed: seed + 5 + i, taperEnd: 0.9 });
+    p.over();
+    p.ctx.fillStyle = 'rgba(0,0,0,1)';
+    p.ctx.beginPath(); p.ctx.arc(0.04, 0.22, 0.035, 0, Math.PI * 2); p.ctx.fill();
+    frames.push(frameFrom(p));
+  }
+  return frames;
+}

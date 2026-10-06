@@ -13,6 +13,7 @@ export interface PostParams {
   vignette: number;
   wobble: number;
   fade: number;
+  flash: number;
 }
 
 /**
@@ -46,7 +47,7 @@ export class Renderer {
   boilHz = 10;
   boilEnabled = true;
   readonly post: PostParams = {
-    washed: 0, night: 0, fog: 0.25, fogScale: 0.12, fogDrift: [0.05, 0.02], vignette: 1, wobble: 1.6, fade: 0,
+    washed: 0, night: 0, fog: 0.25, fogScale: 0.12, fogDrift: [0.05, 0.02], vignette: 1, wobble: 1.6, fade: 0, flash: 0,
   };
 
   constructor(readonly canvas: HTMLCanvasElement) {
@@ -96,6 +97,7 @@ export class Renderer {
         fogDrift: { value: new THREE.Vector2(0.05, 0.02) },
         vignette: { value: 1 },
         fade: { value: 0 },
+        flash: { value: 0 },
       },
     });
     this.quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.composite);
@@ -188,6 +190,7 @@ export class Renderer {
     u.fogDrift.value.set(p.fogDrift[0], p.fogDrift[1]);
     u.vignette.value = p.vignette;
     u.fade.value = p.fade;
+    u.flash.value = p.flash;
     gl.setRenderTarget(null);
     gl.clear(true, false, false);
     gl.render(this.quadScene, this.quadCam);
