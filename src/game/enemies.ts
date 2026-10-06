@@ -78,9 +78,13 @@ export class Creature extends Entity {
   onDie?: () => void;
   maxHp = 1;
 
+  /** Champions: damage taken is multiplied by this, and blows cost this much more. */
+  armorK = 1;
+  bonusPower = 0;
+
   /** How much one blow costs the child: deeper places and elites hit harder. */
   get power(): number {
-    return 1 + (this.tier >= 3 ? 1 : 0) + (this.elite ? 1 : 0);
+    return 1 + (this.tier >= 3 ? 1 : 0) + (this.elite ? 1 : 0) + this.bonusPower;
   }
 
   constructor() {
@@ -129,6 +133,7 @@ export class Creature extends Entity {
   onHit(h: HitInfo): boolean {
     if (this.dying > 0 || this.dead || this.emerge > 0) return false;
     const w = this.world;
+    if (this.armorK !== 1) h = { ...h, dmg: Math.max(1, Math.round(h.dmg * this.armorK)) };
     this.hp -= h.dmg;
     this.flash = 0.12;
     this.aggro = true;

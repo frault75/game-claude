@@ -289,6 +289,7 @@ function chestLoot(g: Game, c: Chest, rarity: Rarity, level: number): void {
   d.onTake = (item) => takeItem(g, item);
   if (rarity !== 'unique') dropLoot(g, c.x + 0.4, c.y - 0.4, 'normal', level);
   for (let i = 0; i < 3; i++) w.add(new Pickup(c.x, c.y - 0.3, i === 0 ? 'life' : 'ink', i === 0 ? 2 : 8));
+  for (let i = 0; i < 4; i++) w.add(new Pickup(c.x, c.y - 0.3, 'coin', 4 + level * 2));
   giveXp(g, 15 + level * 4);
 }
 

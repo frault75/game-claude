@@ -165,6 +165,19 @@ export class Player extends Entity {
     this.hp = Math.min(this.maxHp, this.hp + n);
   }
 
+  /** A sip from the gourd: life back, one charge spent (shrines refill it). */
+  drink(): boolean {
+    if (save.gourd <= 0 || this.hp >= this.maxHp || this.state === 'dead') { sfx.empty(); return false; }
+    save.gourd--;
+    const n = Math.max(2, Math.ceil(this.maxHp * 0.4));
+    this.heal(n);
+    const w = this.world;
+    w.numbers?.pop(this.x, this.y + 1.6, `+${n}`, { size: 0.5 });
+    for (let i = 0; i < 3; i++) w.vfx.ripple(this.x, this.y, 0.5 + i * 0.4);
+    sfx.inkstone();
+    return true;
+  }
+
   selectInk(id: InkId): void {
     if (!save.inks.includes(id) || save.ink === id) return;
     save.ink = id;

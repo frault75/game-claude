@@ -125,6 +125,7 @@ class Basin extends Entity {
         p.hp = p.maxHp;
         p.ink = p.inkMax;
         if (hasColour()) p.pigment = p.pigmentMax;
+        save.gourd = save.gourdMax;
         sfx.inkstone();
         w.vfx.ripple(this.x, this.y + 0.2, 0.8);
       }

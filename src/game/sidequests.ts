@@ -10,6 +10,7 @@ export const NPC_NAMES = {
   ghost: { fr: 'Le meunier', en: 'The miller' },
   lotus: { fr: 'Sœur Lotus', en: 'Sister Lotus' },
   kaze: { fr: 'Kaze, le peintre errant', en: 'Kaze, the wandering painter' },
+  lun: { fr: 'Lun, le colporteur', en: 'Lun, the peddler' },
 };
 
 export const SIDE_QUESTS: QuestDef[] = [
