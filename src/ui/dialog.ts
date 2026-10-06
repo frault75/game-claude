@@ -12,6 +12,12 @@ import { brushText } from '../gfx/text';
 import { sfx } from '../audio/sfx';
 import { maskSprite } from './mask';
 
+/** An answer offered at the end of a dialogue. */
+export interface Choice {
+  label: string;
+  act: () => void;
+}
+
 export interface Speaker {
   name: string;
   /** Portrait frames (pigment and vermilion) and how much to enlarge them. */
@@ -37,6 +43,9 @@ export class Dialog {
   private t = 0;
   private revealDur = 1;
   private onClose?: () => void;
+  private choices: Choice[] = [];
+  private choiceS: { s: Sprite; x: number; y: number; w: number; h: number }[] = [];
+  private choiceSel = 0;
   private nameW = 0;
   private bodyW = 0;
   private bodyH = 0;
@@ -88,11 +97,13 @@ export class Dialog {
     this.cover = maskSprite(this.r, w + 20, h + 20, 'cover');
   }
 
-  open(speaker: Speaker, pages: string[], onClose?: () => void): void {
+  open(speaker: Speaker, pages: string[], onClose?: () => void, choices: Choice[] = []): void {
     if (!pages.length) { onClose?.(); return; }
     this.close(false);
     this.buildPanel();
     this.pages = pages;
+    this.choices = choices;
+    this.choiceSel = 0;
     this.page = 0;
     this.onClose = onClose;
     this.active = true;
@@ -126,7 +137,9 @@ export class Dialog {
   private showPage(): void {
     this.body?.dispose();
     const txt = this.pages[this.page];
-    const maxW = this.panelW / 2 - 50 - this.textLeft();
+    // leave room on the right for the answers
+    const asking = this.choices.length > 0 && this.page === this.pages.length - 1;
+    const maxW = this.panelW / 2 - 50 - this.textLeft() - (asking ? 620 : 0);
     const art = brushText(txt, { size: this.r.uiH < 800 ? 30 : 31, ppu: 1.5, align: 'left', maxWidth: maxW, lineHeight: 1.3 });
     this.bodyW = art.w;
     this.bodyH = art.h;
@@ -138,11 +151,41 @@ export class Dialog {
     this.revealDur = 0.25 + txt.length * 0.012;
   }
 
+  /** The answers, written on the right once the last page is read. */
+  private showChoices(): void {
+    if (this.choiceS.length || !this.choices.length) return;
+    const n = this.choices.length;
+    this.choices.forEach((c, i) => {
+      const art = brushText(`${i + 1}. ${c.label}`, { size: this.r.uiH < 800 ? 27 : 29, ppu: 1.5, weight: 600, maxWidth: 560 });
+      const s = new Sprite(art);
+      s.mesh.renderOrder = LAYER.ui + 23;
+      this.r.uiPig.add(s.mesh);
+      this.choiceS.push({ s, x: 0, y: 0, w: art.w, h: art.h });
+    });
+    void n;
+  }
+
+  private clearChoices(): void {
+    for (const c of this.choiceS) c.s.dispose();
+    this.choiceS = [];
+  }
+
+  private choose(i: number): void {
+    const c = this.choices[i];
+    if (!c) return;
+    sfx.uiConfirm();
+    this.onClose = undefined;
+    this.close(false);
+    c.act();
+  }
+
   private advance(): void {
     if (this.t < this.revealDur) {
       this.t = this.revealDur;
       return;
     }
+    // the last page waits for an answer
+    if (this.choices.length && this.page >= this.pages.length - 1) return;
     this.page++;
     sfx.ui();
     if (this.page >= this.pages.length) this.close(true);
@@ -157,6 +200,8 @@ export class Dialog {
     this.portrait?.dispose();
     this.portraitRed?.dispose();
     this.name = this.body = this.portrait = this.portraitRed = null;
+    this.clearChoices();
+    this.choices = [];
     this.input.swallow();
     const cb = this.onClose;
     this.onClose = undefined;
@@ -168,7 +213,22 @@ export class Dialog {
     this.vis += ((this.active ? 1 : 0) - this.vis) * Math.min(1, dt * 12);
     if (this.active) {
       this.t += dt;
-      if (inp.pressed('confirm') || inp.pressed('interact') || inp.pressed('dodge') || inp.pressed('attack') || inp.pressed('back')) {
+      const asking = this.choices.length > 0 && this.page >= this.pages.length - 1 && this.t >= this.revealDur;
+      if (asking) {
+        this.showChoices();
+        // answer by number, arrows + Enter, or a tap on the line
+        for (let i = 0; i < this.choices.length; i++) if (inp.keyPressed('Digit' + (i + 1))) { this.choose(i); return; }
+        if (inp.pressed('up')) this.choiceSel = (this.choiceSel + this.choices.length - 1) % this.choices.length;
+        if (inp.pressed('down')) this.choiceSel = (this.choiceSel + 1) % this.choices.length;
+        if (inp.keyPressed('Enter') || inp.pressed('interact')) { this.choose(this.choiceSel); return; }
+        for (const [sx, sy] of inp.orderTaps) {
+          const [ux, uy] = inp.toUi(sx, sy);
+          const hit = this.choiceS.findIndex((c) => Math.abs(ux - c.x) < c.w / 2 + 30 && Math.abs(uy - c.y) < c.h / 2 + 10);
+          if (hit >= 0) { this.choose(hit); return; }
+        }
+        inp.inkSelect = null;
+        inp.swallow();
+      } else if (inp.pressed('confirm') || inp.pressed('interact') || inp.pressed('dodge') || inp.pressed('attack') || inp.pressed('back')) {
         this.advance();
         inp.swallow();
       }
@@ -197,7 +257,20 @@ export class Dialog {
       this.body.setPos(this.textLeft() + this.bodyW / 2 - 12, top - 92 - this.bodyH / 2 + 20);
       this.body.reveal = this.t >= this.revealDur ? 1.5 : Math.min(1.5, this.t / this.revealDur);
     }
-    const done = this.active && this.t >= this.revealDur;
+    // answers stacked on the right of the sheet
+    if (this.choiceS.length) {
+      const total = this.choiceS.reduce((a, c) => a + c.h + 10, 0);
+      let y = cy + total / 2;
+      for (let i = 0; i < this.choiceS.length; i++) {
+        const c = this.choiceS[i];
+        c.x = this.panelW / 2 - 80 - c.w / 2;
+        c.y = y - c.h / 2;
+        y -= c.h + 10;
+        c.s.setPos(c.x, c.y);
+        c.s.opacity = show * (i === this.choiceSel ? 1 : 0.62);
+      }
+    }
+    const done = this.active && this.t >= this.revealDur && !this.choiceS.length;
     this.more.setPos(this.panelW / 2 - 50 + Math.sin(this.t * 5) * 5, cy - this.panelH / 2 + 34);
     this.more.opacity = done ? show : 0;
   }

@@ -8,7 +8,7 @@ import { SERIF } from '../gfx/text';
 
 export type MarkKind =
   | 'player' | 'goal' | 'shrine' | 'shrineOn' | 'camp' | 'door' | 'arena' | 'npc' | 'quest'
-  | 'stele' | 'steleRead' | 'up' | 'down' | 'basin' | 'boss' | 'relic';
+  | 'stele' | 'steleRead' | 'up' | 'down' | 'basin' | 'boss' | 'relic' | 'side';
 
 export interface Mark { x: number; y: number; kind: MarkKind; dir?: number }
 
@@ -270,6 +270,19 @@ export function drawMark(ctx: CanvasRenderingContext2D, m: Mark, x: number, y: n
       ctx.beginPath();
       for (let k = 0; k < 3; k++) { const yy = -s * 0.5 + k * s * 0.5; const ww = s * (0.4 + k * 0.2) * (m.kind === 'up' ? 1 : 1.6 - k * 0.4); ctx.moveTo(-ww, yy); ctx.lineTo(ww, yy); }
       ctx.stroke();
+      break;
+    }
+    case 'side': {
+      // a side quest: a hollow vermilion diamond
+      ctx.strokeStyle = VERM;
+      ctx.lineWidth = s * 0.26;
+      ctx.beginPath();
+      ctx.moveTo(0, -s * 0.85); ctx.lineTo(s * 0.7, 0); ctx.lineTo(0, s * 0.85); ctx.lineTo(-s * 0.7, 0); ctx.closePath();
+      ctx.stroke();
+      ctx.fillStyle = VERM;
+      ctx.beginPath();
+      ctx.arc(0, 0, s * 0.18, 0, Math.PI * 2);
+      ctx.fill();
       break;
     }
     case 'basin': {

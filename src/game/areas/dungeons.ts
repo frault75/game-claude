@@ -374,6 +374,13 @@ function buildFloor(def: FloorDef, room: RoomDef, b: Parameters<RoomDef['build']
     camps.push({ room: o, members });
   });
   void camps;
+  // named places for quests: the deepest room, one halfway, the first room
+  const inner = map.rooms.filter((o) => o !== map.start && !(def.boss && o === map.end));
+  const byDepth = [...inner].sort((a, b2) => a.depth - b2.depth);
+  g.roomSpot = (name) => {
+    const o = name === 'deep' ? byDepth[byDepth.length - 1] : name === 'mid' ? byDepth[Math.floor(byDepth.length / 2)] : map.start;
+    return o ? [o.cx + 1.2, o.cy - 0.8] : null;
+  };
   // a mural on a wall of a middle room
   const mid = map.rooms.find((o) => o !== map.start && o !== map.end) ?? map.start;
   const mural = b.add(new Stele(def.floor + (caveArea ? 0 : 1), mid.x + 1.6, mid.y + mid.h - 1.2));

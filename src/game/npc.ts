@@ -49,6 +49,8 @@ export class Npc extends Entity {
   private flipX = 1;
   /** 'quest' shows the vermilion seal above the head. */
   marker: 'none' | 'quest' = 'none';
+  /** A spirit: pale, wavering, floating a little above the ground. */
+  ghostly = false;
   onTalk?: () => void;
 
   constructor(readonly id: string, readonly displayName: string, readonly look: VillagerLook, x: number, y: number, private wander = 0) {
@@ -149,6 +151,11 @@ export class Npc extends Entity {
     }
     this.shadowS.setPos(this.x, this.y);
     this.shadowS.mesh.scale.set(sc, sc, 1);
+    if (this.ghostly) {
+      const lift = 0.25 + Math.sin(this.animT * 1.3) * 0.12;
+      for (const s of [this.pig, this.red]) { s.setPos(this.x, this.y + lift); s.opacity = 0.42 + Math.sin(this.animT * 2.1) * 0.14; }
+      this.shadowS.opacity = 0.25;
+    }
     // name when close, quest seal above the head
     const top = this.y + this.frames.height + 0.2;
     this.promptH = top - this.y + (this.marker === 'quest' ? 1.45 : 0.85);

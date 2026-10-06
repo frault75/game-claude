@@ -98,7 +98,7 @@ const POOLS: Record<Slot, Stat[]> = {
   seal: ['crit', 'enso', 'dmg', 'pigment', 'guard', 'speed'],
 };
 
-export interface UniqueDef { slot: Slot; base: number; name: Tr; flavor: Tr; stats: Partial<Record<Stat, number>> }
+export interface UniqueDef { slot: Slot; base: number; name: Tr; flavor: Tr; stats: Partial<Record<Stat, number>>; /** Given by a quest, never found lying around. */ quest?: string }
 
 export const UNIQUES: UniqueDef[] = [
   {
@@ -114,14 +114,42 @@ export const UNIQUES: UniqueDef[] = [
   {
     slot: 'charm', base: 1, name: { fr: 'Le Grelot de Pip', en: 'Pip’s Bell' },
     flavor: { fr: 'Il tinte quand le vent tourne.', en: 'It rings when the wind turns.' },
-    stats: { pigment: 6, speed: 12, pigKill: 0.6 },
+    stats: { pigment: 6, speed: 12, pigKill: 0.6 }, quest: 'pipBell',
   },
   {
     slot: 'seal', base: 2, name: { fr: 'Le Sceau rouge', en: 'The Red Seal' },
     flavor: { fr: '« Ce que je signe vit. »', en: '“What I sign, lives.”' },
     stats: { crit: 12, heal: 12, dmg: 10 },
   },
+  {
+    slot: 'brush', base: 2, name: { fr: 'La Lance de Saule-Noir', en: 'Black Willow’s Spear' },
+    flavor: { fr: 'Une plume rouge est encore nouée à la hampe.', en: 'A red feather is still tied to the shaft.' },
+    stats: { dmg: 20, crit: 6, guard: 4 }, quest: 'spear',
+  },
+  {
+    slot: 'charm', base: 0, name: { fr: 'La Plume rouge', en: 'The Red Feather' },
+    flavor: { fr: 'Saule-Noir la portait à son casque.', en: 'Black Willow wore it on his helmet.' },
+    stats: { speed: 10, heal: 8, ink: 6 }, quest: 'feather',
+  },
+  {
+    slot: 'seal', base: 1, name: { fr: 'Le Sceau de la meule', en: 'The Millstone Seal' },
+    flavor: { fr: 'Une meule minuscule, qui tourne encore quand on souffle dessus.', en: 'A tiny millstone that still turns when you blow on it.' },
+    stats: { guard: 10, hp: 1, enso: 30 }, quest: 'millstone',
+  },
+  {
+    slot: 'brush', base: 3, name: { fr: 'Le Pinceau de Kaze', en: 'Kaze’s Brush' },
+    flavor: { fr: '« Trop pressé », disait le maître.', en: '“Too hasty,” the master used to say.' },
+    stats: { dmg: 16, speed: 8, crit: 8 }, quest: 'kazeBrush',
+  },
 ];
+
+/** A quest's own unique item. */
+export function questItem(key: string, level: number): Item | null {
+  const i = UNIQUES.findIndex((u) => u.quest === key);
+  if (i < 0) return null;
+  const u = UNIQUES[i];
+  return { id: nextId++, slot: u.slot, rarity: 'unique', base: u.base, level, stats: { ...u.stats }, name: u.name, unique: i };
+}
 
 const RARE_A: Tr[] = [
   { fr: 'Brume', en: 'Mist' }, { fr: 'Lune', en: 'Moon' }, { fr: 'Rosée', en: 'Dew' }, { fr: 'Cendre', en: 'Ash' },
@@ -160,7 +188,7 @@ export function rollRarity(r: Rng, kind: 'normal' | 'elite' | 'boss'): Rarity {
 export function makeItem(level: number, rarity: Rarity, seed = Math.random() * 1e9, slot?: Slot): Item {
   const r = new Rng(Math.floor(seed));
   if (rarity === 'unique') {
-    const pool = UNIQUES.map((u, i) => ({ u, i })).filter((o) => !slot || o.u.slot === slot);
+    const pool = UNIQUES.map((u, i) => ({ u, i })).filter((o) => !o.u.quest && (!slot || o.u.slot === slot));
     const { u, i } = pool[r.int(0, pool.length - 1)];
     return { id: nextId++, slot: u.slot, rarity, base: u.base, level, stats: { ...u.stats }, name: u.name, unique: i };
   }

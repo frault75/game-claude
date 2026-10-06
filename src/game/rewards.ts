@@ -49,6 +49,7 @@ export function discover(g: Game, label: string): void {
 export function onKill(g: Game, e: Entity): void {
   const c = e as Creature;
   discover(g, e.label);
+  g.quests.onKill(e.label);
   giveXp(g, c.xp ?? 3);
   const lifeChance = c.elite ? 1 : 0.12, inkChance = c.elite ? 1 : 0.2;
   if (Math.random() < lifeChance) g.world.add(new Pickup(e.x, e.y, 'life', c.power ?? 1));

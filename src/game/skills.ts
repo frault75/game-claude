@@ -82,7 +82,7 @@ export function spentIn(b: Branch): number {
 export function pointsLeft(): number {
   let spent = 0;
   for (const s of SKILLS) spent += rank(s.id);
-  return Math.max(0, save.level - 1 - spent);
+  return Math.max(0, save.level - 1 + (save.perks.points ?? 0) - spent);
 }
 
 /** Rows open with the child's level: the strokes are learnt over the whole journey. */
