@@ -49,9 +49,9 @@ Une même logique sur ordinateur et sur mobile.
 
 | Action | Ordinateur | Mobile |
 |--------|-----------|--------|
-| Aller à un endroit | Clic gauche (maintenir = suivre le curseur), ou ZQSD / WASD | Taper (maintenir = suivre le doigt) |
+| Aller à un endroit | Clic gauche (maintenir = suivre le curseur), ou ZQSD / WASD | Pouce gauche : un joystick apparaît là où on appuie (ou taper le sol à droite) |
 | Attaquer un ennemi | Clic gauche sur lui | Taper sur lui |
-| **Tracer avec l'encre** | Clic droit glissé (clic droit seul = Trait droit), ou Espace | Glisser vite le doigt |
+| **Tracer avec l'encre** | Clic droit glissé (clic droit seul = Trait droit), ou Espace | Glisser le doigt sur la moitié droite de l'écran |
 | Changer d'encre | Touches 1 à 4, ou molette | Pots d'encre à l'écran |
 
 Tout trait consomme de l'**encre** (sa longueur). La jauge se recharge vite quand on ne peint pas, et des **orbes d'encre** tombent des ennemis.

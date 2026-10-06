@@ -62,6 +62,10 @@ export class Hud {
   private comboPop = 0;
   comboFrac = 0;
   visible = true;
+  private stickRing: Sprite;
+  private stickKnob: Sprite;
+  private stickVis = 0;
+  private stickPos: { bx: number; by: number; kx: number; ky: number; r: number } | null = null;
   private questT: Sprite | null = null;
   private questG: Sprite | null = null;
   private questKey = '';
@@ -154,6 +158,23 @@ export class Hud {
     this.comboBar = new Sprite(bar);
     this.comboBar.mesh.renderOrder = LAYER.ui;
     r.uiRed.add(this.comboBar.mesh);
+    // the floating stick (phones): a brushed ring and an ink dab
+    const sr = new Painter(240, 240, 1, -120, -120);
+    sr.glaze();
+    const ring: V2[] = [];
+    for (let k = 0; k <= 36; k++) { const a = (k / 36) * Math.PI * 2.04 + 0.3; ring.push([Math.cos(a) * 100, Math.sin(a) * 100]); }
+    stroke(sr, ring, { width: 7, load: 0.7, dry: 0.6, seed: 61, taperStart: 0.05, taperEnd: 0.3, press: 0.2 });
+    this.stickRing = new Sprite(frameFrom(sr));
+    this.stickRing.mesh.renderOrder = LAYER.ui + 2;
+    this.stickRing.opacity = 0;
+    r.uiPig.add(this.stickRing.mesh);
+    const sk = new Painter(120, 120, 1, -60, -60);
+    sk.glaze();
+    washPoly(sk, noisyOutline(0, 0, 34, 34, 0.12, 62), { pig: INK, density: 0.7, soft: 0.1, edge: 0.6, seed: 62 });
+    this.stickKnob = new Sprite(frameFrom(sk));
+    this.stickKnob.mesh.renderOrder = LAYER.ui + 3;
+    this.stickKnob.opacity = 0;
+    r.uiPig.add(this.stickKnob.mesh);
     this.masks = {
       tl: maskSprite(r, 900, 330),
       br: maskSprite(r, 560, 260),
@@ -245,6 +266,12 @@ export class Hud {
       this.currentInk = current;
     }
     this.inkBar = this.inkBars.get(current)!;
+  }
+
+  /** The thumb stick, in UI units (null when no thumb is down). */
+  setStick(s: { bx: number; by: number; kx: number; ky: number; r: number } | null): void {
+    if (s) this.stickPos = s;
+    this.stickVis = s ? 1 : 0;
   }
 
   setInk(frac: number): void {
@@ -382,6 +409,17 @@ export class Hud {
       this.hint.reveal = Math.min(1.5, t * 1.4);
       this.hint.opacity = Math.max(0, Math.min(1, (this.hintDur - t) / 0.8));
       if (t > this.hintDur) { this.hint.dispose(); this.hint = null; }
+    }
+    // the thumb stick
+    const sp = this.stickPos;
+    const sa = this.stickRing.opacity + ((this.stickVis * 0.55) - this.stickRing.opacity) * Math.min(1, dt * 14);
+    this.stickRing.opacity = sa;
+    this.stickKnob.opacity = sa * 1.3;
+    if (sp) {
+      const k = sp.r / 100;
+      this.stickRing.setPos(sp.bx, sp.by);
+      this.stickRing.mesh.scale.set(k, k, 1);
+      this.stickKnob.setPos(sp.kx, sp.ky);
     }
     // quest tracker
     this.questPop += dt;

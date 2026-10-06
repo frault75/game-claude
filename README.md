@@ -22,9 +22,9 @@ Pushing to `main` builds and deploys to GitHub Pages (Settings → Pages → Sou
 
 | Action | Desktop | Mobile |
 |---|---|---|
-| Walk | Left click (hold to follow the cursor), or WASD / ZQSD | Tap (hold to follow your finger) |
+| Walk | Left click (hold to follow the cursor), or WASD / ZQSD | Left thumb: a stick appears where you press (or tap the ground on the right) |
 | Attack a foe | Left click on it | Tap on it |
-| **Draw with ink** | Right-button drag (right click = straight stroke), or Space | Quick swipe |
+| **Draw with ink** | Right-button drag (right click = straight stroke), or Space | Swipe on the right half of the screen |
 | Change ink | Keys 1-4, mouse wheel | Ink pots (bottom right) |
 | Talk / read a stele | Click on them, or `F` nearby | Tap on them |
 | Read on in a dialogue | Click, `Enter`, `Space` or `F` | Tap anywhere |

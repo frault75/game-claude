@@ -1,9 +1,10 @@
 import { uiSize } from './renderer';
 /**
  * Keyboard, mouse, touch and gamepad merged into actions and "orders":
- *   - tap / left click on the ground: go there; on a foe: attack it
- *   - hold (finger or left button): keep walking towards the pointer
- *   - quick drag (finger) / right-button drag: draw a stroke with the current ink
+ *   - touch, left part of the screen: a floating stick appears under the thumb and steers the child
+ *   - tap / left click on the ground: go there; on a foe: attack it; on someone: talk
+ *   - hold (left button, or a still finger on the right): keep walking towards the pointer
+ *   - drag (finger on the right) / right-button drag: draw a stroke with the current ink
  *   - right click: a straight stroke towards the cursor
  */
 export type Action = 'attack' | 'release' | 'dodge' | 'interact' | 'pause' | 'debug' | 'confirm' | 'back' | 'up' | 'down' | 'left' | 'right';
@@ -25,7 +26,11 @@ const KEYMAP: Record<string, Action[]> = {
 };
 
 const DRAG_PX = 14;
-const HOLD_MS = 220;
+const HOLD_MS = 260;
+/** Touches starting left of this fraction of the screen width drive the stick. */
+const STICK_ZONE = 0.42;
+/** Stick travel in CSS px for full speed. */
+const STICK_R = 56;
 
 interface Gesture {
   id: number;
@@ -62,6 +67,8 @@ export class Input {
   anyPressed = false;
 
   private gesture: Gesture | null = null;
+  /** The floating stick: where the thumb landed and where it is now (CSS px). */
+  stick: { id: number; ox: number; oy: number; x: number; y: number } | null = null;
   private leftHeld = false;
   private leftT0 = 0;
   /** Orders for this frame (CSS px). */
@@ -106,6 +113,7 @@ export class Input {
       if (acts) for (const a of acts) this.held.delete(a);
     });
     window.addEventListener('blur', () => {
+      this.stick = null;
       this.held.clear();
       this.keysHeld.clear();
       this.leftHeld = false;
@@ -138,6 +146,10 @@ export class Input {
         if (e.button === 1) { e.preventDefault(); this.press('attack'); }
         return;
       }
+      if (!this.stick && e.clientX < window.innerWidth * STICK_ZONE) {
+        this.stick = { id: e.pointerId, ox: e.clientX, oy: e.clientY, x: e.clientX, y: e.clientY };
+        return;
+      }
       if (this.gesture) this.endGesture(false);
       else this.beginGesture(e, 'touch');
     });
@@ -148,12 +160,25 @@ export class Input {
         this.mouseMoved = true;
         if (this.leftHeld && this.holdPoint) this.holdPoint = [e.clientX, e.clientY];
       }
+      const st = this.stick;
+      if (st && e.pointerId === st.id) {
+        st.x = e.clientX;
+        st.y = e.clientY;
+        // the base follows a thumb that wanders too far
+        const dx = st.x - st.ox, dy = st.y - st.oy, d = Math.hypot(dx, dy);
+        if (d > STICK_R * 1.6) {
+          st.ox = st.x - (dx / d) * STICK_R * 1.6;
+          st.oy = st.y - (dy / d) * STICK_R * 1.6;
+        }
+        return;
+      }
       const g = this.gesture;
       if (!g || e.pointerId !== g.id) return;
       const evs = typeof e.getCoalescedEvents === 'function' ? e.getCoalescedEvents() : [];
       for (const ev of evs.length ? evs : [e]) this.moveGesture(ev.clientX, ev.clientY);
     });
     const up = (e: PointerEvent) => {
+      if (this.stick && e.pointerId === this.stick.id) { this.stick = null; return; }
       if (e.pointerType === 'mouse') {
         if (e.button === 0) { this.leftHeld = false; this.holdPoint = null; }
         if (e.button === 1) this.held.delete('attack');
@@ -162,6 +187,7 @@ export class Input {
     };
     el.addEventListener('pointerup', up);
     el.addEventListener('pointercancel', (e) => {
+      if (this.stick && e.pointerId === this.stick.id) this.stick = null;
       if (this.gesture && e.pointerId === this.gesture.id) this.endGesture(true);
     });
     el.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -192,11 +218,7 @@ export class Input {
     }
     if (g.mode === 'pending') {
       if (Math.hypot(x - g.sx, y - g.sy) < DRAG_PX) return;
-      if (g.button === 'touch' && performance.now() - g.t0 > HOLD_MS) {
-        g.mode = 'hold';
-        this.holdPoint = [x, y];
-        return;
-      }
+      // a moving finger on the right always draws (the stick is for walking)
       g.mode = 'draw';
       this.drawStart = [g.sx, g.sy];
       g.lx = g.sx;
@@ -271,8 +293,21 @@ export class Input {
     if (this.held.has('down')) y -= 1;
     const [px, py] = this.padMove;
     if (Math.hypot(px, py) > 0.2) { x = px; y = py; }
+    const [sx, sy] = this.stickMove();
+    if (Math.hypot(sx, sy) > 0) { x = sx; y = sy; }
     const l = Math.hypot(x, y);
     return l > 1 ? [x / l, y / l] : [x, y];
+  }
+
+  /** Stick deflection, -1..1 (y up), with a dead zone. */
+  stickMove(): [number, number] {
+    const st = this.stick;
+    if (!st) return [0, 0];
+    const dx = (st.x - st.ox) / STICK_R, dy = -(st.y - st.oy) / STICK_R;
+    const d = Math.hypot(dx, dy);
+    if (d < 0.18) return [0, 0];
+    const k = Math.min(1, (d - 0.18) / 0.82 + 0.35) / d;
+    return [dx * k, dy * k];
   }
 
   pollPad(): void {
@@ -323,6 +358,7 @@ export class Input {
 
   /** Forget the current gesture and this frame's orders (dialogue opened or closed). */
   swallow(): void {
+    this.stick = null;
     this.orderTaps = [];
     this.strokeTaps = [];
     this.drawStart = null;
