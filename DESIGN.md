@@ -37,7 +37,9 @@ Action-RPG en monde ouvert, vue de dessus, à la Diablo, dans un monde peint au 
 - **Vermillon** : Trait affûté, Long trait, *Tourbillon*, Ensō écarlate, Encre vive, *Pluie de sceaux*.
 - **Couleurs** : Broyage fin, Réserve, *Vague d'indigo*, Gel profond, Foudre en chaîne, *Orage*.
 - **Lavis** : Souffle, Garde, *Lavis de soin*, Second souffle, Pas léger, *Brume*.
-Les compétences actives (en italique) se rechargent et se rangent dans trois emplacements (R, T, G ; boutons ronds sur mobile).
+Les compétences actives (en italique) se rechargent et se rangent dans trois emplacements (R, T, G ; boutons ronds sur mobile). Les rangs s'ouvrent aux niveaux 1, 4, 9 et 15 ; les compétences de couleur demandent leur encre (indigo : vague, gel ; or : orage, foudre en chaîne).
+
+**Écran titre et cinématiques** : titre peint par-dessus le monde vivant (ensō tracé, nom écrit, sceau tamponné ; continuer, nouvelle partie, langue). Cinématique d'introduction en six plans peints (le papier, le maître peint le monde, les quatre couleurs, l'orage d'encre, le maître disparaît, le dernier trait rouge, c'est toi). Une feuille courte à chaque couleur retrouvée.
 
 **Menu** (Échap, bouton rouleau en haut à gauche) : la grande carte (brouillard levé là où l'on marche, sanctuaires, camps, stèles, personnages avec une quête, gardiens, objectif), le journal (quêtes accomplies et en cours, progrès ; bestiaire : une page et un portrait par créature vaincue ; carnet du maître : stèles, fresques, histoire de chaque région parcourue), le sac, l'arbre et les réglages (volumes, secousses, mini-carte, langue, nouvelle partie, commandes). Une mini-carte ronde sous la quête, en haut à droite.
 

@@ -3,6 +3,7 @@
  * and a card for the chosen item with what it would change. Tap or click; I or Esc to close.
  */
 import type { Renderer } from '../core/renderer';
+import { tabStrip, MenuTab } from './menu';
 import type { Input } from '../core/input';
 import { Painter, INK, VERMILION } from '../gfx/paint';
 import { Sprite, Frame, frameFrom, LAYER } from '../gfx/sprite';
@@ -47,6 +48,9 @@ export class Inventory {
   private sel: Sel = null;
   private ring: Sprite;
   private pw = 0;
+  private tabs: { id: MenuTab; x: number; y: number; w: number; h: number }[] = [];
+  /** Another tab of the menu was chosen. */
+  onTab?: (id: MenuTab) => void;
   private ph = 0;
   private c = 100;
   private buttons: { x: number; y: number; w: number; h: number; act: () => void; sprites: Sprite[] }[] = [];
@@ -139,10 +143,8 @@ export class Inventory {
     const m = maskSprite(r, pw + 160, ph + 160);
     m.mesh.renderOrder = LAYER.ui + 30;
     this.sprites.push(m, maskSprite(r, pw + 30, ph + 30, 'cover'));
-    // title and close mark
-    const t = this.text(L(T.title), 42, { bold: true });
-    t.s.setPos(-pw / 2 + 50 + t.w / 2, ph / 2 - 52);
-    this.sprites.push(t.s);
+    // the menu's tabs (this sheet is the bag) and the close mark
+    this.tabs = tabStrip(r, pw, ph, 'bag', (sp) => this.sprites.push(sp));
     const x = new Painter(80, 80, 1, -40, -40);
     x.glaze();
     stroke(x, [[-22, -22], [22, 22]], { width: 7, load: 1, dry: 0.4, seed: 56 });
@@ -383,6 +385,9 @@ export class Inventory {
     }
     const inp = this.input;
     if (inp.keyPressed('KeyI') || inp.pressed('back')) { this.close(); return; }
+    if (inp.keyPressed('KeyM')) { this.close(); this.onTab?.('map'); return; }
+    if (inp.keyPressed('KeyJ')) { this.close(); this.onTab?.('journal'); return; }
+    if (inp.keyPressed('KeyC')) { this.close(); this.onTab?.('tree'); return; }
     for (const [sx, sy] of inp.orderTaps) {
       const [ux, uy] = inp.toUi(sx, sy);
       this.tap(ux, uy);
@@ -394,6 +399,9 @@ export class Inventory {
   private tap(x: number, y: number): void {
     const pw = this.pw, ph = this.ph;
     if (Math.abs(x) > pw / 2 || Math.abs(y) > ph / 2 || Math.hypot(x - (pw / 2 - 52), y - (ph / 2 - 50)) < 50) { this.close(); return; }
+    for (const tb of this.tabs) {
+      if (tb.id !== 'bag' && Math.abs(x - tb.x) < tb.w / 2 && Math.abs(y - tb.y) < tb.h / 2) { this.close(); this.onTab?.(tb.id); return; }
+    }
     for (const b of this.buttons) {
       if (Math.abs(x - b.x) < b.w / 2 && Math.abs(y - b.y) < b.h / 2) { b.act(); return; }
     }

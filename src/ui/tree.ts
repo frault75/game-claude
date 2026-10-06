@@ -3,6 +3,7 @@
  * and put active skills in one of the three slots. C or Esc to close.
  */
 import type { Renderer } from '../core/renderer';
+import { tabStrip, MenuTab } from './menu';
 import type { Input } from '../core/input';
 import { Painter, INK } from '../gfx/paint';
 import { Sprite, Frame, frameFrom, LAYER } from '../gfx/sprite';
@@ -12,7 +13,7 @@ import { brushText } from '../gfx/text';
 import { skillArt } from '../gfx/gen/skillArt';
 import { maskSprite } from './mask';
 import { save, writeSave } from '../game/progression';
-import { SKILLS, SKILL, SkillId, Branch, BRANCH_NAMES, BRANCH_RGB, rank, canLearn, learn, pointsLeft, spentIn, skillText, skillName, cooldownOf } from '../game/skills';
+import { SKILLS, SKILL, SkillId, Branch, BRANCH_NAMES, BRANCH_RGB, rank, canLearn, learn, pointsLeft, spentIn, skillText, skillName, cooldownOf, lockReason } from '../game/skills';
 import { lang } from '../i18n';
 import { sfx } from '../audio/sfx';
 
@@ -45,6 +46,9 @@ export class Tree {
   private ring: Frame | null = null;
   private btn: Frame | null = null;
   onChange?: () => void;
+  private tabs: { id: MenuTab; x: number; y: number; w: number; h: number }[] = [];
+  /** Another tab of the menu was chosen. */
+  onTab?: (id: MenuTab) => void;
 
   constructor(private r: Renderer, private input: Input) {}
 
@@ -101,9 +105,7 @@ export class Tree {
     const m = maskSprite(r, pw + 160, ph + 160);
     m.mesh.renderOrder = LAYER.ui + 30;
     this.sprites.push(m, maskSprite(r, pw + 30, ph + 30, 'cover'));
-    const t = this.text(L(T.title), 40, { bold: true });
-    t.s.setPos(-pw / 2 + 50 + t.w / 2, ph / 2 - 52);
-    this.sprites.push(t.s);
+    this.tabs = tabStrip(r, pw, ph, 'tree', (sp) => this.sprites.push(sp));
     const x = new Painter(80, 80, 1, -40, -40);
     x.glaze();
     stroke(x, [[-22, -22], [22, 22]], { width: 7, load: 1, dry: 0.4, seed: 56 });
@@ -141,13 +143,13 @@ export class Tree {
     const pw = this.pw, ph = this.ph;
     // points left
     const pl = pointsLeft();
-    const pt = this.text(`${pl} ${L(T.points)}`, 26, { italic: true, color: pl > 0 ? [0.76, 0.23, 0.17] : undefined });
-    pt.s.setPos(-pw / 2 + 470 + pt.w / 2, ph / 2 - 52);
+    const pt = this.text(`${L(T.title)} · ${pl} ${L(T.points)}`, 26, { italic: true, color: pl > 0 ? [0.76, 0.23, 0.17] : undefined });
+    pt.s.setPos(-pw / 2 + 60 + pt.w / 2, -ph / 2 + 42);
     this.dyn.push(pt.s);
     for (const n of this.nodes) {
       const s = SKILL[n.id];
       const rk = rank(n.id);
-      const open = spentIn(s.branch) >= s.row * 2;
+      const open = spentIn(s.branch) >= s.row * 2 && !lockReason(n.id);
       const can = canLearn(n.id);
       if (rk > 0) {
         const [cr, cg, cb] = BRANCH_RGB[s.branch];
@@ -208,7 +210,9 @@ export class Tree {
       : L(T.passive).replace('{r}', String(rk)).replace('{m}', String(s.ranks)), 22, { italic: true });
     y -= 6;
     put(skillText(id), 27);
-    if (spentIn(s.branch) < s.row * 2) { y -= 6; put(L(T.locked).replace('{n}', String(s.row * 2 - spentIn(s.branch))), 22, { italic: true }); }
+    const why = lockReason(id);
+    if (why) { y -= 6; put(why, 22, { italic: true, color: [0.76, 0.23, 0.17] }); }
+    else if (spentIn(s.branch) < s.row * 2) { y -= 6; put(L(T.locked).replace('{n}', String(s.row * 2 - spentIn(s.branch))), 22, { italic: true }); }
     const by = -ph / 2 + 70;
     if (canLearn(id)) this.button(L(T.learn), x0 + 130, by, () => { if (learn(id)) { writeSave(); sfx.uiConfirm(); this.onChange?.(); this.refresh(); } });
     if (s.active && rk > 0) {
@@ -253,6 +257,9 @@ export class Tree {
     if (!this.active) return;
     const inp = this.input;
     if (inp.keyPressed('KeyC') || inp.pressed('back')) { this.close(); return; }
+    if (inp.keyPressed('KeyM')) { this.close(); this.onTab?.('map'); return; }
+    if (inp.keyPressed('KeyJ')) { this.close(); this.onTab?.('journal'); return; }
+    if (inp.keyPressed('KeyI')) { this.close(); this.onTab?.('bag'); return; }
     for (const [sx, sy] of inp.orderTaps) {
       const [ux, uy] = inp.toUi(sx, sy);
       this.tap(ux, uy);
@@ -264,6 +271,9 @@ export class Tree {
   private tap(x: number, y: number): void {
     const pw = this.pw, ph = this.ph;
     if (Math.abs(x) > pw / 2 || Math.abs(y) > ph / 2 || Math.hypot(x - (pw / 2 - 52), y - (ph / 2 - 50)) < 50) { this.close(); return; }
+    for (const tb of this.tabs) {
+      if (tb.id !== 'tree' && Math.abs(x - tb.x) < tb.w / 2 && Math.abs(y - tb.y) < tb.h / 2) { this.close(); this.onTab?.(tb.id); return; }
+    }
     for (const b of this.buttons) if (Math.abs(x - b.x) < b.w / 2 && Math.abs(y - b.y) < b.h / 2) { b.act(); return; }
     for (const n of this.nodes) {
       if (Math.hypot(x - n.x, y - n.y) < 52) {

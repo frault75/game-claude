@@ -85,9 +85,29 @@ export function pointsLeft(): number {
   return Math.max(0, save.level - 1 - spent);
 }
 
+/** Rows open with the child's level: the strokes are learnt over the whole journey. */
+export const ROW_LEVEL = [1, 4, 9, 15];
+
+/** Some strokes need a colour found first. */
+const NEEDS_INK: Partial<Record<SkillId, 'indigo' | 'gold' | 'jade'>> = {
+  grind: 'indigo', reserve: 'indigo', wave: 'indigo', frost: 'indigo', chain: 'gold', storm: 'gold',
+};
+
+const INK_NAME = { indigo: { fr: 'l’indigo', en: 'indigo' }, gold: { fr: 'l’or', en: 'gold' }, jade: { fr: 'le jade', en: 'jade' } };
+
+/** Why a skill cannot be learnt yet (level or colour), or null. */
+export function lockReason(id: SkillId): string | null {
+  const s = SKILL[id];
+  const lv = ROW_LEVEL[s.row] ?? 1;
+  if (save.level < lv) return lang === 'fr' ? `S’ouvre au niveau ${lv}.` : `Opens at level ${lv}.`;
+  const ink = NEEDS_INK[id];
+  if (ink && !save.inks.includes(ink)) return lang === 'fr' ? `Il faut d’abord retrouver ${INK_NAME[ink].fr}.` : `You must first find ${INK_NAME[ink].en}.`;
+  return null;
+}
+
 export function canLearn(id: SkillId): boolean {
   const s = SKILL[id];
-  return pointsLeft() > 0 && rank(id) < s.ranks && spentIn(s.branch) >= s.row * 2;
+  return pointsLeft() > 0 && rank(id) < s.ranks && spentIn(s.branch) >= s.row * 2 && !lockReason(id);
 }
 
 /** Spend a point; actives go to the first free slot. */
