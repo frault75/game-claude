@@ -359,8 +359,8 @@ export class Player extends Entity {
     const set = this.frames.pig[this.facing][pose];
     let idx: number;
     if (pose === 'strike') idx = this.stateT < 0.05 ? 0 : 1;
-    else idx = Math.floor(this.animT * fps) % set.length;
-    idx = Math.min(idx, set.length - 1);
+    else idx = Math.floor(this.animT * fps);
+    idx = Number.isFinite(idx) ? ((idx % set.length) + set.length) % set.length : 0;
     this.pig.setTexture(set[idx].tex);
     this.red.setTexture(this.frames.red[this.facing][pose][idx].tex);
     const sx = this.facing === 'side' ? this.flip : 1;

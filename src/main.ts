@@ -47,7 +47,8 @@ async function start() {
   let last = performance.now();
   let time = 0;
   const frame = (now: number) => {
-    const dt = Math.min(0.1, (now - last) / 1000);
+    // RAF timestamps can be slightly older than performance.now(): never let time run backwards.
+    const dt = Math.max(0, Math.min(0.1, (now - last) / 1000));
     last = now;
     time += dt;
     input.pollPad();
