@@ -95,6 +95,12 @@ export class Inventory {
     for (const s of this.detail) s.dispose();
     for (const b of this.buttons) for (const s of b.sprites) s.dispose();
     this.stat?.dispose();
+    // the item pictures belong to the cells: take them off the screen too
+    for (const c of [...this.cells, ...this.equipCells]) {
+      c.wash?.dispose();
+      c.icon?.dispose();
+      c.iconRed?.dispose();
+    }
     this.sprites = [];
     this.detail = [];
     this.buttons = [];
