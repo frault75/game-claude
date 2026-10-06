@@ -36,7 +36,7 @@ function getIce(): Frame {
 }
 
 /** [idle, raised sword, slammed, sweep]. */
-function buildWardenFrames(seed: number): Frame[] {
+export function buildWardenFrames(seed: number): Frame[] {
   const out: Frame[] = [];
   const poses: { sword: number; lean: number }[] = [{ sword: 0, lean: 0 }, { sword: 1, lean: -0.05 }, { sword: 2, lean: 0.12 }, { sword: 3, lean: 0.05 }];
   poses.forEach((ps, i) => {

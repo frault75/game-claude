@@ -100,7 +100,7 @@ export class Tree {
     this.sprites.push(this.add(new Sprite(frameFrom(p)), 'pig', LAYER.ui + 30));
     const m = maskSprite(r, pw + 160, ph + 160);
     m.mesh.renderOrder = LAYER.ui + 30;
-    this.sprites.push(m);
+    this.sprites.push(m, maskSprite(r, pw + 30, ph + 30, 'cover'));
     const t = this.text(L(T.title), 40, { bold: true });
     t.s.setPos(-pw / 2 + 50 + t.w / 2, ph / 2 - 52);
     this.sprites.push(t.s);

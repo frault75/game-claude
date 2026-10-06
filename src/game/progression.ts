@@ -33,6 +33,8 @@ export interface Save {
   /** Creatures beaten at least once (pages of the bestiary), and regions already walked. */
   bestiary: string[];
   regions: string[];
+  /** Fog of war per map: hex bit strings (see ui/mapArt). */
+  fog: Record<string, string>;
 }
 
 export const BAG_SIZE = 16;
@@ -42,7 +44,7 @@ const fresh = (): Save => ({
   main: 0, steles: [], brambles: false, madder: false, pip: 0, pigment: 0,
   bag: [], equip: {}, newItems: false,
   skills: {}, slots: [null, null, null],
-  bestiary: [], regions: [],
+  bestiary: [], regions: [], fog: {},
 });
 
 let gearCache: Record<Stat, number> | null = null;

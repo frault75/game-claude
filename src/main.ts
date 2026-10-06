@@ -1,4 +1,5 @@
 import { Renderer, IS_MOBILE } from './core/renderer';
+import { loadSettings } from './game/settings';
 import { Input } from './core/input';
 import { DebugOverlay } from './ui/debug';
 import { Game } from './game/game';
@@ -31,6 +32,7 @@ const ambience = new Ambience();
 let started = false;
 
 if (IS_MOBILE) input.device = 'touch';
+loadSettings();
 
 function startAudio() {
   if (started) return;

@@ -1,4 +1,5 @@
 /** Soft invisible shapes that keep dungeon darkness off parts of the HUD. */
+import * as THREE from 'three';
 import type { Renderer } from '../core/renderer';
 import { Sprite, Frame, frameFrom, makeTexture, LAYER } from '../gfx/sprite';
 import { Painter } from '../gfx/paint';
@@ -26,8 +27,9 @@ function paperSprite(r: Renderer, w: number, h: number): Sprite {
 
 const cache = new Map<string, HTMLCanvasElement>();
 
-/** A soft rounded patch of `w` × `h` UI units, added to the renderer's UI mask. */
-export function maskSprite(r: Renderer, w: number, h: number, scene: 'mask' | 'paper' = 'mask'): Sprite {
+/** A soft rounded patch of `w` × `h` UI units, added to the renderer's UI mask
+ *  ('cover': hides the world's red and colour beneath an open panel). */
+export function maskSprite(r: Renderer, w: number, h: number, scene: 'mask' | 'paper' | 'cover' = 'mask'): Sprite {
   const key = `${Math.round(w)}x${Math.round(h)}`;
   let c = cache.get(key);
   if (!c) {
@@ -55,7 +57,14 @@ export function maskSprite(r: Renderer, w: number, h: number, scene: 'mask' | 'p
   const s = new Sprite({ tex: makeTexture(c, false), w, h, ox: -w / 2, oy: -h / 2 });
   (s as unknown as { owned: boolean }).owned = true;
   s.mesh.renderOrder = LAYER.ui - 1;
+  if (scene === 'cover') {
+    // a pure eraser: what lies beneath (colour and coverage) fades by the patch's alpha
+    s.mat.blendSrc = THREE.ZeroFactor;
+    s.mat.blendSrcAlpha = THREE.ZeroFactor;
+    s.mat.blendDst = THREE.OneMinusSrcAlphaFactor;
+    s.mat.blendDstAlpha = THREE.OneMinusSrcAlphaFactor;
+  }
   // 'paper' hides what lies beneath (a soft sheet behind the HUD in dark places)
-  (scene === 'mask' ? r.uiMask : r.uiPig).add(s.mesh);
+  (scene === 'mask' ? r.uiMask : scene === 'cover' ? r.uiCover : r.uiPig).add(s.mesh);
   return s;
 }

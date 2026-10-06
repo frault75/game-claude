@@ -1,5 +1,9 @@
 /** Owns the world, player and HUD; loads rooms; exits, death, ensō, combo, music, story. */
 import type { Renderer } from '../core/renderer';
+import { Menu } from '../ui/menu';
+import { settings } from './settings';
+import { REGIONS, regionAt } from '../world/layout';
+import { MapSource, reveal, flushFog } from '../ui/mapArt';
 import type { Input } from '../core/input';
 import { World } from './world';
 import { Player } from './player';
@@ -39,6 +43,7 @@ export class Game {
   readonly dialog: Dialog;
   readonly inventory: Inventory;
   readonly tree: Tree;
+  readonly menu: Menu;
   /** Radius of the child's lamp in dark places. */
   lampRadius = 6.5;
   private pigmentHintT = 0;
@@ -51,6 +56,12 @@ export class Game {
   private loading = false;
   /** Exits wake up only once the child has stepped away from where they arrived (no stair ping-pong). */
   private exitsArmed = true;
+  /** Where the story wants the child to go (world units), if anywhere. */
+  objective: V | null = null;
+  /** The current place as a map, and when its fog was last saved. */
+  mapSrc: MapSource | null = null;
+  private fogT = 0;
+  private fogSaveT = 0;
   /** "E" over whoever can be talked to, on a keyboard. */
   private keyPrompt: Sprite | null = null;
   private arrivedAt: V = [0, 0];
@@ -84,6 +95,11 @@ export class Game {
     };
     this.tree = new Tree(r, input);
     this.tree.onChange = () => this.inventory.onChange?.();
+    this.menu = new Menu(r, input);
+    this.menu.onBag = () => { this.menu.close(); this.inventory.open(); };
+    this.menu.onTree = () => { this.menu.close(); this.tree.open(); };
+    this.menu.device = () => this.input.device;
+    this.menu.view = () => ({ src: this.mapSrc, px: this.player.x, py: this.player.y, dir: Math.atan2(this.player.aim[1], this.player.aim[0]), goal: this.objective, place: this.placeName() });
     this.inventory.onGrind = (pig, name) => {
       const p = this.player;
       p.pigment = Math.min(p.pigmentMax, p.pigment + pig);
@@ -205,6 +221,10 @@ export class Game {
     w.camY = sy;
     w.clampCamera();
     this.room = def;
+    this.objective = null;
+    flushFog();
+    this.mapSrc = def.map?.(this) ?? null;
+    if (this.mapSrc) reveal(this.mapSrc, sx, sy);
     progress.room = def.id;
     progress.spawn = [sx, sy];
     saveProgress();
@@ -217,10 +237,19 @@ export class Game {
   /** Use the active skill in a slot, if it is ready. */
   useSlot(k: number): void {
     const id = save.slots[k] as SkillId | null;
-    if (!id || this.dialog.active || this.inventory.active || this.tree.active) return;
+    if (!id || this.dialog.active || this.inventory.active || this.tree.active || this.menu.active) return;
     const p = this.player;
     if ((p.cool[id] ?? 0) > 0) { sfx.empty(); return; }
     if (useSkill(this, id)) p.cool[id] = cooldownOf(id);
+  }
+
+  /** What the map calls the current place. */
+  placeName(): string {
+    const id = this.room?.id ?? '';
+    const m = /^(cave|temple)(\d)$/.exec(id);
+    if (m) return `${L(m[1] === 'cave' ? UI.enterCave : UI.enterTemple)} · ${L(UI.floor)} ${m[2]}`;
+    if (id === 'overworld') return REGIONS[regionAt(this.player.x, this.player.y)]?.name[lang] ?? '';
+    return '';
   }
 
   /** On a keyboard, a small "E" floats over whoever is close enough to talk to. */
@@ -272,6 +301,7 @@ export class Game {
     this.dialog.close(false);
     this.inventory.close();
     this.tree.close();
+    this.menu.close();
     await this.loadRoom(to, spawn);
     this.player.locked = false;
     this.fadeTarget = 0;
@@ -308,14 +338,18 @@ export class Game {
     }
     this.words = this.words.filter((wd) => wd.t <= 1.2);
     this.dialog.update(dt);
-    const invWas = this.inventory.active, treeWas = this.tree.active;
+    const invWas = this.inventory.active, treeWas = this.tree.active, menuWas = this.menu.active;
     this.inventory.update(dt);
     this.tree.update();
+    this.menu.update();
     if (this.loading) return;
-    const free = !this.dialog.active && !invWas && !treeWas && this.player.state !== 'dead';
+    const free = !this.dialog.active && !invWas && !treeWas && !menuWas && this.player.state !== 'dead';
     if (free && this.input.keyPressed('KeyI')) this.inventory.open();
     if (free && this.input.keyPressed('KeyC')) this.tree.open();
-    if (free && !this.inventory.active && !this.tree.active) {
+    if (free && this.input.keyPressed('KeyM')) this.menu.open('map');
+    if (free && this.input.keyPressed('KeyJ')) this.menu.open('journal');
+    if (free && this.input.pressed('back') && !this.inventory.active && !this.tree.active && !this.menu.active) this.menu.open();
+    if (free && !this.inventory.active && !this.tree.active && !this.menu.active) {
       (['KeyR', 'KeyT', 'KeyG'] as const).forEach((k, i) => { if (this.input.keyPressed(k)) this.useSlot(i); });
     }
     const w = this.world;
@@ -330,11 +364,14 @@ export class Game {
     this.hud.bagNew = save.newItems;
     this.hud.treeNew = pointsLeft() > 0;
     this.hud.setSkills(save.slots, save.slots.map((id) => (id ? (this.player.cool[id as SkillId] ?? 0) / Math.max(0.1, cooldownOf(id as SkillId)) : 0)), this.input.device !== 'touch');
-    this.input.uiMode = this.dialog.active || this.inventory.active || this.tree.active;
+    const sheetOpen = this.inventory.active || this.tree.active || this.menu.active;
+    this.input.uiMode = this.dialog.active || sheetOpen;
     // coloured HUD pieces would show through a panel: step aside
-    this.hud.visible = !(this.inventory.active || this.tree.active);
-    this.hud.panelOpen = this.dialog.active || this.inventory.active || this.tree.active;
-    if (this.dialog.active || this.inventory.active || this.tree.active) {
+    this.hud.visible = !sheetOpen;
+    this.story.hidden = sheetOpen;
+    this.hud.panelOpen = this.dialog.active || sheetOpen;
+    this.hud.setMinimap(this.mapSrc, settings.minimap, this.player.x, this.player.y, Math.atan2(this.player.aim[1], this.player.aim[0]), this.objective, dt);
+    if (this.dialog.active || sheetOpen) {
       this.input.uiRegions = [];
       if (this.keyPrompt) this.keyPrompt.opacity = 0;
       // the world holds its breath while someone speaks
@@ -344,6 +381,12 @@ export class Game {
     }
     w.update(dt);
     this.showKeyPrompt();
+    // the fog lifts where the child walks
+    if (this.mapSrc && (this.fogT -= dt) <= 0) {
+      this.fogT = 0.25;
+      reveal(this.mapSrc, this.player.x, this.player.y);
+    }
+    if ((this.fogSaveT -= dt) <= 0) { this.fogSaveT = 4; flushFog(); }
     this.inkfx.update(dt * w.timeScale);
     this.numbers.update(dt);
     this.r.post.flash = w.flash;
@@ -356,6 +399,10 @@ export class Game {
     if (bg.r > 0) this.input.uiRegions.push({ x: bg.x, y: bg.y, r: bg.r, fn: () => this.inventory.open() });
     const tr = this.hud.treeRegion;
     if (tr.r > 0) this.input.uiRegions.push({ x: tr.x, y: tr.y, r: tr.r, fn: () => this.tree.open() });
+    const mn = this.hud.menuRegion;
+    if (mn.r > 0) this.input.uiRegions.push({ x: mn.x, y: mn.y, r: mn.r, fn: () => this.menu.open() });
+    const mm = this.hud.miniRegion;
+    if (mm.r > 0) this.input.uiRegions.push({ x: mm.x, y: mm.y, r: mm.r, fn: () => this.menu.open('map') });
     for (const sk of this.hud.skillRegions) this.input.uiRegions.push({ x: sk.x, y: sk.y, r: sk.r, fn: () => this.useSlot(sk.slot) });
     this.hud.setInk(INKS[save.ink].runs ? this.player.inkFrac : this.player.pigmentFrac);
     this.showStick();

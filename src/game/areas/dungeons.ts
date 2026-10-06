@@ -31,6 +31,7 @@ import { STEP, setMain } from '../quests';
 import { giveXp, onKill, unlockInk, hasColour, discover } from '../rewards';
 import { dropLoot } from '../loot';
 import type { InkId } from '../inks';
+import { MapSource, Mark } from '../../ui/mapArt';
 
 interface FloorDef {
   id: string;
@@ -514,12 +515,43 @@ function buildFloor(def: FloorDef, room: RoomDef, b: Parameters<RoomDef['build']
     else if (!save.bosses.includes(bossId)) target = [e.cx, e.cy];
     else if (!save.inks.includes(ink)) target = [e.cx, e.cy + 1.5];
     else target = [e.cx, e.y + e.h - 2.6];
+    g.objective = target;
     const vh = r.viewH / r.zoom, vw = vh * (r.pxW / r.pxH);
     g.hud.arrowTarget = target ? [((target[0] - w.camX) / vw) * r.uiW, ((target[1] - w.camY) / vh) * r.uiH] : null;
     w.areaName = `${def.id}`;
     w.roomName = `rooms ${map.rooms.length} · lvl ${save.level} · step ${save.main}`;
   });
   void room;
+}
+
+/** A floor as a map: rooms and corridors in pale wash, walls in ink. */
+function floorMap(def: FloorDef, map: DungeonMap): MapSource {
+  return {
+    key: def.id,
+    w: map.w,
+    h: map.h,
+    ppu: 6,
+    cell: 2,
+    sight: 7.5,
+    view: 14,
+    paint(ctx) {
+      ctx.fillStyle = def.area === 'cave' ? 'rgba(96,88,80,0.34)' : 'rgba(120,104,72,0.34)';
+      for (let y = 0; y < map.h; y++) for (let x = 0; x < map.w; x++) if (map.grid[y * map.w + x] === 1) ctx.fillRect(x - 0.02, y - 0.02, 1.04, 1.04);
+      ctx.strokeStyle = 'rgba(36,32,30,0.85)';
+      ctx.lineWidth = 0.32;
+      ctx.beginPath();
+      for (const wl of map.walls) { ctx.moveTo(wl.ax, wl.ay); ctx.lineTo(wl.bx, wl.by); }
+      ctx.stroke();
+    },
+    marks(): Mark[] {
+      const out: Mark[] = [{ x: map.up[0], y: map.up[1], kind: 'up' }];
+      if (def.down) out.push({ x: map.down[0], y: map.down[1], kind: 'down' });
+      if (def.well) out.push({ x: map.start.cx + 2.5, y: map.start.cy - 0.5, kind: 'basin' });
+      const bossId = def.boss === 'mother' ? 'mother' : 'warden';
+      if (def.boss && !save.bosses.includes(bossId)) out.push({ x: map.end.cx, y: map.end.cy, kind: 'boss' });
+      return out;
+    },
+  };
 }
 
 export function dungeonRooms(): RoomDef[] {
@@ -540,6 +572,7 @@ export function dungeonRooms(): RoomDef[] {
       music: def.style,
       post: { washed: 0, night: 0, fog: 0.05, fogScale: 0.2, gloom: def.area === 'cave' ? 0.84 : 0.78, vignette: 1.3 },
       exits,
+      map: () => floorMap(def, map),
       build: (b) => buildFloor(def, room, b),
     };
     return room;
