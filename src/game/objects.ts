@@ -16,7 +16,7 @@ export class Prop extends Entity {
   protected pig: Sprite | null = null;
   protected red: Sprite | null = null;
   crown: { x: number; y: number; rx: number; ry: number } | null = null;
-  constructor(protected art: PropArt | (() => PropArt), x: number, y: number, radius: number, solid = true) {
+  constructor(protected art: PropArt | (() => PropArt) | { pig: Frame; red?: Frame }, x: number, y: number, radius: number, solid = true) {
     super();
     this.x = x;
     this.y = y;

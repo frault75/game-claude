@@ -189,7 +189,7 @@ export class Creature extends Entity {
     }
     const p = this.world.player;
     const dp = Math.hypot(p.x - this.x, p.y - this.y);
-    if (!this.aggro && dp < this.aggroRange && p.state !== 'dead') this.aggro = true;
+    if (!this.aggro && dp < this.aggroRange && p.state !== 'dead' && !this.world.lineBlocked(this.x, this.y + 0.3, p.x, p.y + 0.3)) this.aggro = true;
     // leash: if the child ran far from the camp, go home
     if (this.home) {
       const dh = Math.hypot(this.x - this.home[0], this.y - this.home[1]);
@@ -201,6 +201,12 @@ export class Creature extends Entity {
       }
     }
     return true;
+  }
+
+  /** Towards the child, around walls in dungeons (length = remaining path length). */
+  protected seek(): [number, number] {
+    const p = this.world.player;
+    return this.world.steer(this.x, this.y, p.x, p.y);
   }
 
   protected placeOnly(): void {
@@ -266,7 +272,7 @@ export class Blot extends Creature {
     const frames = blotFrames!;
     this.animT += dt;
     this.modeT += dt;
-    const dx = p.x - this.x, dy = p.y - this.y;
+    const [dx, dy] = this.seek();
     const d = Math.hypot(dx, dy) || 1;
     let frame = frames[Math.abs(Math.floor(this.animT * 5)) % 3];
     const speed = (this.elite ? 4 : 3.2) * (this.label === 'blotlet' ? 1.2 : 1);
@@ -353,6 +359,7 @@ export class InkDrop extends Entity {
     for (const c of w.collidersNear(this.x, this.y, 1)) {
       if (c.kind === 'circle' && Math.hypot(c.x - this.x, c.y - this.y) < c.r + this.radius) { this.pop(); return; }
     }
+    if (w.nav && w.lineBlocked(this.x - this.vx * dt, this.y - this.vy * dt, this.x, this.y)) { this.pop(); return; }
     const p = w.player;
     if (Math.hypot(p.x - this.x, p.y - this.y) < p.radius + this.radius + 0.1) {
       if (p.hurt(1, this.x, this.y)) { this.pop(); return; }
@@ -393,13 +400,18 @@ export class Wisp extends Creature {
     const p = w.player;
     this.animT += dt;
     this.z = 0.5 + Math.sin(this.animT * 2) * 0.15;
-    const dx = p.x - this.x, dy = p.y - this.y;
+    const [dx, dy] = this.seek();
     const d = Math.hypot(dx, dy) || 1;
     if (this.aggro) {
       const want = 5;
       const k = d > want ? 1 : -0.7;
       this.walk((dx / d) * k * 2.4 * dt + Math.cos(this.animT) * 0.4 * dt, (dy / d) * k * 2.4 * dt + Math.sin(this.animT * 1.3) * 0.4 * dt);
       this.shootT -= dt;
+      // no shooting through rock
+      if (this.shootT < 0.6 && w.lineBlocked(this.x, this.y + 0.5, p.x, p.y + 0.5)) {
+        this.shootT = 0.6;
+        if (this.tg) { w.tele.cancel(this.tg); this.tg = null; }
+      }
       if (this.shootT <= 0.5 && !this.tg && this.shootT > 0) {
         this.tg = w.tele.add({ kind: 'circle', r: 0.45 }, this.x, this.y + 0.7, 0, 0.5, { hold: 0 });
         sfx.telegraph('high', 0.45);
@@ -479,7 +491,7 @@ export class Brute extends Creature {
     this.animT += dt;
     this.modeT += dt;
     this.cd -= dt;
-    const dx = p.x - this.x, dy = p.y - this.y;
+    const [dx, dy] = this.seek();
     const d = Math.hypot(dx, dy) || 1;
     let frame = f[Math.abs(Math.floor(this.animT * 3)) % 2];
     switch (this.mode) {
@@ -573,7 +585,12 @@ export class Mite extends Creature {
       const dart = Math.sin(this.t * 0.9 + this.orbit) > 0.75;
       const r = dart ? 0.2 : 2.6;
       const a = this.orbit + this.t * 1.4;
-      const tx = p.x + Math.cos(a) * r, ty = p.y + Math.sin(a) * r * 0.8;
+      let tx = p.x + Math.cos(a) * r, ty = p.y + Math.sin(a) * r * 0.8;
+      if (w.lineBlocked(this.x, this.y, p.x, p.y)) {
+        const [sx, sy] = this.seek();
+        tx = this.x + sx;
+        ty = this.y + sy;
+      }
       const sp = dart ? 9 : 4.6;
       const dx = tx - this.x, dy = ty - this.y;
       const d = Math.hypot(dx, dy) || 1;

@@ -1,17 +1,19 @@
 /** Paints the world around the camera, one 16×16 chunk at a time, and forgets what is far away. */
 import type { World } from '../game/world';
-import { Painter, INK, PIG_A, PIG_B } from '../gfx/paint';
+import { Painter, INK, PIG_A, PIG_B, mixPig, pigStyle } from '../gfx/paint';
 import { Sprite, LAYER, ySort, makeTexture } from '../gfx/sprite';
 import { washBlob, washPoly, noisyOutline } from '../gfx/wash';
 import { stroke, dot } from '../gfx/brush';
-import { pond, shadow } from '../gfx/gen/ground';
+import { pond, shadow, puddle } from '../gfx/gen/ground';
 import { StampSet, stampAt } from './stamps';
 import { ArtCache, PropArt } from './artCache';
 import {
-  WORLD, ROAD, PATHS, PONDS, VILLAGE, ARENA, CAMPS, SHRINES, V,
-  forestDensity, isClearing, cellRng, regionAt, roadDist,
+  WORLD, ROAD, PATHS, PONDS, VILLAGE, ARENA, CAMPS, SHRINES, V, RIVER_SAMPLES, BRIDGE, PADDIES, FIXED, TEMPLE, CAVE, NORTH_WALL,
+  forestDensity, isClearing, cellRng, regionAt, roadDist, riverHalf,
 } from './layout';
 import { noise } from '../gfx/noise';
+import { roughen } from '../gfx/wash';
+import { save } from '../game/progression';
 
 interface PropInst {
   sprites: Sprite[];
@@ -116,6 +118,15 @@ export class Chunks {
     for (const c of [...this.loaded.values()]) this.unload(c);
   }
 
+  /** Forget chunks around a point so they are painted again (the world changed there). */
+  invalidate(x: number, y: number, r: number): void {
+    const S = WORLD.chunk;
+    for (const c of [...this.loaded.values()]) {
+      const cx = Math.max(c.cx * S, Math.min((c.cx + 1) * S, x)), cy = Math.max(c.cy * S, Math.min((c.cy + 1) * S, y));
+      if (Math.hypot(cx - x, cy - y) < r) this.unload(c);
+    }
+  }
+
   private build(key: string): void {
     const [cx, cy] = key.split(',').map(Number);
     const S = WORLD.chunk;
@@ -169,6 +180,51 @@ export class Chunks {
       if (p.x + p.rx + 2 < x0 || p.x - p.rx - 2 > x0 + S || p.y + p.ry + 2 < y0 || p.y - p.ry - 2 > y0 + S) continue;
       pond(g, p.x, p.y, p.rx, p.ry, p.seed);
     }
+    // 3b. the river, the old bridge, the paddies, the temple pool, the cave's trodden ground
+    this.paintRiver(g, x0, y0);
+    const near = (x: number, y: number, r: number) => x + r > x0 - M && x - r < x0 + S + M && y + r > y0 - M && y - r < y0 + S + M;
+    if (near(BRIDGE.x, BRIDGE.y, 6)) {
+      const deck: [number, number][] = [[BRIDGE.x0, BRIDGE.y - BRIDGE.half], [BRIDGE.x1, BRIDGE.y - BRIDGE.half], [BRIDGE.x1, BRIDGE.y + BRIDGE.half], [BRIDGE.x0, BRIDGE.y + BRIDGE.half]];
+      washBlob(g, BRIDGE.x, BRIDGE.y - BRIDGE.half - 0.2, 4.4, 0.4, { pig: INK, density: 0.25, soft: 0.8, seed: 611 });
+      g.reserve(() => deck.forEach((q, i) => (i === 0 ? g.ctx.moveTo(q[0], q[1]) : g.ctx.lineTo(q[0], q[1]))), 1);
+      g.glaze();
+      washPoly(g, roughen(deck, 0.04, 612, 0.2), { pig: mixPig(INK, PIG_B, 0.45), density: 0.3, soft: 0.05, edge: 0.7, seed: 612 });
+      let k = 0;
+      for (let x = BRIDGE.x0 + 0.25; x < BRIDGE.x1; x += 0.48, k++) {
+        stroke(g, [[x, BRIDGE.y - BRIDGE.half + 0.05], [x + 0.02, BRIDGE.y + BRIDGE.half - 0.05]], { width: 0.035, load: 0.55, dry: 0.6, seed: 620 + k, body: 0.2, taperStart: 0.05, taperEnd: 0.05 });
+      }
+    }
+    for (const [pi, pd] of PADDIES.entries()) {
+      if (!near(pd.x + pd.w / 2, pd.y + pd.h / 2, Math.max(pd.w, pd.h))) continue;
+      const rect = roughen([[pd.x, pd.y], [pd.x + pd.w, pd.y], [pd.x + pd.w, pd.y + pd.h], [pd.x, pd.y + pd.h]], 0.12, 700 + pi, 0.3);
+      g.ctx.fillStyle = pigStyle(mixPig(INK, PIG_B, 0.55), 0.16);
+      g.ctx.beginPath();
+      rect.forEach((q, i) => (i === 0 ? g.ctx.moveTo(q[0], q[1]) : g.ctx.lineTo(q[0], q[1])));
+      g.ctx.closePath();
+      g.ctx.fill();
+      stroke(g, [...rect, rect[0]], { width: 0.16, load: 0.45, dry: 0.7, seed: 710 + pi, body: 0.3, taperStart: 0.01, taperEnd: 0.01, press: 0 });
+      const r = cellRng(pi, 3, 77);
+      for (let yy = pd.y + 0.5; yy < pd.y + pd.h - 0.3; yy += 0.65) {
+        for (let xx = pd.x + 0.45; xx < pd.x + pd.w - 0.3; xx += 0.7) {
+          stampAt(g, st.shoots[r.int(0, st.shoots.length - 1)], xx + r.gauss() * 0.05, yy, r.chance(0.5), 0.9);
+        }
+      }
+    }
+    if (near(TEMPLE.x, TEMPLE.y, 9)) {
+      if (!save.bosses.includes('ramking')) pond(g, TEMPLE.x, TEMPLE.y - 0.6, 6.4, 3.4, 731);
+      else {
+        washBlob(g, TEMPLE.x, TEMPLE.y - 1.2, 6, 3, { pig: INK, density: 0.1, soft: 0.6, seed: 732 });
+        const r = cellRng(9, 9, 733);
+        for (let i = 0; i < 5; i++) puddle(g, TEMPLE.x + r.range(-5, 5), TEMPLE.y - r.range(2.5, 4), r.range(0.5, 1), r.range(0.3, 0.5), r.int(1, 1e6));
+      }
+    }
+    if (near(CAVE.x, CAVE.y, 8)) {
+      washBlob(g, CAVE.x, CAVE.y - 0.4, 4, 1.6, { pig: INK, density: 0.14, soft: 0.7, seed: 741 });
+      washBlob(g, CAVE.x, CAVE.y + 1.4, 5, 2.4, { pig: INK, density: 0.1, soft: 0.8, seed: 742 });
+    }
+    if (y0 + S > NORTH_WALL - 3) {
+      washPoly(g, [[x0 - 1, NORTH_WALL - 1.5], [x0 + S + 1, NORTH_WALL - 1.5], [x0 + S + 1, WORLD.h + 1], [x0 - 1, WORLD.h + 1]], { pig: mixPig(INK, PIG_B, 0.4), density: 0.1, soft: 0.7, seed: 751 });
+    }
     // 4. village plaza and the stone circle
     if (Math.hypot(VILLAGE.x - (x0 + S / 2), VILLAGE.y - (y0 + S / 2)) < VILLAGE.r + S) {
       const r = cellRng(1, 2, 99);
@@ -208,6 +264,63 @@ export class Chunks {
         else if (roll < lush * 0.42 + 0.05) stampAt(g, st.stones[r.int(0, st.stones.length - 1)], x, y, r.chance(0.5), 0.8);
         else if (roll < lush * 0.42 + 0.1 && regionAt(x, y) !== 'arena') stampAt(g, st.flowers[r.int(0, st.flowers.length - 1)], x, y, r.chance(0.5));
         else if (roll < lush * 0.42 + 0.16) stampAt(g, st.tufts[r.int(0, st.tufts.length - 1)], x, y, r.chance(0.5));
+      }
+    }
+  }
+
+  /** The river: a crisp wash (seams match across chunks), bank strokes in fixed pieces, ripples. */
+  private paintRiver(g: Painter, x0: number, y0: number): void {
+    const S = WORLD.chunk, M = 6;
+    const R = RIVER_SAMPLES;
+    let i0 = -1, i1 = -1;
+    for (let i = 0; i < R.length; i++) {
+      const s = R[i];
+      if (s.x > x0 - M && s.x < x0 + S + M && s.y > y0 - M && s.y < y0 + S + M) {
+        if (i0 < 0) i0 = i;
+        i1 = i;
+      }
+    }
+    if (i0 < 0) return;
+    i0 = Math.max(0, i0 - 6);
+    i1 = Math.min(R.length - 1, i1 + 6);
+    const edge = (i: number, k: number): [number, number] => {
+      const s = R[i], hw = riverHalf(i) * k;
+      return [s.x + s.nx * hw, s.y + s.ny * hw];
+    };
+    const fill = (k: number, density: number) => {
+      const left: [number, number][] = [], right: [number, number][] = [];
+      for (let i = i0; i <= i1; i++) { left.push(edge(i, k)); right.push(edge(i, -k)); }
+      const poly = left.concat(right.reverse());
+      g.ctx.fillStyle = pigStyle(mixPig(INK, PIG_B, 0.35), density);
+      g.ctx.beginPath();
+      poly.forEach((q, i) => (i === 0 ? g.ctx.moveTo(q[0], q[1]) : g.ctx.lineTo(q[0], q[1])));
+      g.ctx.closePath();
+      g.ctx.fill();
+    };
+    fill(1, 0.2);
+    fill(0.6, 0.07);
+    fill(0.25, 0.05);
+    const st = this.stamps;
+    for (let i = i0 - (i0 % 3); i < i1; i += 3) {
+      for (const side of [1, -1]) {
+        const pts: [number, number][] = [];
+        for (let k = i; k <= Math.min(R.length - 1, i + 4); k++) pts.push(edge(k, side));
+        const r = cellRng(i, side + 2, 41);
+        stroke(g, pts, { width: r.range(0.09, 0.16), load: r.range(0.55, 0.85), dry: 0.6, seed: i * 7 + side, taperStart: 0.2, taperEnd: 0.2, rough: 0.4, press: 0 });
+        if (r.chance(0.45)) {
+          const [ex, ey] = edge(i + 1, side * 1.25);
+          stampAt(g, r.chance(0.5) ? st.reeds[r.int(0, st.reeds.length - 1)] : st.tufts[r.int(0, st.tufts.length - 1)], ex, ey, r.chance(0.5));
+        }
+      }
+      const r = cellRng(i, 0, 42);
+      for (let n = 0; n < 2; n++) {
+        if (!r.chance(0.7)) continue;
+        const s = R[i], hw = riverHalf(i);
+        const off = r.range(-0.7, 0.7) * hw;
+        const cx = s.x + s.nx * off, cy = s.y + s.ny * off;
+        const l = r.range(0.4, 1.1);
+        const tx = s.ny, ty = -s.nx;
+        stroke(g, [[cx - tx * l / 2, cy - ty * l / 2], [cx + s.nx * 0.04, cy + s.ny * 0.04], [cx + tx * l / 2, cy + ty * l / 2]], { width: 0.035, load: r.range(0.25, 0.5), dry: 0.6, seed: i * 13 + n, body: 0.2, taperStart: 0.35, taperEnd: 0.45, press: 0 });
       }
     }
   }
@@ -256,18 +369,83 @@ export class Chunks {
         }
       }
     }
-    // fixed props: village huts and lamps, the stone circle, shrine lamps
+    // fixed props: the hamlet, the bridge, entrances, ruins, mountains
     const inChunk = (x: number, y: number) => x >= x0 && x < x0 + S && y >= y0 && y < y0 + S;
-    const huts: V[] = [[14, 70], [30, 71], [16, 53], [31, 54]];
-    huts.forEach(([x, y], i) => {
-      if (!inChunk(x, y)) return;
-      this.addProp(A.hut[i % A.hut.length], x, y, i % 2 === 1, props, key, g, 3.0, false);
-      const ow = 'chunk:' + key;
-      this.w.addCollider({ kind: 'seg', ax: x - 1.95, ay: y + 0.2, bx: x + 1.95, by: y + 0.2, r: 0.25 }, ow);
-      this.w.addCollider({ kind: 'seg', ax: x - 1.95, ay: y + 1.2, bx: x + 1.95, by: y + 1.2, r: 0.25 }, ow);
-    });
-    const lamps: V[] = [[18, 67], [30, 57]];
-    for (const [x, y] of lamps) if (inChunk(x, y)) this.addProp(A.lamp[0], x, y, false, props, key, g, 0.6);
+    const ow = 'chunk:' + key;
+    const box = (x: number, y: number, hw: number, d: number) => {
+      const c = [[x - hw, y + 0.15], [x + hw, y + 0.15], [x + hw, y + d], [x - hw, y + d]];
+      for (let i = 0; i < 4; i++) {
+        const a = c[i], b2 = c[(i + 1) % 4];
+        this.w.addCollider({ kind: 'seg', ax: a[0], ay: a[1], bx: b2[0], by: b2[1], r: 0.22 }, ow);
+      }
+    };
+    for (const f of FIXED) {
+      if (!inChunk(f.x, f.y)) continue;
+      const fl = !!f.flip;
+      switch (f.kind) {
+        case 'house': {
+          const wide = [1, 0.85, 1.15][f.v ?? 0];
+          this.addProp(A.house[f.v ?? 0], f.x, f.y, fl, props, key, g, 3.4 * wide, false);
+          box(f.x, f.y, 2.3 * wide + 0.1, 1.5);
+          break;
+        }
+        case 'hut':
+          this.addProp(A.hut[(f.v ?? 0) % A.hut.length], f.x, f.y, fl, props, key, g, 3.0, false);
+          box(f.x, f.y, 1.95, 1.3);
+          break;
+        case 'stallDyer': case 'stallFood': case 'stallPots': {
+          const k = f.kind === 'stallDyer' ? 'dyer' : f.kind === 'stallFood' ? 'food' : 'pots';
+          this.addProp(A.stall[k], f.x, f.y, fl, props, key, g, 2.2, false);
+          this.w.addCollider({ kind: 'seg', ax: f.x - 1.6, ay: f.y + 0.35, bx: f.x + 1.6, by: f.y + 0.35, r: 0.35 }, ow);
+          break;
+        }
+        case 'well':
+          this.addProp(A.well, f.x, f.y, fl, props, key, g, 1.2, false);
+          this.w.addCollider({ kind: 'circle', x: f.x, y: f.y + 0.3, r: 0.95 }, ow);
+          break;
+        case 'fence':
+          this.addProp(A.fence, f.x, f.y, fl, props, key, g, 0, false);
+          this.w.addCollider({ kind: 'seg', ax: f.x - 1.5, ay: f.y + 0.1, bx: f.x + 1.5, by: f.y + 0.1, r: 0.12 }, ow);
+          break;
+        case 'gate':
+          this.addProp(A.gate, f.x, f.y, fl, props, key, g, 0, false);
+          for (const sx of [-2.2, 2.2]) this.w.addCollider({ kind: 'circle', x: f.x + sx, y: f.y + 0.05, r: 0.3 }, ow);
+          break;
+        case 'lamp':
+          this.addProp(A.lamp[0], f.x, f.y, fl, props, key, g, 0.6);
+          break;
+        case 'bigWillow':
+          this.addProp(A.bigWillow, f.x, f.y, fl, props, key, g, 2.6);
+          break;
+        case 'railN': case 'railS':
+          this.addProp(A.rail, f.x, f.y, fl, props, key, g, 0, false);
+          break;
+        case 'cave':
+          this.addProp(A.cave, f.x, f.y, fl, props, key, g, 0, false);
+          for (const [cx, cy, cr] of [[f.x - 2.6, f.y + 0.9, 1.5], [f.x + 2.6, f.y + 0.9, 1.5], [f.x, f.y + 2.6, 1.6], [f.x - 3.6, f.y + 1.8, 1.2], [f.x + 3.6, f.y + 1.8, 1.2]]) {
+            this.w.addCollider({ kind: 'circle', x: cx, y: cy, r: cr }, ow);
+          }
+          break;
+        case 'templeGate':
+          this.addProp(A.templeGate, f.x, f.y, fl, props, key, g, 0, false);
+          for (const sx of [-2.0, 2.0]) this.w.addCollider({ kind: 'circle', x: f.x + sx, y: f.y + 0.2, r: 0.5 }, ow);
+          this.w.addCollider({ kind: 'seg', ax: f.x - 3, ay: f.y + 1.6, bx: f.x + 3, by: f.y + 1.6, r: 0.3 }, ow);
+          break;
+        case 'pillar':
+          this.addProp(A.pillar, f.x, f.y, fl, props, key, g, 0.9);
+          break;
+        case 'broken':
+          this.addProp(A.broken[(f.v ?? 0) % A.broken.length], f.x, f.y, fl, props, key, g, 0.8);
+          break;
+        case 'ruinWall':
+          this.addProp(A.ruinWall[(f.v ?? 0) % A.ruinWall.length], f.x, f.y, fl, props, key, g, 1.8, false);
+          this.w.addCollider({ kind: 'seg', ax: f.x - 1.85, ay: f.y + 0.2, bx: f.x + 1.85, by: f.y + 0.2, r: 0.3 }, ow);
+          break;
+        case 'mountains':
+          this.addProp(A.mountains[(f.v ?? 0) % A.mountains.length], f.x, f.y, fl, props, key, g, 0, false);
+          break;
+      }
+    }
     for (let k = 0; k < 14; k++) {
       const a = (k / 14) * Math.PI * 2;
       if (Math.abs(Math.cos(a) + 1) < 0.25) continue; // gap facing west: the way in

@@ -7,7 +7,7 @@ import { washPoly, noisyOutline } from '../gfx/wash';
 import { SPRITE_PPU } from '../gfx/gen/flora';
 import { sfx } from '../audio/sfx';
 
-let frames: { life: Frame; ink: Frame } | null = null;
+let frames: { life: Frame; ink: Frame; pigment: Frame } | null = null;
 function getFrames() {
   if (frames) return frames;
   const a = new Painter(0.8, 0.9, SPRITE_PPU, -0.4, -0.2);
@@ -22,11 +22,18 @@ function getFrames() {
   const b = new Painter(0.8, 0.8, SPRITE_PPU, -0.4, -0.2);
   b.glaze();
   washPoly(b, noisyOutline(0, 0.2, 0.15, 0.15, 0.2, 5), { pig: VERMILION, density: 1, soft: 0.05, edge: 0.4, seed: 5 });
-  frames = { life: frameFrom(a), ink: frameFrom(b) };
+  const c = new Painter(0.9, 0.9, SPRITE_PPU, -0.45, -0.25);
+  c.over();
+  const o1 = noisyOutline(-0.06, 0.2, 0.13, 0.13, 0.2, 7), o2 = noisyOutline(0.08, 0.24, 0.11, 0.11, 0.2, 8);
+  c.ctx.fillStyle = 'rgba(51,84,148,1)';
+  c.ctx.beginPath(); o1.forEach((q, i) => (i === 0 ? c.ctx.moveTo(q[0], q[1]) : c.ctx.lineTo(q[0], q[1]))); c.ctx.fill();
+  c.ctx.fillStyle = 'rgba(219,168,51,1)';
+  c.ctx.beginPath(); o2.forEach((q, i) => (i === 0 ? c.ctx.moveTo(q[0], q[1]) : c.ctx.lineTo(q[0], q[1]))); c.ctx.fill();
+  frames = { life: frameFrom(a), ink: frameFrom(b), pigment: frameFrom(c) };
   return frames;
 }
 
-export type PickupKind = 'life' | 'ink';
+export type PickupKind = 'life' | 'ink' | 'pigment';
 
 export class Pickup extends Entity {
   private t = 0;
@@ -41,7 +48,11 @@ export class Pickup extends Entity {
   }
   init(): void {
     const f = getFrames();
-    this.addSprite(new Sprite(this.kind === 'life' ? f.life : f.ink), this.kind === 'ink');
+    if (this.kind === 'pigment') {
+      const s = new Sprite(f.pigment);
+      this.sprites.push(s);
+      this.world.r.sceneAcc.add(s.mesh);
+    } else this.addSprite(new Sprite(this.kind === 'life' ? f.life : f.ink), this.kind === 'ink');
   }
   update(dt: number): void {
     const w: World = this.world;
@@ -58,6 +69,7 @@ export class Pickup extends Entity {
     }
     if (this.t > 0.35 && d < 0.6) {
       if (this.kind === 'life') p.heal(this.amount);
+      else if (this.kind === 'pigment') p.pigment = Math.min(p.pigmentMax, p.pigment + this.amount);
       else p.ink = Math.min(p.inkMax, p.ink + this.amount);
       sfx.charge(this.kind === 'life' ? 1 : 3);
       this.destroy();

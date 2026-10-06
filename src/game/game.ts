@@ -18,6 +18,9 @@ import { InkFx } from './inkfx';
 import { Numbers } from './numbers';
 import { save, xpToNext } from './progression';
 import { INKS } from './inks';
+import { Dialog, Speaker } from '../ui/dialog';
+import { questLine } from './quests';
+import { L, UI } from '../i18n/lore';
 
 const nextFrame = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
 
@@ -28,6 +31,10 @@ export class Game {
   readonly story: Story;
   readonly inkfx: InkFx;
   readonly numbers: Numbers;
+  readonly dialog: Dialog;
+  /** Radius of the child's lamp in dark places. */
+  lampRadius = 6.5;
+  private pigmentHintT = 0;
   room: RoomDef | null = null;
   rooms = new Map<string, RoomDef>();
   flags = new Set<string>();
@@ -55,6 +62,13 @@ export class Game {
     this.hud = new Hud(r);
     this.story = new Story(r);
     this.numbers = new Numbers(r);
+    this.dialog = new Dialog(r, input);
+    this.player.pigment = save.pigment;
+    this.player.onNoPigment = () => {
+      if (this.pigmentHintT > 0) return;
+      this.pigmentHintT = 8;
+      this.hud.showHint(L(UI.pigmentOut), 4);
+    };
     this.world.numbers = this.numbers;
     this.inkfx = new InkFx(this.world);
     this.inkfx.dmgMul = () => this.player.dmgMul;
@@ -103,7 +117,6 @@ export class Game {
     sfx.enso(hits, e.area);
     if (hits) w.addCombo(hits * 2);
     if (e.ink === 'vermilion') for (let i = 0; i < 3; i++) w.vfx.splat(e.cx, e.cy + 0.3, (i / 3) * Math.PI * 2, 8, 1.2, 'red');
-    void INKS;
     if (!this.ensoWord) this.ensoWord = brushText('ensō', { size: 0.9, ppu: 64, italic: true, weight: 700 });
     const s = new Sprite(this.ensoWord);
     s.setPos(e.cx, e.cy + 0.6);
@@ -142,12 +155,16 @@ export class Game {
     this.r.setPalette(PALETTES[def.palette]);
     const washed = this.isRestored(def.area) ? 0 : 1;
     this.washTarget = def.post?.washed ?? washed;
-    Object.assign(this.r.post, { washed: this.washTarget, night: 0, fog: 0.2, fogScale: 0.12, fogDrift: [0.05, 0.02], vignette: 1 }, def.post ?? {});
+    Object.assign(this.r.post, { washed: this.washTarget, night: 0, fog: 0.2, fogScale: 0.12, fogDrift: [0.05, 0.02], vignette: 1, gloom: 0 }, def.post ?? {});
     const [sx, sy] = spawn ?? def.spawn;
     this.player.x = sx;
     this.player.y = sy;
     this.player.vx = 0;
     this.player.vy = 0;
+    // orders given in the previous room mean nothing here
+    this.player.moveTarget = null;
+    this.player.attackTarget = null;
+    this.player.talkTarget = null;
     this.player.lastSafe = [sx, sy];
     w.checkpoint = [sx, sy];
     w.camX = sx;
@@ -163,7 +180,16 @@ export class Game {
     this.onRoomLoaded?.(def);
   }
 
-  async travel(to: string, spawn: V): Promise<void> {
+  /** Open a dialogue; the world holds still until it closes. */
+  talk(speaker: Speaker, pages: string[], onClose?: () => void): void {
+    this.player.attackTarget = null;
+    this.player.moveTarget = null;
+    this.player.vx = 0;
+    this.player.vy = 0;
+    this.dialog.open(speaker, pages, onClose);
+  }
+
+  async travel(to: string, spawn?: V): Promise<void> {
     if (this.loading) return;
     this.loading = true;
     this.fadeTarget = 1;
@@ -171,6 +197,7 @@ export class Game {
     await new Promise((r) => setTimeout(r, 450));
     this.timers = [];
     this.story.clear();
+    this.dialog.close(false);
     await this.loadRoom(to, spawn);
     this.player.locked = false;
     this.fadeTarget = 0;
@@ -206,8 +233,20 @@ export class Game {
       if (wd.t > 1.2) wd.s.dispose();
     }
     this.words = this.words.filter((wd) => wd.t <= 1.2);
+    this.dialog.update(dt);
     if (this.loading) return;
     const w = this.world;
+    this.pigmentHintT -= dt;
+    save.pigment = this.player.pigment;
+    this.r.post.lamp = [this.player.x, this.player.y + 0.5, this.lampRadius];
+    this.hud.setQuest(...questLine());
+    this.hud.backdrop = this.story.backdrop = Math.min(1, this.r.post.gloom * 1.5);
+    if (this.dialog.active) {
+      // the world holds its breath while someone speaks
+      w.updateCamera(dt);
+      this.hud.update(dt);
+      return;
+    }
     w.update(dt);
     this.inkfx.update(dt * w.timeScale);
     this.numbers.update(dt);
@@ -217,7 +256,7 @@ export class Game {
     this.hud.setInks(save.inks, save.ink);
     // ink pots are touch/click targets
     this.input.uiRegions = this.hud.potRegions.map((p) => ({ x: p.x, y: p.y, r: p.r, fn: () => this.player.selectInk(p.id) }));
-    this.hud.setInk(this.player.inkFrac);
+    this.hud.setInk(INKS[save.ink].runs ? this.player.inkFrac : this.player.pigmentFrac);
     this.hud.setCombo(w.combo, Math.max(0, w.comboT / 2.4));
     this.hud.update(dt);
     if (this.room?.exits && this.player.state !== 'dead') {

@@ -23,6 +23,10 @@ export interface PostParams {
   wobble: number;
   fade: number;
   flash: number;
+  /** Dungeon darkness outside the child's lamp and other lights (0..1). */
+  gloom: number;
+  /** The child's lamp: world x, y and radius. */
+  lamp: [number, number, number];
 }
 
 /**
@@ -39,6 +43,8 @@ export class Renderer {
   /** Coloured inks (gouache): real RGB, premultiplied. */
   readonly sceneAcc = new THREE.Scene();
   readonly uiAcc = new THREE.Scene();
+  /** Invisible UI shapes that keep darkness off the HUD (written to the red buffer's alpha only). */
+  readonly uiMask = new THREE.Scene();
   readonly camera: THREE.OrthographicCamera;
   readonly uiCamera: THREE.OrthographicCamera;
   /** World units visible vertically (grows in portrait so enough width stays visible). */
@@ -64,6 +70,7 @@ export class Renderer {
   boilEnabled = true;
   readonly post: PostParams = {
     washed: 0, night: 0, fog: 0.25, fogScale: 0.12, fogDrift: [0.05, 0.02], vignette: 1, wobble: 1.6, fade: 0, flash: 0,
+    gloom: 0, lamp: [0, 0, 6],
   };
 
   constructor(readonly canvas: HTMLCanvasElement) {
@@ -118,6 +125,8 @@ export class Renderer {
         vignette: { value: 1 },
         fade: { value: 0 },
         flash: { value: 0 },
+        gloom: { value: 0 },
+        lamp: { value: new THREE.Vector3(0, 0, 6) },
       },
     });
     this.quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.composite);
@@ -198,7 +207,13 @@ export class Renderer {
     gl.render(this.uiPig, this.uiCamera);
     gl.setRenderTarget(this.rtRed);
     gl.clear(true, false, false);
+    // the red buffer's alpha is reserved for the UI mask: the world writes colour only
+    const ctx = gl.getContext();
+    ctx.colorMask(true, true, true, false);
     gl.render(this.sceneRed, cam);
+    ctx.colorMask(false, false, false, true);
+    gl.render(this.uiMask, this.uiCamera);
+    ctx.colorMask(true, true, true, true);
     gl.render(this.uiRed, this.uiCamera);
     gl.setRenderTarget(this.rtAcc);
     gl.clear(true, false, false);
@@ -220,6 +235,8 @@ export class Renderer {
     u.vignette.value = p.vignette;
     u.fade.value = p.fade;
     u.flash.value = p.flash;
+    u.gloom.value = p.gloom;
+    u.lamp.value.set(p.lamp[0], p.lamp[1], p.lamp[2]);
     gl.setRenderTarget(null);
     gl.clear(true, false, false);
     gl.render(this.quadScene, this.quadCam);

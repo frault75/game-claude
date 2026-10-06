@@ -2,6 +2,8 @@
 import { drawTree, drawBamboo, TreeSpecies } from '../gfx/gen/flora';
 import { drawRock } from '../gfx/gen/stone';
 import { drawStoneLamp, drawHut, drawPost } from '../gfx/gen/props';
+import { drawHouse, drawStall, drawWell, drawFence, drawGate, drawRailing, drawCaveMouth, drawTempleGate, drawPillar, drawRuinWall, drawMountains, drawTorch, drawBrambles } from '../gfx/gen/town';
+import { BRIDGE } from './layout';
 import { Frame, frameFrom } from '../gfx/sprite';
 import { Painter } from '../gfx/paint';
 
@@ -22,6 +24,25 @@ export interface ArtCache {
   lamp: PropArt[];
   hut: PropArt[];
   post: PropArt[];
+  house: PropArt[];
+  stall: Record<'dyer' | 'food' | 'pots', PropArt>;
+  well: PropArt;
+  fence: PropArt;
+  gate: PropArt;
+  rail: PropArt;
+  cave: PropArt;
+  templeGate: PropArt;
+  pillar: PropArt;
+  broken: PropArt[];
+  ruinWall: PropArt[];
+  mountains: PropArt[];
+  bigWillow: PropArt;
+  torch: PropArt;
+  brambles: PropArt;
+}
+
+function art(a: { pig: Painter; red?: Painter }, radius = 0): PropArt {
+  return { pig: frameFrom(a.pig), red: a.red ? frameFrom(a.red) : undefined, radius };
 }
 
 const nextFrame = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
@@ -33,7 +54,7 @@ function tree(seed: number, sp: TreeSpecies, scale = 1): PropArt {
 
 export async function buildArtCache(mobile: boolean, progress: (t: number) => void): Promise<ArtCache> {
   const n = mobile ? 0.6 : 1;
-  const c: ArtCache = { plum: [], willow: [], pine: [], bamboo: [], rock: [], bigRock: [], lamp: [], hut: [], post: [] };
+  const c = { plum: [], willow: [], pine: [], bamboo: [], rock: [], bigRock: [], lamp: [], hut: [], post: [], house: [], broken: [], ruinWall: [], mountains: [], stall: {} } as unknown as ArtCache;
   const jobs: (() => void)[] = [];
   for (let i = 0; i < Math.round(6 * n); i++) jobs.push(() => c.plum.push(tree(7100 + i, 'plum', 0.9 + (i % 3) * 0.12)));
   for (let i = 0; i < Math.round(3 * n); i++) jobs.push(() => c.willow.push(tree(7200 + i, 'willow')));
@@ -55,6 +76,34 @@ export async function buildArtCache(mobile: boolean, progress: (t: number) => vo
   jobs.push(() => {
     const a = drawPost(7900, 1.6, false);
     c.post.push({ pig: frameFrom(a.pig), radius: 0.22 });
+  });
+  for (let i = 0; i < 3; i++) jobs.push(() => c.house.push(art(drawHouse(7950 + i, [1, 0.85, 1.15][i]))));
+  jobs.push(() => {
+    c.stall.dyer = art(drawStall(8001, 'dyer'));
+    c.stall.food = art(drawStall(8002, 'food'));
+    c.stall.pots = art(drawStall(8003, 'pots'));
+  });
+  jobs.push(() => {
+    c.well = art(drawWell(8010));
+    c.fence = art(drawFence(8011, 3));
+    c.gate = art(drawGate(8012, mobile ? 'Saules' : 'Hameau des Saules'));
+  });
+  jobs.push(() => {
+    c.rail = art(drawRailing(8020, BRIDGE.x1 - BRIDGE.x0));
+    c.cave = art(drawCaveMouth(8021));
+    c.templeGate = art(drawTempleGate(8022));
+  });
+  jobs.push(() => {
+    c.pillar = art(drawPillar(8030, false), 0.45);
+    for (let i = 0; i < 5; i++) c.broken.push(art(drawPillar(8031 + i, true), 0.45));
+    for (let i = 0; i < 2; i++) c.ruinWall.push(art(drawRuinWall(8040 + i)));
+  });
+  for (let i = 0; i < 3; i++) jobs.push(() => c.mountains.push(art(drawMountains(8050 + i))));
+  jobs.push(() => {
+    const t = drawTree(8060, 'willow', 1.45);
+    c.bigWillow = { pig: frameFrom(t.painter), radius: t.trunkRadius, crown: t.crown };
+    c.torch = art(drawTorch(8061), 0.25);
+    c.brambles = art(drawBrambles(8062));
   });
   for (let i = 0; i < jobs.length; i++) {
     jobs[i]();

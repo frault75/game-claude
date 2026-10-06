@@ -130,6 +130,16 @@ export function pond(p: Painter, cx: number, cy: number, rx: number, ry: number,
   return o;
 }
 
+/** Still water in a hollow: a wash, a darker rim, two ripples (no reeds). */
+export function puddle(p: Painter, x: number, y: number, rx: number, ry: number, seed: number): void {
+  const r = new Rng(seed);
+  washPoly(p, noisyOutline(x, y, rx, ry, 0.2, seed), { pig: mixPig(INK, PIG_A, 0.3), density: 0.16, soft: 0.15, edge: 0.8, seed });
+  for (let i = 0; i < 2; i++) {
+    const px = x + r.gauss() * rx * 0.3, py = y + r.gauss() * ry * 0.3, l = rx * r.range(0.4, 0.8);
+    stroke(p, [[px - l / 2, py], [px, py + 0.02], [px + l / 2, py]], { width: 0.03, load: 0.4, dry: 0.6, seed: seed + i, body: 0.2, taperStart: 0.3, taperEnd: 0.4, press: 0 });
+  }
+}
+
 /** Soft contact shadow under upright objects. */
 export function shadow(p: Painter, x: number, y: number, rx: number, ry: number, density = 0.22): void {
   washBlob(p, x, y, rx, ry, { pig: INK, density, soft: 0.95, rough: 0.15, seed: Math.round(x * 31 + y * 17) });

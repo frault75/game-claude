@@ -18,6 +18,7 @@ export interface Hazard {
 export interface Bounds { x: number; y: number; w: number; h: number }
 
 const CELL = 4;
+const NEIGH4: [number, number][] = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const ck = (ix: number, iy: number) => ix * 100003 + iy;
 
 export class World {
@@ -197,10 +198,83 @@ export class World {
     return false;
   }
 
-  /** Does a straight line cross a blocking wall? */
+  /** Walkable grid of a dungeon (1 = floor, cell = 1 unit) and the distance field to the child. */
+  nav: { w: number; h: number; grid: Uint8Array; dist: Int16Array; t: number } | null = null;
+
+  private walkable(x: number, y: number): boolean {
+    const n = this.nav!;
+    const ix = Math.floor(x), iy = Math.floor(y);
+    return ix >= 0 && iy >= 0 && ix < n.w && iy < n.h && n.grid[iy * n.w + ix] === 1;
+  }
+
+  /** Does a straight line cross a wall? (dungeons only) */
   lineBlocked(ax: number, ay: number, bx: number, by: number): boolean {
-    void ax; void ay; void bx; void by;
+    if (!this.nav) return false;
+    const d = Math.hypot(bx - ax, by - ay);
+    const n = Math.ceil(d / 0.4);
+    for (let i = 1; i < n; i++) {
+      const t = i / n;
+      if (!this.walkable(ax + (bx - ax) * t, ay + (by - ay) * t)) return true;
+    }
     return false;
+  }
+
+  /** Breadth-first distances from the child, a few times a second. */
+  private updateNav(dt: number): void {
+    const n = this.nav;
+    if (!n) return;
+    n.t -= dt;
+    if (n.t > 0) return;
+    n.t = 0.25;
+    n.dist.fill(-1);
+    const sx = Math.floor(this.player.x), sy = Math.floor(this.player.y);
+    if (sx < 0 || sy < 0 || sx >= n.w || sy >= n.h) return;
+    const q = new Int32Array(n.w * n.h);
+    let head = 0, tail = 0;
+    q[tail++] = sy * n.w + sx;
+    n.dist[sy * n.w + sx] = 0;
+    while (head < tail) {
+      const c = q[head++];
+      const cd = n.dist[c];
+      if (cd > 40) continue;
+      const cx: number = c % n.w, cy: number = (c - cx) / n.w;
+      for (const [ox, oy] of NEIGH4) {
+        const x: number = cx + ox, y: number = cy + oy;
+        if (x < 0 || y < 0 || x >= n.w || y >= n.h) continue;
+        const k = y * n.w + x;
+        if (n.grid[k] !== 1 || n.dist[k] >= 0) continue;
+        n.dist[k] = cd + 1;
+        q[tail++] = k;
+      }
+    }
+  }
+
+  /**
+   * Which way to go to reach (tx, ty): straight when nothing is in between,
+   * otherwise down the distance field. Returns a vector whose length is the remaining path length.
+   */
+  steer(x: number, y: number, tx: number, ty: number): [number, number] {
+    const dx = tx - x, dy = ty - y;
+    if (!this.nav || !this.lineBlocked(x, y, tx, ty)) return [dx, dy];
+    const n = this.nav;
+    const ix = Math.floor(x), iy = Math.floor(y);
+    let best = -1, bx = 0, by = 0;
+    for (let oy = -1; oy <= 1; oy++) {
+      for (let ox = -1; ox <= 1; ox++) {
+        if (!ox && !oy) continue;
+        const cx = ix + ox, cy = iy + oy;
+        if (cx < 0 || cy < 0 || cx >= n.w || cy >= n.h) continue;
+        const d = n.dist[cy * n.w + cx];
+        if (d < 0) continue;
+        // no corner cutting
+        if (ox && oy && (n.grid[iy * n.w + cx] !== 1 || n.grid[cy * n.w + ix] !== 1)) continue;
+        if (best < 0 || d < best) { best = d; bx = cx + 0.5; by = cy + 0.5; }
+      }
+    }
+    if (best < 0) return [dx, dy];
+    const l = Math.hypot(bx - x, by - y) || 1;
+    const k = (best + 1) / l;
+    return [(bx - x) * k, (by - y) * k];
   }
 
   update(rawDt: number): void {
@@ -234,6 +308,7 @@ export class World {
       e.update(dt);
     }
     for (const s of this.scripts) s(dt);
+    this.updateNav(dt);
     this.strokes.update(dt);
     this.tele.update(dt);
     this.vfx.update(dt);
@@ -292,6 +367,7 @@ export class World {
     this.colliders = [];
     this.hazards = [];
     this.scripts = [];
+    this.nav = null;
     this.tele.clear();
     this.vfx.clear();
     this.wind = [0, 0];

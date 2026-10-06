@@ -19,7 +19,8 @@ export interface Exit {
   w: number;
   h: number;
   to: string;
-  spawn: V;
+  /** Where to appear in the next room (its own spawn point if omitted). */
+  spawn?: V;
   /** Closed exits do nothing (e.g. until the guardian is restored). */
   open?: () => boolean;
 }
