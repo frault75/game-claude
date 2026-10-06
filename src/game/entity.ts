@@ -7,7 +7,7 @@ export interface HitInfo {
   dmg: number;
   fromX: number;
   fromY: number;
-  kind: 'brush' | 'cut' | 'enso' | 'ink' | 'fire' | 'lantern' | 'crash' | 'reflect';
+  kind: 'brush' | 'cut' | 'enso' | 'ink' | 'fire' | 'lantern' | 'crash' | 'reflect' | 'whirl';
   /** A critical blow (shown bigger). */
   crit?: boolean;
 }

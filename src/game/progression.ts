@@ -39,6 +39,8 @@ export interface Save {
   quests: Record<string, { s: number; n: number; c?: string; done?: boolean; seen?: number[] }>;
   /** Lasting gifts from quests (life, pigment, skill points, the shrines' blessing…). */
   perks: Record<string, number>;
+  /** Chests already opened. */
+  chests: number[];
 }
 
 export const BAG_SIZE = 16;
@@ -48,7 +50,7 @@ const fresh = (): Save => ({
   main: 0, steles: [], brambles: false, madder: false, pip: 0, pigment: 0,
   bag: [], equip: {}, newItems: false,
   skills: {}, slots: [null, null, null],
-  bestiary: [], regions: [], fog: {}, quests: {}, perks: {},
+  bestiary: [], regions: [], fog: {}, quests: {}, perks: {}, chests: [],
 });
 
 let gearCache: Record<Stat, number> | null = null;

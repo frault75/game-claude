@@ -1,8 +1,8 @@
 /** Small 2D collision helpers: circles against static circles and segments. */
 export type V = [number, number];
 
-export interface CircleCol { kind: 'circle'; x: number; y: number; r: number; blocksThread?: boolean }
-export interface SegCol { kind: 'seg'; ax: number; ay: number; bx: number; by: number; r: number; blocksThread?: boolean }
+export interface CircleCol { kind: 'circle'; x: number; y: number; r: number; blocksThread?: boolean; /** 'thorn': mist passes through. */ tag?: string }
+export interface SegCol { kind: 'seg'; ax: number; ay: number; bx: number; by: number; r: number; blocksThread?: boolean; tag?: string }
 export type Collider = CircleCol | SegCol;
 
 export function closestOnSeg(px: number, py: number, ax: number, ay: number, bx: number, by: number): [number, number, number] {

@@ -3,6 +3,7 @@
  * the Plum Plain with its camps and shrines, the Ram King's stone circle, the ways down into the cave and the temple.
  */
 import type { RoomDef } from '../room';
+import { buildSecrets, pondColliders } from '../secrets';
 import { NPC_NAMES } from '../sidequests';
 import type { Choice } from '../../ui/dialog';
 import { owMapSource } from '../../world/owMap';
@@ -187,13 +188,7 @@ export const overworld: RoomDef = {
     g.after(0, () => chunks.buildAround(w.player.x, w.player.y, r.viewW / 2 + 2, r.viewH / 2 + 2));
 
     // ---------- water and walls ----------
-    PONDS.forEach((p, i) => {
-      const n = Math.max(2, Math.round(p.rx / p.ry * 1.5));
-      for (let k = 0; k < n; k++) {
-        const tt = n === 1 ? 0 : k / (n - 1) - 0.5;
-        w.addCollider({ kind: 'circle', x: p.x + tt * (p.rx * 1.3), y: p.y, r: p.ry * 0.85 }, 'pond' + i);
-      }
-    });
+    PONDS.forEach((_p, i) => pondColliders(w, i));
     // the river's banks, open only where the bridge crosses
     const deckLo = BRIDGE.y - BRIDGE.half - 0.15, deckHi = BRIDGE.y + BRIDGE.half + 0.15;
     for (const side of [1, -1]) {
@@ -230,6 +225,9 @@ export const overworld: RoomDef = {
         if (save.main >= STEP.indigoBack) setMain(g, STEP.plain);
       };
     }
+
+    // ---------- secrets: chests, glades, frozen islets ----------
+    buildSecrets(g, (e) => b.add(e), A);
 
     // ---------- shrines ----------
     for (const s of SHRINES) {
@@ -544,9 +542,13 @@ export const overworld: RoomDef = {
         if (firstTime) void g.story.show([R.name[lang]], { size: 46, y: r.uiH / 2 - 120, hold: 1.4, italic: false });
         // the first walk through a region tells a little of its story (kept in the journal)
         if (!save.regions.includes(reg) && REGION_LORE[reg]) {
-          save.regions.push(reg);
-          writeSave();
-          g.after(firstTime ? 2.4 : 4, () => void g.story.show([L(REGION_LORE[reg])], { size: 30, y: r.uiH / 2 - 170, hold: 4.5 }));
+          g.after(firstTime ? 2.4 : 4, () => {
+            // only if the child is still there (a quick crossing tells it next time)
+            if (regionAt(w.player.x, w.player.y) !== reg || save.regions.includes(reg)) return;
+            save.regions.push(reg);
+            writeSave();
+            void g.story.show([L(REGION_LORE[reg])], { size: 30, y: r.uiH / 2 - 170, hold: 4.5 });
+          });
         }
         music.play(R.music);
         storm.lightning = reg === 'arena';

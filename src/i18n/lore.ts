@@ -233,6 +233,18 @@ export const STELES: Tr[] = [
     fr: 'Carnet du maître, VIII.\nSi tu lis ceci, petit trait, ne cherche pas à me sauver. Cherche les couleurs. Le reste suivra.',
     en: 'The master’s notebook, VIII.\nIf you read this, little stroke, do not try to save me. Look for the colours. The rest will follow.',
   },
+  {
+    fr: 'Carnet du maître, IX (page cachée).\nAvant les couleurs, il y avait une cinquième encre. Je ne l’ai jamais broyée. Elle se broyait toute seule, la nuit, dans le fond de l’encrier.',
+    en: 'The master’s notebook, IX (hidden page).\nBefore the colours there was a fifth ink. I never ground it. It ground itself, at night, at the bottom of the inkwell.',
+  },
+  {
+    fr: 'Carnet du maître, X (page cachée).\nKaze avait raison sur un point : j’ai peur de finir. Un tableau fini ne bouge plus. Alors j’ai laissé un trait ouvert, quelque part.',
+    en: 'The master’s notebook, X (hidden page).\nKaze was right about one thing: I am afraid of finishing. A finished painting no longer moves. So I left one stroke open, somewhere.',
+  },
+  {
+    fr: 'Carnet du maître, XI (page cachée).\nAu-delà des rizières, il y a une montagne que je n’ai jamais peinte. Les nuages s’y posent comme des oiseaux fatigués. C’est là que l’encre dort.',
+    en: 'The master’s notebook, XI (hidden page).\nBeyond the rice terraces there is a mountain I never painted. Clouds settle on it like tired birds. That is where the ink sleeps.',
+  },
 ];
 
 /** Murals inside the dungeons. */

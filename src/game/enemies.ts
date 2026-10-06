@@ -134,7 +134,7 @@ export class Creature extends Entity {
     this.aggro = true;
     const dx = this.x - h.fromX, dy = this.y - h.fromY;
     const l = Math.hypot(dx, dy) || 1;
-    const kb = (h.kind === 'enso' ? 12 : 8) * this.knockback * (this.frozen > 0 ? 0.2 : 1);
+    const kb = (h.kind === 'enso' || h.kind === 'whirl' ? 12 : 8) * this.knockback * (this.frozen > 0 ? 0.2 : 1);
     this.kx = (dx / l) * kb;
     this.ky = (dy / l) * kb;
     sfx.hit();
