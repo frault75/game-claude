@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vermillon</title>
+    <link rel="icon" href="data:," />
+    <style>
+      html, body { margin: 0; height: 100%; overflow: hidden; background: #eee5cf; }
+      canvas#game { display: block; position: fixed; inset: 0; cursor: crosshair; }
+      #loading {
+        position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column;
+        font: italic 22px "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif; color: #2a2420;
+        background: #eee5cf; transition: opacity 0.8s; z-index: 5;
+      }
+      #loading .bar { width: 220px; height: 2px; background: rgba(42,36,32,0.15); margin-top: 18px; }
+      #loading .bar i { display: block; height: 100%; width: 0; background: #2a2420; transition: width 0.2s; }
+    </style>
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+    <div id="loading"><span id="loading-text">…</span><div class="bar"><i id="loading-bar"></i></div></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
