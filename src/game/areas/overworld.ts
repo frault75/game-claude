@@ -7,6 +7,7 @@ import type { Game } from '../game';
 import type { World } from '../world';
 import { Entity } from '../entity';
 import { Creature, Blot, Mite, Wisp, Splitter, Brute, Totem } from '../enemies';
+import { Crow, Scarecrow, Boar, SmokeFox, Bat, Grub, ClaySoldier, Lantern } from '../beasts';
 import { RamKing } from '../bosses/ramKing';
 import { Pickup } from '../pickups';
 import { Storm } from '../weather';
@@ -31,7 +32,7 @@ import { save, writeSave } from '../progression';
 import { Npc, Stele } from '../npc';
 import { Brambles } from '../brambles';
 import { STEP, setMain } from '../quests';
-import { giveXp, onKill, hasColour } from '../rewards';
+import { giveXp, onKill, hasColour, discover } from '../rewards';
 import { dropLoot } from '../loot';
 
 let stamps: StampSet | null = null;
@@ -63,6 +64,14 @@ export function makeEnemy(kind: EnemyKind, x: number, y: number): Creature {
     case 'splitter': return new Splitter(x, y);
     case 'brute': return new Brute(x, y);
     case 'totem': return new Totem(x, y);
+    case 'crow': return new Crow(x, y);
+    case 'scarecrow': return new Scarecrow(x, y);
+    case 'boar': return new Boar(x, y);
+    case 'fox': return new SmokeFox(x, y);
+    case 'bat': return new Bat(x, y);
+    case 'grub': return new Grub(x, y);
+    case 'soldier': return new ClaySoldier(x, y);
+    case 'lantern': return new Lantern(x, y);
   }
 }
 
@@ -362,7 +371,7 @@ export const overworld: RoomDef = {
             const bonus = 15 * c.def.tier;
             g.hud.showHint(`${t('campCleared')}  +${bonus}`, 2.5);
             giveXp(g, bonus);
-            if (Math.random() < 0.35) dropLoot(g, c.def.x, c.def.y, 'normal', c.def.tier * 2);
+            if (Math.random() < 0.3) dropLoot(g, c.def.x, c.def.y, 'normal', c.def.tier * 2);
             sfx.wave();
             w.vfx.ripple(c.def.x, c.def.y, 3);
             if (save.main === STEP.orchard && ORCHARD_CAMPS.every((id) => save.camps.includes(id))) g.after(2.6, () => setMain(g, STEP.orchardBack));
@@ -391,6 +400,7 @@ export const overworld: RoomDef = {
         g.hud.hideBoss();
         save.bosses.push('ramking');
         writeSave();
+        discover(g, 'ram king');
         giveXp(g, 300);
         for (let i = 0; i < 4; i++) b.add(new Pickup(boss!.x, boss!.y, i % 2 ? 'ink' : 'life', i % 2 ? 10 : 2));
         if (hasColour()) b.add(new Pickup(boss!.x, boss!.y, 'pigment', 8));
@@ -467,6 +477,17 @@ export const overworld: RoomDef = {
         return next ? [next.x, next.y] : [ARENA.x, ARENA.y];
       }
       if (m === STEP.findTemple || m === STEP.templeDeep) return [TEMPLE.x, TEMPLE.y - 1];
+      if (m >= STEP.end) {
+        // between acts: the nearest camp still in ink
+        const p = w.player;
+        let best: [number, number] | null = null, bd = Infinity;
+        for (const c of CAMPS) {
+          if (save.camps.includes(c.id)) continue;
+          const d = Math.hypot(c.x - p.x, c.y - p.y);
+          if (d < bd) { bd = d; best = [c.x, c.y]; }
+        }
+        return best;
+      }
       return null;
     };
     w.scripts.push((dt) => {

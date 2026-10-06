@@ -98,8 +98,16 @@ export const WILLOW: Record<number, TrList> = {
     ],
   },
   11: {
-    fr: ['Les Rizières t’attendent, au-delà de la plaine. Le chemin s’ouvrira bientôt.'],
-    en: ['The Rice Terraces await you, beyond the plain. The way will open soon.'],
+    fr: [
+      'Les Rizières sont au-delà des montagnes de l’est. Le col est encore pris dans l’encre : il s’ouvrira bientôt (Acte II).',
+      'En attendant, le monde a besoin de toi : purifie les derniers camps, et écris chaque page du bestiaire.',
+      'Les stèles du maître ne sont pas toutes lues, non plus. Ton carnet le dira.',
+    ],
+    en: [
+      'The Rice Terraces lie beyond the eastern mountains. The pass is still caught in ink: it will open soon (Act II).',
+      'Until then, the world needs you: cleanse the last camps, and write every page of the bestiary.',
+      'Not all of the master’s steles have been read, either. Your notebook will tell.',
+    ],
   },
 };
 
@@ -265,7 +273,7 @@ export const MAIN: QuestStep[] = [
   { title: { fr: 'Le Temple englouti', en: 'The Sunken Temple' }, goal: { fr: 'Entre dans le temple, au sud de la plaine', en: 'Enter the temple, south of the plain' } },
   { title: { fr: 'Le Temple englouti', en: 'The Sunken Temple' }, goal: { fr: 'Trouve l’or au cœur du temple', en: 'Find the gold at the heart of the temple' } },
   { title: { fr: 'Le Temple englouti', en: 'The Sunken Temple' }, goal: { fr: 'Rapporte l’or à l’Aïeule Saule', en: 'Bring the gold to Grandmother Willow' } },
-  { title: { fr: 'Fin de l’Acte I', en: 'End of Act I' }, goal: { fr: 'Les Rizières t’attendent (prochaine étape)', en: 'The Rice Terraces await (next update)' } },
+  { title: { fr: 'Fin de l’Acte I · l’Acte II arrive', en: 'End of Act I · Act II is coming' }, goal: { fr: 'Purifie les camps et complète le bestiaire', en: 'Cleanse the camps and fill the bestiary' } },
 ];
 
 export const UI = {
@@ -284,6 +292,8 @@ export const UI = {
   bossWarden: { fr: 'Le Gardien noyé', en: 'The Drowned Warden' },
   wardenDown: { fr: 'Le Gardien s’incline. Derrière lui, l’or.', en: 'The Warden bows. Behind him, the gold.' },
   wardenHint: { fr: 'Sa pierre est trop dure… Fige-le à l’indigo !', en: 'His stone is too hard… Freeze him with indigo!' },
+  urnHint: { fr: 'Plus de pigment ? Brise les urnes d’argile aux coins de la salle.', en: 'Out of pigment? Break the clay urns in the corners of the hall.' },
+  indigoHint: { fr: 'Prends l’indigo (2, ou touche la goutte bleue) pour le figer.', en: 'Take the indigo (2, or tap the blue drop) to freeze him.' },
   rift: { fr: 'Une déchirure dans le papier : elle ramène à la surface.', en: 'A tear in the paper: it leads back to the surface.' },
   enterCave: { fr: 'La Grotte aux lucioles', en: 'The Firefly Cave' },
   enterTemple: { fr: 'Le Temple englouti', en: 'The Sunken Temple' },
@@ -291,4 +301,171 @@ export const UI = {
   noLantern: { fr: 'Il fait noir comme dans un encrier. Sans lanterne, impossible d’avancer.', en: 'It is dark as the inside of an inkwell. Without a lantern, there is no going on.' },
   steleRead: { fr: 'Page du carnet', en: 'Notebook page' },
   pigmentFull: { fr: 'Pigment restauré', en: 'Pigment restored' },
+};
+
+export interface BeastLore { name: Tr; where: Tr; text: Tr }
+
+/** The bestiary: one page per creature, written when the first one falls. */
+export const BESTIARY: Record<string, BeastLore> = {
+  blot: {
+    name: { fr: 'Tache', en: 'Blot' }, where: { fr: 'Partout où l’encre a coulé', en: 'Wherever ink has run' },
+    text: {
+      fr: 'La première rature du maître. Une goutte trop lourde qui a appris à ramper, et qui se ramasse avant de bondir vers tout ce qui brille encore.',
+      en: 'The master’s first crossing-out. A drop too heavy that learnt to crawl, and gathers itself before it leaps at whatever still shines.',
+    },
+  },
+  mite: {
+    name: { fr: 'Moucheron d’encre', en: 'Ink Mite' }, where: { fr: 'Le verger, la grotte', en: 'The orchard, the cave' },
+    text: {
+      fr: 'Des éclaboussures si petites qu’elles ont oublié d’où elles tombaient. Elles volent en essaim et piquent comme une plume trop sèche.',
+      en: 'Splashes so small they forgot where they fell from. They fly in swarms and sting like a pen gone dry.',
+    },
+  },
+  wisp: {
+    name: { fr: 'Feu follet', en: 'Wisp' }, where: { fr: 'Les lieux humides', en: 'Damp places' },
+    text: {
+      fr: 'Une fumée d’encre qui garde un œil de papier. On dit que ce sont les brouillons que le maître a brûlés ; ils crachent ce qui leur reste.',
+      en: 'A smoke of ink that keeps one paper eye. They say these are the drafts the master burnt; they spit out what is left of them.',
+    },
+  },
+  brute: {
+    name: { fr: 'Bélier', en: 'Ram' }, where: { fr: 'La Plaine des pruniers', en: 'The Plum Plain' },
+    text: {
+      fr: 'Le maître dessinait les béliers d’un seul trait, le front d’abord. Ceux-ci n’ont gardé que le front : de face, rien ne passe.',
+      en: 'The master drew rams in a single stroke, forehead first. These kept only the forehead: from the front, nothing gets through.',
+    },
+  },
+  splitter: {
+    name: { fr: 'Tache-mère', en: 'Mother-blot' }, where: { fr: 'Là où l’encre s’accumule', en: 'Where ink pools' },
+    text: {
+      fr: 'Trop d’encre au même endroit. Quand on la crève, elle se répand en trois petites taches affamées.',
+      en: 'Too much ink in one place. Burst it and it spills into three small, hungry blots.',
+    },
+  },
+  totem: {
+    name: { fr: 'Puits d’encre', en: 'Ink Well' }, where: { fr: 'Au cœur des camps', en: 'At the heart of camps' },
+    text: {
+      fr: 'Un encrier fêlé tombé de l’orage. Tant qu’il n’est pas brisé, il continue d’écrire des taches.',
+      en: 'A cracked inkwell fallen from the storm. Until it is broken, it keeps writing blots.',
+    },
+  },
+  crow: {
+    name: { fr: 'Corbeau d’encre', en: 'Ink Crow' }, where: { fr: 'Le Verger', en: 'The Orchard' },
+    text: {
+      fr: 'Les corbeaux du verger ont bu la pluie noire. Ils tournent au-dessus des pruniers et fondent sur ce qui bouge. Leur piqué se lit d’avance : un trait sur le sol.',
+      en: 'The orchard crows drank the black rain. They wheel over the plum trees and drop on anything that moves. Their dive can be read ahead: a stroke on the ground.',
+    },
+  },
+  scarecrow: {
+    name: { fr: 'Épouvantail', en: 'Scarecrow' }, where: { fr: 'Les champs du Verger', en: 'The orchard fields' },
+    text: {
+      fr: 'Il gardait les pruniers du vieux Tilleul. L’orage lui a donné des bras qui tournent, et une voix que les corbeaux écoutent. Tant qu’il tient debout, ils reviennent.',
+      en: 'It guarded Old Linden’s plum trees. The storm gave it arms that spin, and a voice the crows obey. As long as it stands, they keep coming.',
+    },
+  },
+  boar: {
+    name: { fr: 'Sanglier d’encre', en: 'Ink Boar' }, where: { fr: 'La Plaine des pruniers', en: 'The Plum Plain' },
+    text: {
+      fr: 'Il fonce, il rate, il refonce. Un trait lourd qui ne sait pas finir proprement. Contre une pierre, il reste sonné : c’est le moment.',
+      en: 'It charges, misses, charges again. A heavy stroke that never ends cleanly. Against a stone it stays dazed: that is the moment.',
+    },
+  },
+  fox: {
+    name: { fr: 'Renard-fumée', en: 'Smoke Fox' }, where: { fr: 'La Plaine des pruniers', en: 'The Plum Plain' },
+    text: {
+      fr: 'Un renard peint à l’encre trop diluée. Il passe à travers sa propre forme et réapparaît là où l’on ne regarde pas. Quand il disparaît, retourne-toi.',
+      en: 'A fox painted with ink too watered down. It slips through its own shape and reappears where you are not looking. When it vanishes, turn around.',
+    },
+  },
+  bat: {
+    name: { fr: 'Chauve-souris d’encre', en: 'Ink Bat' }, where: { fr: 'La Grotte aux lucioles', en: 'The Firefly Cave' },
+    text: {
+      fr: 'Elles dormaient dans les fissures, entre les lucioles. Maintenant, elles chassent les lucioles. Une boucle les attrape toutes d’un coup.',
+      en: 'They slept in the cracks, among the fireflies. Now they hunt the fireflies. One loop catches them all at once.',
+    },
+  },
+  grub: {
+    name: { fr: 'Larve', en: 'Grub' }, where: { fr: 'La Grotte aux lucioles', en: 'The Firefly Cave' },
+    text: {
+      fr: 'Elle creuse sous les pieds, en silence. Le sol se ride juste avant qu’elle ne morde. Sous terre, rien ne l’atteint ; dehors, elle est molle.',
+      en: 'It digs under your feet, in silence. The ground ripples just before it bites. Underground nothing reaches it; outside, it is soft.',
+    },
+  },
+  soldier: {
+    name: { fr: 'Soldat d’argile', en: 'Clay Soldier' }, where: { fr: 'Le Temple englouti', en: 'The Sunken Temple' },
+    text: {
+      fr: 'Les prêtres de l’or modelaient des gardiens d’argile. L’eau du temple les a réveillés. Leur bouclier se moque du pinceau — mais pas du gel, ni d’un coup dans le dos.',
+      en: 'The priests of gold shaped guardians of clay. The temple’s water woke them. Their shield laughs at the brush — but not at frost, nor at a blow from behind.',
+    },
+  },
+  lantern: {
+    name: { fr: 'Lanterne errante', en: 'Wandering Lantern' }, where: { fr: 'Le Temple englouti', en: 'The Sunken Temple' },
+    text: {
+      fr: 'On les allumait pour guider les morts sur l’eau. Celles-ci ont perdu leur chemin. Quand elles s’embrasent, éloigne-toi : elles brûlent tout autour.',
+      en: 'They were lit to guide the dead across the water. These have lost their way. When they flare up, step back: they burn everything around.',
+    },
+  },
+  mother: {
+    name: { fr: 'La Mère des Taches', en: 'The Mother of Blots' }, where: { fr: 'Au fond de la grotte', en: 'Deep in the cave' },
+    text: {
+      fr: 'Elle est née de la première goutte d’orage tombée dans la grotte, et elle a avalé l’indigo pour ne plus jamais avoir froid. Elle plonge dans sa propre flaque et ressort sous tes pieds.',
+      en: 'She was born of the first storm drop that fell into the cave, and swallowed the indigo so she would never be cold again. She dives into her own pool and comes up under your feet.',
+    },
+  },
+  'ram king': {
+    name: { fr: 'Le Bélier-Roi', en: 'The Ram King' }, where: { fr: 'Le Cercle de pierres', en: 'The Stone Circle' },
+    text: {
+      fr: 'Le maître l’avait peint pour garder la plaine. L’orage lui a laissé le devoir, et retiré la raison. Ses cornes ne cèdent pas ; les pierres levées, si.',
+      en: 'The master painted him to guard the plain. The storm left him the duty and took away his reason. His horns do not yield; the standing stones do.',
+    },
+  },
+  warden: {
+    name: { fr: 'Le Gardien noyé', en: 'The Drowned Warden' }, where: { fr: 'Au cœur du temple', en: 'At the heart of the temple' },
+    text: {
+      fr: 'La statue qui veillait sur l’or depuis que l’eau a recouvert le temple. Elle n’obéit qu’à une seule règle, gravée à ses pieds : « Fige-moi, et je m’inclinerai. »',
+      en: 'The statue that has watched over the gold since the water covered the temple. It obeys one rule, carved at its feet: “Freeze me, and I shall bow.”',
+    },
+  },
+};
+
+/** Said once, the first time the child enters each region. */
+export const REGION_LORE: Record<string, Tr> = {
+  village: {
+    fr: 'Le maître a peint ce hameau en premier. Les toits gardent encore la forme de son pinceau.',
+    en: 'The master painted this hamlet first. The roofs still keep the shape of his brush.',
+  },
+  orchard: {
+    fr: 'Ici, les pruniers fleurissaient pour lui chaque printemps. Les taches boivent maintenant leur sève.',
+    en: 'Here the plum trees bloomed for him every spring. Now the blots drink their sap.',
+  },
+  plain: {
+    fr: 'La plaine était le grand blanc du rouleau : il la laissait vide, pour que la peinture respire.',
+    en: 'The plain was the great white of the scroll: he left it empty, so the painting could breathe.',
+  },
+  arena: {
+    fr: 'Des pierres levées en cercle, comme un ensō de granit. Quelque chose piétine en son centre.',
+    en: 'Standing stones in a circle, like an ensō of granite. Something stamps at its centre.',
+  },
+  cave: {
+    fr: 'Les enfants venaient voir les lucioles. Leurs dessins au charbon sont encore sur la roche.',
+    en: 'Children came to watch the fireflies. Their charcoal drawings are still on the rock.',
+  },
+  temple: {
+    fr: 'Un temple à l’or, que l’eau a pris une nuit sans lune. Les prêtres priaient les mains ouvertes.',
+    en: 'A temple to gold, taken by the water one moonless night. Its priests prayed with open hands.',
+  },
+};
+
+export const JOURNAL_UI = {
+  title: { fr: 'Carnet', en: 'Journal' },
+  beasts: { fr: 'Bestiaire', en: 'Bestiary' },
+  pages: { fr: 'Carnet du maître', en: 'Master’s notebook' },
+  quests: { fr: 'Quêtes', en: 'Quests' },
+  unknown: { fr: '? ? ?', en: '? ? ?' },
+  unknownText: { fr: 'Pas encore rencontré. Une page s’écrira à la première victoire.', en: 'Not met yet. A page will be written at the first victory.' },
+  noPage: { fr: 'Page non trouvée. Cherche les stèles.', en: 'Page not found. Look for the steles.' },
+  newPage: { fr: 'Nouvelle page du bestiaire', en: 'New bestiary page' },
+  done: { fr: 'accomplie', en: 'done' },
+  now: { fr: 'en cours', en: 'current' },
+  where: { fr: 'Lieu', en: 'Where' },
 };

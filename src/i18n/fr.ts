@@ -43,7 +43,7 @@ export const fr = {
   shrine: 'Sanctuaire : vie et encre restaurées',
   inkFound: 'Encre retrouvée',
   inkSwitchTouch: 'Touche les pots d\u2019encre en bas à droite pour changer de couleur',
-  inkSwitchKbm: 'Touches 1-4 ou molette pour changer d\u2019encre',
+  inkSwitchKbm: 'Touches 1-4, Q ou molette pour changer d\u2019encre',
   bossRam: 'Le Bélier-Roi',
   bossDown: 'Le Bélier-Roi retourne au papier.',
   nextRegion: 'Les Rizières s\u2019ouvriront à la prochaine étape.',

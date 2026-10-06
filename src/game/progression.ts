@@ -30,6 +30,9 @@ export interface Save {
   /** Ranks in the Tree of Strokes, and the three active skill slots. */
   skills: Record<string, number>;
   slots: (string | null)[];
+  /** Creatures beaten at least once (pages of the bestiary), and regions already walked. */
+  bestiary: string[];
+  regions: string[];
 }
 
 export const BAG_SIZE = 16;
@@ -39,6 +42,7 @@ const fresh = (): Save => ({
   main: 0, steles: [], brambles: false, madder: false, pip: 0, pigment: 0,
   bag: [], equip: {}, newItems: false,
   skills: {}, slots: [null, null, null],
+  bestiary: [], regions: [],
 });
 
 let gearCache: Record<Stat, number> | null = null;
@@ -53,7 +57,7 @@ export function gearChanged(): void {
 export const save: Save = fresh();
 
 export function xpToNext(level: number): number {
-  return Math.round(40 * Math.pow(level, 1.45));
+  return Math.round(45 * Math.pow(level, 1.6));
 }
 
 export const stats = {
@@ -61,7 +65,7 @@ export const stats = {
   inkMax: (lv: number) => 20 + (lv - 1) * 1.5,
   /** Coloured inks draw from pigment, which does not flow back on its own. */
   pigmentMax: (lv: number) => 10 + (lv - 1),
-  dmg: (lv: number) => 1 + (lv - 1) * 0.15,
+  dmg: (lv: number) => 1 + (lv - 1) * 0.09,
 };
 
 export function loadSave(): boolean {

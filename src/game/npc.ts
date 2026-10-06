@@ -1,4 +1,4 @@
-/** Villagers and readable things: tap them (or press F nearby) to talk or read. */
+/** Villagers and readable things: tap or click them (or press E nearby) to talk or read. */
 import { Entity } from './entity';
 import type { World } from './world';
 import { Sprite, Frame, frameFrom, ySort, LAYER } from '../gfx/sprite';
@@ -151,6 +151,7 @@ export class Npc extends Entity {
     this.shadowS.mesh.scale.set(sc, sc, 1);
     // name when close, quest seal above the head
     const top = this.y + this.frames.height + 0.2;
+    this.promptH = top - this.y + (this.marker === 'quest' ? 1.45 : 0.85);
     if (near < 5.5 && !this.nameS) {
       this.nameS = new Sprite(brushText(this.displayName, { size: 0.32, ppu: 90, italic: true, weight: 600 }));
       this.nameS.mesh.renderOrder = LAYER.weather + 21;

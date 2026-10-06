@@ -1,7 +1,8 @@
 /** The main quest: one step at a time, saved, shown top right. */
 import { save, writeSave } from './progression';
-import { MAIN, L, UI } from '../i18n/lore';
-import { ORCHARD_CAMPS } from '../world/layout';
+import { MAIN, L, UI, BESTIARY } from '../i18n/lore';
+import { lang } from '../i18n';
+import { ORCHARD_CAMPS, CAMPS } from '../world/layout';
 import { sfx } from '../audio/sfx';
 import type { Game } from './game';
 
@@ -27,6 +28,12 @@ export function questLine(): [string, string] {
   if (save.main === STEP.orchard) {
     const n = ORCHARD_CAMPS.filter((id) => save.camps.includes(id)).length;
     goal += ` (${n}/${ORCHARD_CAMPS.length})`;
+  }
+  if (save.main >= STEP.end) {
+    const beasts = Object.keys(BESTIARY).length;
+    goal = lang === 'fr'
+      ? `Camps ${save.camps.length}/${CAMPS.length} · bestiaire ${save.bestiary.length}/${beasts}`
+      : `Camps ${save.camps.length}/${CAMPS.length} · bestiary ${save.bestiary.length}/${beasts}`;
   }
   return [L(step.title), goal];
 }

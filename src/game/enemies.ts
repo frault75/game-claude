@@ -48,7 +48,7 @@ function getIce(): Frame {
   return iceFrame;
 }
 
-export const TIER_HP = [1, 1, 1.45, 2.1, 2.8];
+export const TIER_HP = [1, 1, 1.5, 2.3, 3.1];
 
 /** Base for creatures: hit flash, knockback, freeze, camp leash, death by dissolving into a stain. */
 export class Creature extends Entity {
@@ -77,6 +77,11 @@ export class Creature extends Entity {
   scaleK = 1;
   onDie?: () => void;
   maxHp = 1;
+
+  /** How much one blow costs the child: deeper places and elites hit harder. */
+  get power(): number {
+    return 1 + (this.tier >= 3 ? 1 : 0) + (this.elite ? 1 : 0);
+  }
 
   constructor() {
     super();
@@ -306,7 +311,7 @@ export class Blot extends Creature {
       case 'lunge': {
         frame = frames[4];
         this.walk(this.dir[0] * 16 * dt, this.dir[1] * 16 * dt);
-        if (Math.hypot(p.x - this.x, p.y - this.y) < this.radius + p.radius + 0.1) p.hurt(1, this.x, this.y);
+        if (Math.hypot(p.x - this.x, p.y - this.y) < this.radius + p.radius + 0.1) p.hurt(this.power, this.x, this.y);
         if (this.modeT > 0.25) { this.mode = 'rest'; this.modeT = 0; w.vfx.dust(this.x, this.y, 3); }
         break;
       }
@@ -362,7 +367,7 @@ export class InkDrop extends Entity {
     if (w.nav && w.lineBlocked(this.x - this.vx * dt, this.y - this.vy * dt, this.x, this.y)) { this.pop(); return; }
     const p = w.player;
     if (Math.hypot(p.x - this.x, p.y - this.y) < p.radius + this.radius + 0.1) {
-      if (p.hurt(1, this.x, this.y)) { this.pop(); return; }
+      if (p.hurt((this.owner as { power?: number }).power ?? 1, this.x, this.y)) { this.pop(); return; }
     }
   }
   pop(): void {
@@ -521,7 +526,7 @@ export class Brute extends Creature {
         const moved = Math.hypot(this.x - ox, this.y - oy);
         this.chargeLeft -= moved;
         if (Math.random() < 0.6) w.vfx.dust(this.x - this.dir[0] * 0.6, this.y, 1);
-        if (Math.hypot(p.x - this.x, p.y - this.y) < this.radius + p.radius + 0.1) p.hurt(this.elite ? 2 : 1, this.x, this.y);
+        if (Math.hypot(p.x - this.x, p.y - this.y) < this.radius + p.radius + 0.1) p.hurt(this.power, this.x, this.y);
         if (moved < step * 0.5) {
           this.mode = 'stunned';
           this.modeT = 0;
@@ -595,7 +600,7 @@ export class Mite extends Creature {
       const dx = tx - this.x, dy = ty - this.y;
       const d = Math.hypot(dx, dy) || 1;
       this.walk((dx / d) * Math.min(d, sp * dt), (dy / d) * Math.min(d, sp * dt));
-      if (Math.hypot(p.x - this.x, p.y - this.y) < this.radius + p.radius + 0.05) p.hurt(1, this.x, this.y);
+      if (Math.hypot(p.x - this.x, p.y - this.y) < this.radius + p.radius + 0.05) p.hurt(this.power, this.x, this.y);
     }
     this.z = 0.7 + Math.sin(this.t * 7) * 0.1;
     this.place(miteFrames![Math.abs(Math.floor(this.t * 14)) % 2]);

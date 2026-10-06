@@ -16,7 +16,7 @@ const KEYMAP: Record<string, Action[]> = {
   KeyD: ['right'], ArrowRight: ['right'],
   Space: ['dodge'],
   ShiftLeft: ['dodge'],
-  KeyF: ['interact'],
+  KeyE: ['interact'], KeyF: ['interact'],
   KeyJ: ['attack'],
   KeyK: ['dodge'],
   Escape: ['pause', 'back'],
@@ -42,7 +42,8 @@ interface Gesture {
   lx: number;
   ly: number;
   t0: number;
-  mode: 'pending' | 'draw' | 'hold';
+  /** 'dead': begun in another place; ignored until the finger lifts. */
+  mode: 'pending' | 'draw' | 'hold' | 'dead';
 }
 
 export interface UiRegion {
@@ -101,8 +102,7 @@ export class Input {
       this.keysPressed.add(e.code);
       const m = /^Digit([1-4])$/.exec(e.code);
       if (m) this.inkSelect = Number(m[1]) - 1;
-      if (e.code === 'KeyQ') this.inkCycle = -1;
-      if (e.code === 'KeyE') this.inkCycle = 1;
+      if (e.code === 'KeyQ') this.inkCycle = 1;
       const acts = KEYMAP[e.code];
       if (acts) {
         e.preventDefault();
@@ -219,6 +219,7 @@ export class Input {
 
   private moveGesture(x: number, y: number): void {
     const g = this.gesture!;
+    if (g.mode === 'dead') return;
     g.x = x;
     g.y = y;
     if (g.mode === 'hold') {
@@ -244,6 +245,7 @@ export class Input {
     const g = this.gesture;
     if (!g) return;
     this.gesture = null;
+    if (g.mode === 'dead') return;
     if (g.mode === 'draw') this.drawEnd = true;
     else if (g.mode === 'hold') this.holdPoint = null;
     else if (!cancel) {
@@ -364,6 +366,21 @@ export class Input {
     this.drawEnd = false;
     this.inkSelect = null;
     this.inkCycle = 0;
+  }
+
+  /** A new place: the thumb stays down but the stick starts again from where it rests;
+   *  a stroke or a held button from the last place is over until the finger lifts. */
+  newPlace(): void {
+    const st = this.stick;
+    if (st) { st.ox = st.x; st.oy = st.y; }
+    if (this.gesture) this.gesture.mode = 'dead';
+    this.orderTaps = [];
+    this.strokeTaps = [];
+    this.drawStart = null;
+    this.drawPoints = [];
+    this.drawEnd = false;
+    this.holdPoint = null;
+    this.leftHeld = false;
   }
 
   /** Forget the current gesture and this frame's orders (dialogue opened or closed). */

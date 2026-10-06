@@ -44,8 +44,10 @@ export class Entity {
   sprites: Sprite[] = [];
   /** Shown in the debug overlay. */
   label = 'entity';
-  /** Can be talked to or read (tap on it, or F nearby). */
+  /** Can be talked to or read (tap or click on it, or E nearby). */
   interactive = false;
+  /** Height of the key prompt above it. */
+  promptH = 2.3;
   interact(): void {}
 
   init(_w: World): void {}

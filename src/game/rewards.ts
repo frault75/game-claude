@@ -9,6 +9,7 @@ import { INKS, InkId } from './inks';
 import { sfx } from '../audio/sfx';
 import { music } from '../audio/music';
 import { t, lang } from '../i18n';
+import { L, BESTIARY, JOURNAL_UI } from '../i18n/lore';
 
 export function giveXp(g: Game, n: number): void {
   const w = g.world;
@@ -35,15 +36,25 @@ export function hasColour(): boolean {
 }
 
 /** A creature fell: experience and maybe a drop. */
+/** The first victory over a kind of creature writes its page in the bestiary. */
+export function discover(g: Game, label: string): void {
+  const key = label === 'blotlet' ? 'blot' : label;
+  if (!BESTIARY[key] || save.bestiary.includes(key)) return;
+  save.bestiary.push(key);
+  writeSave();
+  g.after(0.6, () => g.hud.showHint(`${L(JOURNAL_UI.newPage)} : ${L(BESTIARY[key].name)}`, 3));
+}
+
 export function onKill(g: Game, e: Entity): void {
   const c = e as Creature;
+  discover(g, e.label);
   giveXp(g, c.xp ?? 3);
   const lifeChance = c.elite ? 1 : 0.12, inkChance = c.elite ? 1 : 0.2;
-  if (Math.random() < lifeChance) g.world.add(new Pickup(e.x, e.y, 'life', 1));
+  if (Math.random() < lifeChance) g.world.add(new Pickup(e.x, e.y, 'life', c.power ?? 1));
   if (Math.random() < inkChance) g.world.add(new Pickup(e.x, e.y, 'ink', 7));
   if (hasColour() && Math.random() < (c.elite ? 1 : 0.12)) g.world.add(new Pickup(e.x, e.y, 'pigment', c.elite ? 5 : 2.5));
   // loot
-  if (c.tier !== undefined && Math.random() < (c.elite ? 0.65 : 0.07)) {
+  if (c.tier !== undefined && Math.random() < (c.elite ? 0.5 : 0.05)) {
     dropLoot(g, e.x, e.y, c.elite ? 'elite' : 'normal', c.tier * 2 - 1 + (c.elite ? 1 : 0) + Math.floor(Math.random() * 2));
   }
   // what the child wears

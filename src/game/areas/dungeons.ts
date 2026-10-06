@@ -28,7 +28,7 @@ import { music } from '../../audio/music';
 import { sfx } from '../../audio/sfx';
 import { save, writeSave } from '../progression';
 import { STEP, setMain } from '../quests';
-import { giveXp, onKill, unlockInk, hasColour } from '../rewards';
+import { giveXp, onKill, unlockInk, hasColour, discover } from '../rewards';
 import { dropLoot } from '../loot';
 import type { InkId } from '../inks';
 
@@ -53,25 +53,25 @@ const FLOORS: FloorDef[] = [
   {
     id: 'cave1', area: 'cave', style: 'cave', floor: 1, tier: 1,
     spec: { seed: 1101, w: 64, h: 50, rooms: 7, minRoom: 7, maxRoom: 12, corridor: 3 },
-    enemies: ['blot', 'blot', 'mite', 'mite', 'wisp', 'splitter'],
+    enemies: ['bat', 'bat', 'blot', 'grub', 'mite', 'bat', 'splitter'],
     up: { to: 'overworld', spawn: () => SURFACE.cave }, down: 'cave2', mural: 'cave1',
   },
   {
     id: 'cave2', area: 'cave', style: 'cave', floor: 2, tier: 2,
     spec: { seed: 2207, w: 66, h: 54, rooms: 6, minRoom: 7, maxRoom: 12, corridor: 3, boss: { w: 17, h: 13 } },
-    enemies: ['blot', 'mite', 'mite', 'wisp', 'splitter', 'totem'],
+    enemies: ['bat', 'grub', 'grub', 'bat', 'splitter', 'totem', 'wisp'],
     up: { to: 'cave1', spawn: () => mapOf('cave1').downSpawn }, boss: 'mother', mural: 'cave2',
   },
   {
     id: 'temple1', area: 'temple', style: 'temple', floor: 1, tier: 3,
     spec: { seed: 3313, w: 68, h: 52, rooms: 8, minRoom: 7, maxRoom: 12, corridor: 3 },
-    enemies: ['wisp', 'wisp', 'brute', 'splitter', 'mite', 'totem'],
+    enemies: ['soldier', 'lantern', 'lantern', 'wisp', 'soldier', 'splitter'],
     up: { to: 'overworld', spawn: () => SURFACE.temple }, down: 'temple2', mural: 'temple1', well: true,
   },
   {
     id: 'temple2', area: 'temple', style: 'temple', floor: 2, tier: 3,
     spec: { seed: 4421, w: 70, h: 56, rooms: 6, minRoom: 8, maxRoom: 12, corridor: 3, boss: { w: 18, h: 14 } },
-    enemies: ['wisp', 'brute', 'brute', 'splitter', 'totem', 'mite'],
+    enemies: ['soldier', 'lantern', 'soldier', 'lantern', 'totem', 'wisp', 'brute'],
     up: { to: 'temple1', spawn: () => mapOf('temple1').downSpawn }, boss: 'warden', mural: 'temple2', well: true,
   },
 ];
@@ -453,7 +453,7 @@ function buildFloor(def: FloorDef, room: RoomDef, b: Parameters<RoomDef['build']
       g.hud.showBoss(L(UI.bossMother));
     } else {
       const wd = b.add(new DrownedWarden(e.cx, e.cy + 1.5, e));
-      wd.onArmour = () => g.hud.showHint(L(UI.wardenHint), 3.5);
+      wd.onArmour = () => { g.hud.showHint(L(UI.wardenHint), 3.5); g.after(4, () => g.flags.add('wardenArmour')); };
       bossE = wd;
       g.hud.showBoss(L(UI.bossWarden));
       g.after(2.5, () => { if (!wd.defeated) g.hud.showHint(L(UI.wardenHint), 4); });
@@ -467,6 +467,7 @@ function buildFloor(def: FloorDef, room: RoomDef, b: Parameters<RoomDef['build']
       g.hud.hideBoss();
       save.bosses.push(bossId);
       writeSave();
+      discover(g, bossId);
       giveXp(g, def.boss === 'mother' ? 220 : 380);
       for (let i = 0; i < 4; i++) b.add(new Pickup(boss.x, boss.y, i % 2 ? 'ink' : 'life', i % 2 ? 10 : 2));
       dropLoot(g, boss.x, boss.y, 'boss', def.boss === 'mother' ? 4 : 8);
@@ -483,6 +484,10 @@ function buildFloor(def: FloorDef, room: RoomDef, b: Parameters<RoomDef['build']
     const p = w.player;
     if (bossE) {
       g.hud.bossFrac = bossE.frac;
+      if (def.boss === 'warden' && !bossE.defeated) {
+        if (p.pigmentFrac < 0.25) g.hintOnce('wardenUrns', L(UI.urnHint), 4);
+        else if (save.ink !== 'indigo' && g.flags.has('wardenArmour')) g.hintOnce('wardenIndigo', L(UI.indigoHint), 4);
+      }
       music.boss = bossE.defeated ? 0.2 : 1;
       return;
     }

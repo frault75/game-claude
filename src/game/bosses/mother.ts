@@ -31,8 +31,8 @@ export class MotherOfBlots extends Boss {
   constructor(x: number, y: number, private room: { x: number; y: number; w: number; h: number }) {
     super();
     this.x = x; this.y = y;
-    this.maxHp = 760;
-    this.hp = 760;
+    this.maxHp = 700;
+    this.hp = 700;
     this.radius = 1.4;
     this.name = 'Mother of Blots';
     this.label = 'mother';
