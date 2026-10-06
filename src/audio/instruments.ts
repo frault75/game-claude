@@ -257,3 +257,92 @@ export function drone(freqs: number[], o: NoteOpts & { vol?: number; fade?: numb
     for (const osc of oscs) osc.stop(now + fade + 0.1);
   };
 }
+
+/** Soft pad: a chord of detuned triangles through a slow filter, swelling in and out. */
+export function pad(freqs: number[], t: number, dur: number, o: NoteOpts & { bright?: number } = {}): void {
+  const ctx = audio.ctx;
+  if (!ctx) return;
+  const v = o.vel ?? 0.3;
+  const dest = out(o, audio.music);
+  const lp = ctx.createBiquadFilter();
+  lp.type = 'lowpass';
+  const bright = o.bright ?? 0.5;
+  lp.frequency.setValueAtTime(300, t);
+  lp.frequency.linearRampToValueAtTime(500 + bright * 1400, t + Math.min(dur * 0.5, 2));
+  lp.frequency.linearRampToValueAtTime(400, t + dur + 1.5);
+  lp.Q.value = 0.6;
+  const g = ctx.createGain();
+  const att = Math.min(1.6, dur * 0.4);
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(v * 0.07, t + att);
+  g.gain.setValueAtTime(v * 0.07, t + Math.max(att, dur - 0.2));
+  g.gain.linearRampToValueAtTime(0, t + dur + 1.6);
+  lp.connect(g);
+  g.connect(dest);
+  const end = t + dur + 1.7;
+  for (const f of freqs) {
+    for (const det of [-7, 6]) {
+      const osc = ctx.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.value = f;
+      osc.detune.value = det + (Math.random() - 0.5) * 3;
+      osc.connect(lp);
+      osc.start(t);
+      osc.stop(end);
+    }
+  }
+}
+
+/** Round plucked bass: a sine body and a short bright attack. */
+export function bass(freq: number, t: number, o: NoteOpts & { dur?: number } = {}): void {
+  const ctx = audio.ctx;
+  if (!ctx) return;
+  const v = o.vel ?? 0.5;
+  const dest = out(o, audio.music);
+  const dur = o.dur ?? 0.5;
+  const osc = ctx.createOscillator();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(freq, t);
+  const osc2 = ctx.createOscillator();
+  osc2.type = 'sawtooth';
+  osc2.frequency.setValueAtTime(freq, t);
+  const lp = ctx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.setValueAtTime(1400, t);
+  lp.frequency.exponentialRampToValueAtTime(240, t + 0.18);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(v * 0.5, t + 0.012);
+  g.gain.exponentialRampToValueAtTime(v * 0.2, t + 0.2);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.25);
+  const g2 = ctx.createGain();
+  g2.gain.value = 0.25;
+  osc.connect(g);
+  osc2.connect(g2);
+  g2.connect(lp);
+  lp.connect(g);
+  g.connect(dest);
+  const end = t + dur + 0.3;
+  osc.start(t); osc.stop(end);
+  osc2.start(t); osc2.stop(end);
+}
+
+/** A soft shaker / brushed skin for quick rhythms. */
+export function shaker(t: number, o: NoteOpts & { bright?: number } = {}): void {
+  const ctx = audio.ctx;
+  if (!ctx) return;
+  const v = o.vel ?? 0.3;
+  const dest = out(o, audio.music);
+  const n = ctx.createBufferSource();
+  n.buffer = audio.noise();
+  const hp = ctx.createBiquadFilter();
+  hp.type = 'bandpass';
+  hp.frequency.value = 3000 + (o.bright ?? 0.5) * 4000;
+  hp.Q.value = 1.2;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(v * 0.25, t + 0.006);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.07);
+  n.connect(hp); hp.connect(g); g.connect(dest);
+  n.start(t, Math.random()); n.stop(t + 0.09);
+}

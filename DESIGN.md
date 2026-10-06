@@ -114,7 +114,11 @@ Le monde est découpé en **morceaux** de 16 × 16 cases, peints à la volée au
 
 ## 8. Audio
 
-100 % Web Audio : musique générative par région, pilotée par l'intensité du combat (tambours, ostinato) ; un son par encre ; tonnerre, pluie, vent.
+100 % Web Audio. La musique s'écrit en jouant :
+- **Sections de huit mesures**, chacune avec sa grille d'accords, son instrument soliste et son groove ; un **motif** est énoncé, répondu, puis résolu sur la phrase. Les sections s'enchaînent au hasard (A, B, respiration), donc rien ne boucle à l'identique.
+- **Couches adaptatives** qui montent et descendent en douceur : calme (nappe + soliste clairsemé), tension (arpège pincé), combat (basse, tambours, remplissages toutes les quatre mesures, tempo un peu plus vif), danger quand Shu va tomber (le son s'étouffe, un battement de cœur monte). Un combat qui se termine se résout sur la tonique.
+- **Thèmes par lieu** (hameau, verger, plaine, grotte, temple), en fondu enchaîné quand on change de région.
+- Un son par encre ; tonnerre, pluie, vent.
 
 ## 9. Étapes
 

@@ -272,6 +272,9 @@ export class Game {
     save.pigment = this.player.pigment;
     this.r.post.lamp = [this.player.x, this.player.y + 0.5, this.lampRadius];
     this.hud.setQuest(...questLine());
+    // the music hears how close the child is to falling
+    const pl = this.player;
+    music.danger = pl.state === 'dead' ? 0 : pl.hp <= 1 ? 1 : pl.hp / pl.maxHp <= 0.34 ? 0.6 : 0;
     this.hud.backdrop = this.story.backdrop = Math.min(1, this.r.post.gloom * 1.5);
     this.hud.bagNew = save.newItems;
     this.input.uiMode = this.dialog.active || this.inventory.active;
