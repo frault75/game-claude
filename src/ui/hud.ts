@@ -7,6 +7,7 @@ import { stroke, V2, dot } from '../gfx/brush';
 import { brushText } from '../gfx/text';
 
 const UI_PPU = 1.5;
+const CHARGES = 4;
 
 function dropShape(cx: number, cy: number, s: number): V2[] {
   const pts: V2[] = [];
@@ -28,8 +29,17 @@ export class Hud {
   private chargeEmpty: Frame;
   private charges: Sprite[] = [];
   private chargeBg: Sprite[] = [];
-  private chargePop: number[] = [0, 0, 0];
-  private chargeShown = 3;
+  private chargePop: number[] = [0, 0, 0, 0];
+  private chargeShown = CHARGES;
+  /** Touch overlay. */
+  private stickBase!: Sprite;
+  private stickKnob!: Sprite;
+  private button!: Sprite;
+  private buttonRed!: Sprite;
+  touch = false;
+  stick = { active: false, ox: 0, oy: 0, x: 0, y: 0 };
+  buttonPos = { x: 0, y: 0, r: 105 };
+  buttonPressed = false;
   private hint: Sprite | null = null;
   private hintT = 0;
   private hintDur = 0;
@@ -73,7 +83,7 @@ export class Hud {
     stroke(ce, [[-22, 2], [-5, 5], [10, 1], [22, -3]], { width: 2, pig: INK, load: 0.35, dry: 0.7, seed: 22, taperStart: 0.05, taperEnd: 0.5, body: 0.2 });
     dot(ce, -22, 2, 3, INK, 0.3, 23);
     this.chargeEmpty = frameFrom(ce);
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < CHARGES; i++) {
       const bg = new Sprite(this.chargeEmpty);
       bg.mesh.renderOrder = LAYER.ui;
       r.uiPig.add(bg.mesh);
@@ -92,6 +102,30 @@ export class Hud {
     this.comboBar = new Sprite(bar);
     this.comboBar.mesh.renderOrder = LAYER.ui;
     r.uiRed.add(this.comboBar.mesh);
+    // touch overlay: an ink ring for the stick, a brush seal for the strike button
+    const ring = new Painter(240, 240, 1, -120, -120);
+    ring.glaze();
+    const rp: V2[] = [];
+    for (let k = 0; k <= 30; k++) { const a = (k / 30) * Math.PI * 2.05 + 0.3; rp.push([Math.cos(a) * 95, Math.sin(a) * 95]); }
+    stroke(ring, rp, { width: 7, load: 0.35, dry: 0.7, seed: 41, taperStart: 0.05, taperEnd: 0.4, body: 0.3, press: 0 });
+    this.stickBase = new Sprite(ring);
+    const knob = new Painter(120, 120, 1, -60, -60);
+    knob.glaze();
+    dot(knob, 0, 0, 34, INK, 0.5, 42);
+    this.stickKnob = new Sprite(knob);
+    const btn = new Painter(260, 260, 1, -130, -130);
+    btn.glaze();
+    const bp: V2[] = [];
+    for (let k = 0; k <= 34; k++) { const a = (k / 34) * Math.PI * 1.9 - 0.4; bp.push([Math.cos(a) * 100, Math.sin(a) * 100]); }
+    stroke(btn, bp, { width: 12, load: 0.6, dry: 0.6, seed: 43, taperStart: 0.03, taperEnd: 0.6, press: 0.5 });
+    this.button = new Sprite(btn);
+    const bred = new Painter(260, 260, 1, -130, -130);
+    bred.glaze();
+    stroke(bred, [[-45, -40], [-10, 0], [40, 50]], { width: 26, pig: VERMILION, load: 1, dry: 0.4, seed: 44, taperStart: 0.05, taperEnd: 0.7, press: 0.6 });
+    this.buttonRed = new Sprite(bred);
+    for (const s of [this.stickBase, this.stickKnob, this.button]) { s.mesh.renderOrder = LAYER.ui; r.uiPig.add(s.mesh); }
+    this.buttonRed.mesh.renderOrder = LAYER.ui;
+    r.uiRed.add(this.buttonRed.mesh);
   }
 
   private comboFrame(n: number): Frame {
@@ -113,7 +147,7 @@ export class Hud {
   }
 
   setCharges(n: number): void {
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < CHARGES; i++) {
       if (i < n && i >= this.chargeShown) this.chargePop[i] = 0.25;
     }
     this.chargeShown = n;
@@ -139,7 +173,7 @@ export class Hud {
 
   showHint(text: string, dur = 5): void {
     if (this.hint) this.hint.dispose();
-    const art = brushText(text, { size: 30, ppu: 1.5, italic: true, maxWidth: 1100 });
+    const art = brushText(text, { size: 30, ppu: 1.5, italic: true, maxWidth: Math.min(1100, this.r.uiW * 0.88) });
     this.hint = new Sprite(art);
     this.hint.mesh.renderOrder = LAYER.ui;
     this.r.uiPig.add(this.hint.mesh);
@@ -184,15 +218,29 @@ export class Hud {
       s.mesh.scale.set(sc, sc, 1);
       s.opacity = this.visible ? 1 - k * 0.5 : 0;
     }
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < CHARGES; i++) {
       this.chargePop[i] = Math.max(0, this.chargePop[i] - dt);
-      const x = left + 8 + i * 62, y = top - 58;
+      const x = left + 8 + i * 58, y = top - 58;
       this.chargeBg[i].setPos(x, y);
       this.charges[i].setPos(x, y);
       const sc = 1 + this.chargePop[i] * 1.6;
       this.charges[i].mesh.scale.set(sc, sc, 1);
       this.charges[i].opacity = this.visible && i < this.chargeShown ? 1 : 0;
       this.chargeBg[i].opacity = this.visible ? 0.8 : 0;
+    }
+    // touch overlay
+    const tv = this.touch && this.visible;
+    const st = this.stick;
+    this.stickBase.opacity = tv && st.active ? 0.8 : 0;
+    this.stickKnob.opacity = tv && st.active ? 0.9 : 0;
+    this.stickBase.setPos(st.ox, st.oy);
+    this.stickKnob.setPos(st.x, st.y);
+    const bpz = this.buttonPos;
+    const bs = (bpz.r / 105) * (this.buttonPressed ? 0.9 : 1);
+    for (const s of [this.button, this.buttonRed]) {
+      s.setPos(bpz.x, bpz.y);
+      s.mesh.scale.set(bs, bs, 1);
+      s.opacity = tv ? (this.buttonPressed ? 1 : 0.75) : 0;
     }
     this.comboPop = Math.max(0, this.comboPop - dt);
     const cx = r.uiW / 2 - 150, cy = r.uiH / 2 - 90;

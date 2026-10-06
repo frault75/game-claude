@@ -28,12 +28,12 @@ export class Story {
     const stagger = o.stagger ?? 1.2;
     const group = this.nextGroup++;
     texts.forEach((txt, i) => {
-      const art = brushText(txt, { size, ppu: 1.5, italic: o.italic ?? true, maxWidth: 1400, seed: i + 3 });
+      const art = brushText(txt, { size, ppu: 1.5, italic: o.italic ?? true, maxWidth: Math.min(1400, this.r.uiW * 0.9), seed: i + 3 });
       const s = new Sprite(art);
       s.mesh.renderOrder = LAYER.ui + 5;
       s.reveal = 0;
       this.r.uiPig.add(s.mesh);
-      const revealDur = 0.6 + txt.length * 0.035;
+      const revealDur = 0.35 + txt.length * 0.018;
       const line: Line = { group, s, t: -i * stagger, revealDur, hold: (o.hold ?? 3) + (texts.length - 1 - i) * 0.2, fade: 1.2, y: y0 - i * gap, done: false };
       this.lines.push(line);
     });

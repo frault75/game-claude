@@ -70,7 +70,7 @@ export const MUSIC: Record<string, MusicDef> = {
     rest: 0.6,
   },
   storm: {
-    root: 57, scale: [0, 3, 5, 7, 10], bpm: 104,
+    root: 57, scale: [0, 3, 5, 7, 10], bpm: 120,
     drone: { notes: [33, 40], vol: 0.05 },
     pluck: { density: 0.22, low: 3, high: 10, bright: 0.6, decay: 2.2, vel: 0.4 },
     flute: { every: [2, 4], low: 6, high: 12, vel: 0.32 },

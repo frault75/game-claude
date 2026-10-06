@@ -18,11 +18,11 @@ Pushing to `main` builds and deploys to GitHub Pages (Settings → Pages → Sou
 
 ## Controls
 
-| Action | Keyboard + mouse | Gamepad |
-|---|---|---|
-| Move | WASD / ZQSD / arrows | Left stick |
-| **Trait** (dash towards the cursor, leaves a stroke) | Right click or Space | A (stick direction) |
-| Brush strike | Left click | X |
+| Action | Keyboard + mouse | Gamepad | Touch |
+|---|---|---|---|
+| Move | WASD / ZQSD / arrows | Left stick | Virtual stick (left thumb) |
+| **Trait** (dash, leaves a stroke) | Right click or Space (towards the cursor) | A (stick direction) | Tap anywhere: Trait to that point |
+| Brush strike | Left click | X | Brush button (bottom right) |
 
 Cross your own fresh stroke to close a loop: everything inside bursts (ensō).
 
