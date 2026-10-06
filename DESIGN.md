@@ -29,6 +29,16 @@ Action-RPG en monde ouvert, vue de dessus, à la Diablo, dans un monde peint au 
 
 **Donjons** : générateur à graine (salles reliées par des couloirs, boucles), murs de roche peints avec une face éclairée, escaliers, torches ; les ennemis contournent les murs (champ de distances) et ne voient pas à travers la roche.
 
+## 0 bis. Butin, arbre des traits
+
+**Butin** : pinceaux, robes, talismans, sceaux ; commun, magique, rare, unique ; qualités tirées au sort (dégâts, vie, encre, pigment, critiques, parade, vitesse, ensō, soin ou pigment à chaque victoire). Sac de 16 places, comparaison avec l'objet porté, objets broyés en pigment.
+
+**Arbre des traits** : un point par niveau, trois branches de quatre rangs (un rang s'ouvre avec 2 points par rang dans la branche) :
+- **Vermillon** : Trait affûté, Long trait, *Tourbillon*, Ensō écarlate, Encre vive, *Pluie de sceaux*.
+- **Couleurs** : Broyage fin, Réserve, *Vague d'indigo*, Gel profond, Foudre en chaîne, *Orage*.
+- **Lavis** : Souffle, Garde, *Lavis de soin*, Second souffle, Pas léger, *Brume*.
+Les compétences actives (en italique) se rechargent et se rangent dans trois emplacements (R, T, G ; boutons ronds sur mobile).
+
 ## 1. L'histoire en bref
 
 Un orage d'encre noire a renversé l'encrier du vieux maître calligraphe. Ses **encres de couleur** se sont dispersées dans sa grande peinture, gardées par des bêtes d'encre. Tu es **Shu**, son dernier trait, d'encre vermillon. Région après région, tu rends ses couleurs au monde. Au cœur de l'orage t'attend le maître lui-même. Le dernier geste du jeu est un ensō tracé lentement autour de lui, avec toutes les couleurs retrouvées.

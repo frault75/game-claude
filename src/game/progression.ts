@@ -27,6 +27,9 @@ export interface Save {
   bag: Item[];
   equip: Partial<Record<Slot, Item>>;
   newItems: boolean;
+  /** Ranks in the Tree of Strokes, and the three active skill slots. */
+  skills: Record<string, number>;
+  slots: (string | null)[];
 }
 
 export const BAG_SIZE = 16;
@@ -35,6 +38,7 @@ const fresh = (): Save => ({
   level: 1, xp: 0, inks: ['vermilion'], ink: 'vermilion', camps: [], bosses: [], shrine: 0, shrines: [0],
   main: 0, steles: [], brambles: false, madder: false, pip: 0, pigment: 0,
   bag: [], equip: {}, newItems: false,
+  skills: {}, slots: [null, null, null],
 });
 
 let gearCache: Record<Stat, number> | null = null;

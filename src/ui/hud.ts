@@ -8,6 +8,8 @@ import { brushText } from '../gfx/text';
 import { INKS, InkId, INK_ORDER } from '../game/inks';
 import { noisyOutline } from '../gfx/wash';
 import { maskSprite } from './mask';
+import { skillArt } from '../gfx/gen/skillArt';
+import type { SkillId } from '../game/skills';
 
 const UI_PPU = 1.5;
 
@@ -68,6 +70,15 @@ export class Hud {
   bagNew = false;
   /** Where the bag button is (UI units), for taps. */
   bagRegion = { x: 0, y: 0, r: 0 };
+  private tree: Sprite;
+  private treeDot: Sprite;
+  /** Shows a vermilion dot on the tree (points to spend). */
+  treeNew = false;
+  treeRegion = { x: 0, y: 0, r: 0 };
+  /** Active skill buttons (bottom right, above the ink pots). */
+  private skillBtns: { id: string; ring: Sprite; art: Sprite[]; key: Sprite | null; x: number; y: number }[] = [];
+  skillRegions: { slot: number; x: number; y: number; r: number }[] = [];
+  private skillKey = '';
   private stickRing: Sprite;
   private stickKnob: Sprite;
   private stickVis = 0;
@@ -192,6 +203,19 @@ export class Hud {
     this.bagDot = new Sprite(frameFrom(dp));
     this.bagDot.mesh.renderOrder = LAYER.ui + 2;
     r.uiRed.add(this.bagDot.mesh);
+    // the tree button: a little brushed tree
+    const tp = new Painter(110, 110, 1, -55, -55);
+    tp.glaze();
+    stroke(tp, [[0, -32], [2, -6], [-2, 18]], { width: 7, load: 1, dry: 0.3, seed: 68, taperEnd: 0.4 });
+    stroke(tp, [[1, -6], [-18, 10], [-26, 22]], { width: 5, load: 0.9, seed: 69, taperEnd: 0.7 });
+    stroke(tp, [[1, -2], [18, 12], [24, 26]], { width: 5, load: 0.9, seed: 70, taperEnd: 0.7 });
+    for (const [x, y] of [[-26, 24], [24, 28], [-2, 24], [-14, 30], [12, 34]] as V2[]) washPoly(tp, noisyOutline(x, y, 8, 6, 0.2, 71 + x), { pig: INK, density: 0.45, soft: 0.1, seed: 71 + y });
+    this.tree = new Sprite(frameFrom(tp));
+    this.tree.mesh.renderOrder = LAYER.ui + 1;
+    r.uiPig.add(this.tree.mesh);
+    this.treeDot = new Sprite(frameFrom(dp));
+    this.treeDot.mesh.renderOrder = LAYER.ui + 2;
+    r.uiRed.add(this.treeDot.mesh);
     // the floating stick (phones): a brushed ring and an ink dab
     const sr = new Painter(240, 240, 1, -120, -120);
     sr.glaze();
@@ -302,6 +326,47 @@ export class Hud {
     this.inkBar = this.inkBars.get(current)!;
   }
 
+  private skillCool: number[] = [];
+  /** A panel (bag, tree) covers the screen: skill buttons step aside. */
+  panelOpen = false;
+  private skillSlot: number[] = [];
+
+  /** The active skills in their slots, with how much of each cooldown remains (0..1). */
+  setSkills(slots: (string | null)[], cool: number[], keys: boolean): void {
+    const key = slots.join(',') + (keys ? 'k' : '');
+    if (key !== this.skillKey) {
+      this.skillKey = key;
+      for (const b of this.skillBtns) { b.ring.dispose(); for (const s of b.art) s.dispose(); b.key?.dispose(); }
+      this.skillBtns = [];
+      this.skillSlot = [];
+      slots.forEach((id, k) => {
+        if (!id) return;
+        const a = skillArt(id as SkillId);
+        const ring = new Sprite(this.potRing);
+        ring.mesh.renderOrder = LAYER.ui + 1;
+        ring.mesh.scale.set(0.95, 0.95, 1);
+        this.r.uiPig.add(ring.mesh);
+        // a faint ghost of the glyph, and the glyph itself, repainted as the skill recharges
+        const art = [new Sprite(a.pig), new Sprite(a.red), new Sprite(a.acc), new Sprite(a.pig), new Sprite(a.acc)];
+        this.r.uiPig.add(art[0].mesh);
+        this.r.uiRed.add(art[1].mesh);
+        this.r.uiAcc.add(art[2].mesh);
+        this.r.uiPig.add(art[3].mesh);
+        this.r.uiAcc.add(art[4].mesh);
+        for (const s of art) { s.mesh.renderOrder = LAYER.ui + 2; s.mesh.scale.set(0.82, 0.82, 1); }
+        let ks: Sprite | null = null;
+        if (keys) {
+          ks = new Sprite(brushText(['R', 'T', 'G'][k], { size: 24, ppu: 1.5, weight: 700 }));
+          ks.mesh.renderOrder = LAYER.ui + 3;
+          this.r.uiPig.add(ks.mesh);
+        }
+        this.skillBtns.push({ id, ring, art, key: ks, x: 0, y: 0 });
+        this.skillSlot.push(k);
+      });
+    }
+    this.skillCool = this.skillSlot.map((k) => cool[k] ?? 0);
+  }
+
   /** The thumb stick, in UI units (null when no thumb is down). */
   setStick(s: { bx: number; by: number; kx: number; ky: number; r: number } | null): void {
     if (s) this.stickPos = s;
@@ -402,8 +467,8 @@ export class Hud {
       p.fill.mesh.scale.set(sc, sc, 1);
       p.ring.setPos(p.x, p.y);
       p.ring.mesh.scale.set(sc, sc, 1);
-      p.fill.opacity = this.visible && n > 1 ? (sel ? 1 : 0.7) : 0;
-      p.ring.opacity = this.visible && n > 1 && sel ? 1 : 0;
+      p.fill.opacity = this.visible && !this.panelOpen && n > 1 ? (sel ? 1 : 0.7) : 0;
+      p.ring.opacity = this.visible && !this.panelOpen && n > 1 && sel ? 1 : 0;
       this.potRegions.push({ id: p.id, x: p.x, y: p.y, r: 60 });
     }
     // objective arrow when the goal is off screen
@@ -451,6 +516,33 @@ export class Hud {
     this.bagDot.setPos(bx + 30, by + 26);
     this.bagDot.opacity = this.visible && this.bagNew ? 0.75 + Math.sin(performance.now() / 200) * 0.25 : 0;
     this.bagRegion = { x: bx, y: by, r: 62 };
+    const tx = bx + 110;
+    this.tree.setPos(tx, by);
+    this.tree.opacity = this.visible ? 1 : 0;
+    this.treeDot.setPos(tx + 30, by + 30);
+    this.treeDot.opacity = this.visible && this.treeNew ? 0.75 + Math.sin(performance.now() / 200) * 0.25 : 0;
+    this.treeRegion = { x: tx, y: by, r: 56 };
+    // active skills: the brush repaints the glyph as it recharges
+    this.skillRegions = [];
+    const nPots = this.pots.length;
+    for (let i = 0; i < this.skillBtns.length; i++) {
+      const b = this.skillBtns[i];
+      b.x = r.uiW / 2 - 90 - (this.skillBtns.length - 1 - i) * 118;
+      b.y = -r.uiH / 2 + (nPots > 1 ? 220 : 110);
+      b.ring.setPos(b.x, b.y);
+      b.ring.opacity = this.visible ? 0.9 : 0;
+      const frac = this.skillCool[i] ?? 0;
+      const vis = this.visible && !this.panelOpen;
+      b.ring.opacity = vis ? 0.9 : 0;
+      b.art.forEach((s, k) => {
+        s.setPos(b.x, b.y);
+        if (k >= 3) { s.opacity = vis && frac > 0 ? 0.22 : 0; return; }
+        s.reveal = frac > 0 ? Math.max(0.001, 1 - frac) : 1.5;
+        s.opacity = vis ? (frac > 0 ? 0.7 : 1) : 0;
+      });
+      if (b.key) { b.key.setPos(b.x + 38, b.y - 40); b.key.opacity = vis ? 0.8 : 0; }
+      this.skillRegions.push({ slot: this.skillSlot[i], x: b.x, y: b.y, r: 56 });
+    }
     // the thumb stick
     const sp = this.stickPos;
     const sa = this.stickRing.opacity + ((this.stickVis * 0.55) - this.stickRing.opacity) * Math.min(1, dt * 14);

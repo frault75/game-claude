@@ -13,6 +13,7 @@ import { sfx } from '../audio/sfx';
 import { angleDiff, distToSeg, V } from './physics';
 import { INKS, INK_ORDER, InkId } from './inks';
 import { save, stats, gear } from './progression';
+import { eff, rank, SkillId } from './skills';
 import { lang } from '../i18n';
 
 const PARRY = () => (lang === 'fr' ? 'parade' : 'parry');
@@ -106,7 +107,23 @@ export class Player extends Entity {
   }
 
   get maxHp(): number {
-    return stats.maxHp(save.level) + gear().hp;
+    return stats.maxHp(save.level) + gear().hp + eff('breath');
+  }
+  /** Skill cooldowns (seconds left). */
+  cool: Partial<Record<SkillId, number>> = {};
+  private mistT = 0;
+  private secondT = 0;
+  /** Turn to mist: untouchable and quicker for a moment. */
+  mist(t: number): void {
+    this.mistT = t;
+    this.invuln = Math.max(this.invuln, t);
+  }
+  get misty(): boolean {
+    return this.mistT > 0;
+  }
+  /** Chance to turn a blow aside, gear and skills together. */
+  get guard(): number {
+    return Math.min(45, gear().guard + eff('parry'));
   }
   get inkMax(): number {
     return stats.inkMax(save.level) + gear().ink;
@@ -116,7 +133,7 @@ export class Player extends Entity {
   }
   /** Walking speed with what the child wears. */
   get speed(): number {
-    return PLAYER.speed * (1 + gear().speed / 100);
+    return PLAYER.speed * (1 + (gear().speed + eff('light')) / 100) * (this.mistT > 0 ? 1.45 : 1);
   }
   /** Damage of a blow, maybe a critical one (doubled). */
   roll(base: number): { dmg: number; crit: boolean } {
@@ -127,7 +144,11 @@ export class Player extends Entity {
     return this.ink / this.inkMax;
   }
   get pigmentMax(): number {
-    return stats.pigmentMax(save.level) + gear().pigment;
+    return stats.pigmentMax(save.level) + gear().pigment + eff('reserve');
+  }
+  /** Coloured ink spent per unit of stroke. */
+  private paintCost(ink: InkId): number {
+    return INKS[ink].cost * (1 - eff('grind') / 100);
   }
   get pigmentFrac(): number {
     return this.pigment / this.pigmentMax;
@@ -249,6 +270,9 @@ export class Player extends Entity {
     this.stateT += dt;
     this.invuln = Math.max(0, this.invuln - dt);
     this.sinceInk += dt;
+    this.mistT = Math.max(0, this.mistT - dt);
+    this.secondT = Math.max(0, this.secondT - dt);
+    for (const k of Object.keys(this.cool) as SkillId[]) this.cool[k] = Math.max(0, (this.cool[k] ?? 0) - dt);
     const [mx, my] = this.locked ? [0, 0] : inp.move();
     this.moveDir = [mx, my];
     this.updateAim();
@@ -266,7 +290,7 @@ export class Player extends Entity {
     }
 
     if (this.sinceInk > PLAYER.inkDelay && this.ink < this.inkMax) {
-      this.ink = Math.min(this.inkMax, this.ink + dt * PLAYER.inkRegen * (1 + gear().regen / 100) * (1 + Math.min(20, w.combo) * 0.04));
+      this.ink = Math.min(this.inkMax, this.ink + dt * PLAYER.inkRegen * (1 + (gear().regen + eff('flow')) / 100) * (1 + Math.min(20, w.combo) * 0.04));
     }
 
     if (!this.locked) {
@@ -449,7 +473,7 @@ export class Player extends Entity {
     let dx = tx - this.x, dy = ty - this.y;
     let d = Math.hypot(dx, dy);
     if (d < 0.01) { [dx, dy] = this.aim; d = 1; }
-    const dist = Math.max(PLAYER.dashMin, Math.min(PLAYER.dashMax, d));
+    const dist = Math.max(PLAYER.dashMin, Math.min(PLAYER.dashMax * (1 + eff('reach') / 100), d));
     tx = this.x + (dx / d) * dist;
     ty = this.y + (dy / d) * dist;
     if (ink.runs ? this.ink < 1 : this.pigment < 0.6) { sfx.empty(); if (!ink.runs) this.onNoPigment?.(); return; }
@@ -495,7 +519,7 @@ export class Player extends Entity {
     const seg = pt.seg;
     const d = Math.hypot(p[0] - pt.last[0], p[1] - pt.last[1]);
     if (d < 0.05) return;
-    const cost = d * INKS[pt.ink].cost;
+    const cost = d * this.paintCost(pt.ink);
     if (this.pigment < cost) { this.endPaint(); sfx.empty(); return; }
     this.pigment -= cost;
     this.sinceInk = 0;
@@ -606,7 +630,7 @@ export class Player extends Entity {
       const ey = e.y + Math.min(0.4, e.z * 0.5);
       if (distToSeg(e.x, ey, ox, oy, this.x, this.y) < e.radius + 0.4) {
         r.hit.set(e, w.time);
-        const rl = this.roll(PLAYER.cutDmg);
+        const rl = this.roll(PLAYER.cutDmg * (1 + eff('edge') / 100));
         if (e.onHit({ dmg: rl.dmg, crit: rl.crit, fromX: ox, fromY: oy, kind: 'cut' })) {
           w.hitstop = Math.max(w.hitstop, 0.025);
           w.kick(r.dir[0] * 0.12, r.dir[1] * 0.12);
@@ -667,7 +691,7 @@ export class Player extends Entity {
         const d = Math.hypot(dx, dy) - e.radius * 0.8;
         if (d > PLAYER.strikeRange) continue;
         if (Math.abs(angleDiff(Math.atan2(dy, dx), ang)) > PLAYER.strikeHalf && d > 0.35) continue;
-        const rl = this.roll(PLAYER.strikeDmg * (this.combo === 1 ? 1.4 : 1));
+        const rl = this.roll(PLAYER.strikeDmg * (this.combo === 1 ? 1.4 : 1) * (1 + eff('edge') / 100));
         if (e.onHit({ dmg: rl.dmg, crit: rl.crit, fromX: this.x, fromY: this.y, kind: 'brush' })) landed++;
       }
       if (landed) {
@@ -700,7 +724,7 @@ export class Player extends Entity {
     if (this.invuln > 0 || this.state === 'dead' || this.state === 'fall' || this.state === 'frozen') return false;
     const w = this.world;
     // a good robe turns some blows aside
-    if (Math.random() * 100 < gear().guard) {
+    if (Math.random() * 100 < this.guard) {
       this.invuln = 0.5;
       sfx.clink();
       w.numbers?.pop(this.x, this.y + 1.4, PARRY(), { size: 0.4 });
@@ -721,6 +745,13 @@ export class Player extends Entity {
     w.hitstop = Math.max(w.hitstop, 0.1);
     w.shake(0.22, 0.25);
     w.combo = 0;
+    // Second Wind: once a minute, a deadly blow leaves Shu standing
+    if (this.hp <= 0 && rank('second') > 0 && this.secondT <= 0) {
+      this.hp = 1;
+      this.secondT = 60;
+      this.invuln = 1.6;
+      w.numbers?.pop(this.x, this.y + 1.8, lang === 'fr' ? 'second souffle' : 'second wind', { red: true, size: 0.45 });
+    }
     if (this.hp <= 0) this.die();
     return true;
   }
@@ -807,8 +838,9 @@ export class Player extends Entity {
       s.mesh.renderOrder = ySort(this.y);
     }
     this.shadowS.setPos(this.x, this.y);
-    const flick = this.invuln > 0.1 && !dashing && this.state !== 'dash' ? (Math.sin(this.world.time * 40) > 0 ? 0.55 : 0) : 0;
+    const flick = this.mistT > 0 ? 0.6 : this.invuln > 0.1 && !dashing && this.state !== 'dash' ? (Math.sin(this.world.time * 40) > 0 ? 0.55 : 0) : 0;
     this.pig.pale = flick;
+    this.pig.opacity = this.red.opacity = this.mistT > 0 ? 0.55 : 1;
     if (this.state === 'fall' || this.state === 'dead') {
       const k = Math.min(1, this.stateT / (this.state === 'fall' ? 0.6 : 1.1));
       this.pig.dissolve = k;
