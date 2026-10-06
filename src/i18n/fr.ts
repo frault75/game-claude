@@ -1,0 +1,18 @@
+export const fr = {
+  loading: 'On broie l’encre…',
+  hintMove: 'ZQSD ou flèches : marcher',
+  hintStrike: 'Clic gauche : coup de pinceau',
+  hintDodge: 'Espace : esquiver',
+  hintCast: 'Clic droit sur un nœud rouge : lancer le fil',
+  hintReel: 'Maintenir le clic droit : tirer',
+  hintTie: 'Fil en main, clic droit sur un autre nœud : attacher',
+  hintRelease: 'F ou clic droit dans le vide : lâcher',
+  hintPadMove: 'Stick gauche : marcher',
+  hintPadStrike: 'X : coup de pinceau',
+  hintPadDodge: 'A : esquiver',
+  hintPadCast: 'RT : lancer le fil · maintenir : tirer',
+  hintPadRelease: 'B : lâcher le fil',
+  sandboxTitle: 'Le terrain d’essai',
+  sandboxNote: 'Si c’est rouge, le fil peut le prendre.',
+  inkstone: 'Pierre à encre',
+};

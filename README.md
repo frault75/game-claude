@@ -16,6 +16,20 @@ npm run build    # typecheck + static build in dist/
 
 Pushing to `main` builds and deploys to GitHub Pages (Settings → Pages → Source: GitHub Actions).
 
+## Controls
+
+| Action | Keyboard + mouse | Gamepad |
+|---|---|---|
+| Walk | WASD / ZQSD / arrows | Left stick |
+| Aim | Mouse | Right stick |
+| Brush strike | Left click (J) | X |
+| Cast the thread at a red knot | Right click (K) | RT |
+| Pull | Hold right click | Hold RT |
+| Tie (thread in hand) | Right click another knot | RT on another knot |
+| Let go | F, middle click, or right click on nothing | B |
+| Dodge | Space | A |
+
 ## Debug
 
-- `F3` or `` ` `` toggles the debug overlay (FPS, area, boss state).
+- `F3` or `` ` `` toggles the debug overlay (FPS, area, boss state, thread state).
+- Add `?debug` to the URL for test keys: `H` invulnerable, `B` line boil on/off.

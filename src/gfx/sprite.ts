@@ -16,6 +16,7 @@ uniform float pale;
 uniform float dissolve;
 uniform float dissolveSeed;
 uniform vec3 gain;
+uniform float reveal;
 varying vec2 vUv;
 float hash(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
 float vnoise(vec2 p) {
@@ -30,6 +31,10 @@ void main() {
     float n = vnoise(vUv * 9.0 + dissolveSeed) * 0.7 + vnoise(vUv * 31.0 - dissolveSeed) * 0.3;
     float k = smoothstep(dissolve - 0.08, dissolve + 0.08, n);
     c *= k;
+  }
+  if (reveal < 1.5) {
+    float edge = reveal * 1.12 - 0.06 + (vnoise(vec2(vUv.y * 14.0, 3.0)) - 0.5) * 0.05;
+    c *= smoothstep(vUv.x - 0.04, vUv.x + 0.01, edge);
   }
   gl_FragColor = c * opacity;
 }
@@ -69,6 +74,7 @@ export function makeMaterial(tex: THREE.Texture, blend: BlendMode = 'over'): THR
       dissolve: { value: 0 },
       dissolveSeed: { value: Math.random() * 50 },
       gain: { value: new THREE.Vector3(1, 1, 1) },
+      reveal: { value: 2 },
     },
   });
 }
@@ -107,6 +113,8 @@ export class Sprite {
   get opacity(): number { return this.mat.uniforms.opacity.value; }
   set pale(v: number) { this.mat.uniforms.pale.value = v; }
   set dissolve(v: number) { this.mat.uniforms.dissolve.value = v; }
+  /** 0..1 left-to-right brushed reveal; >= 1.5 means fully shown. */
+  set reveal(v: number) { this.mat.uniforms.reveal.value = v; }
 
   setPos(x: number, y: number): void {
     this.mesh.position.x = x;
