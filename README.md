@@ -20,10 +20,12 @@ Pushing to `main` builds and deploys to GitHub Pages (Settings → Pages → Sou
 
 | Action | Keyboard + mouse | Gamepad | Touch |
 |---|---|---|---|
-| Move | WASD / ZQSD / arrows | Left stick | Virtual stick (left thumb) |
-| **Trait** (dash, leaves a stroke) | Right click or Space (towards the cursor) | A (stick direction) | Tap anywhere: Trait to that point |
-| Brush strike | Left click | X | Brush button (bottom right) |
+| Move | WASD / ZQSD / arrows | Left stick | (you move by drawing) |
+| **Trait** (straight dash, leaves a stroke) | Right click or Space (towards the cursor) | A (stick direction) | Tap a point |
+| **Draw a stroke** Shu follows | Hold right button and drag | — | Drag your finger |
+| Brush strike | Left click | X | (tap a foe to cut through it) |
 
+Every stroke spends ink; the gauge refills as soon as you stop painting.
 Cross your own fresh stroke to close a loop: everything inside bursts (ensō).
 
 ## Debug

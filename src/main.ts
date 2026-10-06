@@ -90,17 +90,6 @@ async function start() {
     }
     const steps = Math.max(1, Math.ceil(dt / (1 / 60)));
     if (!(window as unknown as { __pause?: boolean }).__pause) for (let i = 0; i < steps; i++) game.update(dt / steps);
-    // touch overlay follows the input state
-    const hud = game.hud;
-    hud.touch = input.device === 'touch';
-    input.layoutButton();
-    hud.buttonPos.x = input.button.x; hud.buttonPos.y = input.button.y; hud.buttonPos.r = input.button.r;
-    hud.buttonPressed = input.isDown('attack');
-    hud.stick.active = input.stick.id >= 0;
-    if (hud.stick.active) {
-      [hud.stick.ox, hud.stick.oy] = input.toUi(input.stick.ox, input.stick.oy);
-      [hud.stick.x, hud.stick.y] = input.toUi(input.stick.x, input.stick.y);
-    }
     const [cx, cy] = game.world.cameraWithShake();
     renderer.render(time, cx, cy);
     const w = game.world;
@@ -108,7 +97,7 @@ async function start() {
     debug.set('area', `${w.areaName} / ${w.roomName}`);
     debug.set('boss', w.bossState);
     debug.set('child', `${p.x.toFixed(1)}, ${p.y.toFixed(1)}  hp ${p.hp}  ${p.state}${p.reeling ? ' (reeling)' : ''}`);
-    debug.set('ink', `${p.charges} charges · combo ${w.combo}`);
+    debug.set('ink', `${p.ink.toFixed(1)} ink · combo ${w.combo}${input.drawing ? ' · drawing' : ''}`);
     debug.set('ents', `${w.entities.length}  calls ${renderer.gl.info.render.calls}`);
     debug.set('res', `${renderer.pxW}x${renderer.pxH} scale ${renderer.renderScale.toFixed(2)}${IS_MOBILE ? ' mobile' : ''} · ${input.device}`);
     debug.frame(dt);

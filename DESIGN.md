@@ -24,17 +24,20 @@ Un orage d'encre noire a renversé l'encrier du vieux maître calligraphe et noy
 
 | Action | Clavier et souris | Manette | Mobile (tactile) |
 |--------|----------------|---------|------------------|
-| Se déplacer | ZQSD / WASD / flèches | Stick gauche | Stick virtuel sous le pouce gauche |
-| **Trait** (dash vers le curseur) | Clic droit ou Espace | A (direction du stick) | Toucher l'écran : Trait vers ce point |
-| Coup de pinceau | Clic gauche | X | Bouton pinceau en bas à droite (visée auto) |
+| Se déplacer | ZQSD / WASD / flèches | Stick gauche | — (on se déplace en traçant) |
+| **Trait** (dash droit) | Clic droit ou Espace (vers le curseur) | A (direction du stick) | Taper un point |
+| **Dessiner un trait** que Shu suit | Clic droit maintenu et glissé | — | Glisser le doigt |
+| Coup de pinceau | Clic gauche | X | — (taper un ennemi le traverse) |
 
-**Le jeu doit tourner sur mobile** : commandes tactiles, interface qui s'adapte au paysage comme au portrait, budget de pixels réduit et résolution adaptative, bruits du shader précalculés en texture.
+**On joue en dessinant.** Sur mobile, un seul doigt suffit : glisser dessine un chemin que Shu parcourt à toute vitesse en peignant, taper lance un Trait droit. La longueur peinte est limitée par une **jauge d'encre** qui se recharge vite (plus vite avec le combo).
+
+**Le jeu doit tourner sur mobile** : interface qui s'adapte au paysage comme au portrait, budget de pixels réduit et résolution adaptative, bruits du shader précalculés en texture.
 
 ### Règles
 
 1. **Le Trait est un dash vers le curseur**, de 4 cases au plus, invulnérable pendant sa durée. Il laisse derrière lui un trait d'encre vermillon.
 2. **Un trait tranche.** Les ennemis traversés pendant le dash prennent un coup.
-3. **Le pinceau a 3 charges d'encre**, qui se rechargent vite. On peut enchaîner 3 traits d'affilée ; plus le combo monte, plus la recharge est rapide.
+3. **Tout trait consomme de l'encre** (sa longueur). La jauge se recharge dès qu'on arrête de peindre, plus vite avec le combo. Pendant qu'il court sur son trait, Shu est intouchable.
 4. **Fermer une boucle déclenche un ensō.** Quand un nouveau trait croise un trait encore frais, la boucle se referme. Tout ce qu'elle contient explose : gros dégâts aux ennemis, interrupteurs activés, projectiles effacés. Trois traits autour d'un ennemi suffisent à l'encercler.
 5. **Le trait frais est de l'encre solide** pendant ~2,5 s : il absorbe les projectiles d'encre et sert de pont au-dessus du vide.
 6. **Le trait coupe** les cordes, les lianes et les cloisons de papier qu'il croise.

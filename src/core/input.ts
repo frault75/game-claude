@@ -1,9 +1,11 @@
 import { uiSize } from './renderer';
 /**
- * Keyboard (physical key codes, so ZQSD and WASD both work), mouse and gamepad,
- * merged into a small set of actions.
+ * Keyboard (physical key codes, so ZQSD and WASD both work), mouse, touch and gamepad,
+ * merged into a small set of actions plus "brush gestures":
+ *   - a tap (touch, or right click) asks for a Trait towards a point;
+ *   - a drag (finger, or right button held) draws a path Shu follows.
  */
-export type Action = 'attack' | 'thread' | 'release' | 'dodge' | 'interact' | 'pause' | 'debug' | 'confirm' | 'back' | 'up' | 'down' | 'left' | 'right';
+export type Action = 'attack' | 'release' | 'dodge' | 'interact' | 'pause' | 'debug' | 'confirm' | 'back' | 'up' | 'down' | 'left' | 'right';
 
 const KEYMAP: Record<string, Action[]> = {
   KeyW: ['up'], ArrowUp: ['up'],
@@ -22,6 +24,20 @@ const KEYMAP: Record<string, Action[]> = {
   Backquote: ['debug'],
 };
 
+/** Below this many CSS pixels of travel, a press is a tap, not a drawing. */
+const DRAG_PX = 14;
+const TAP_MS = 320;
+
+interface Gesture {
+  id: number;
+  sx: number;
+  sy: number;
+  lx: number;
+  ly: number;
+  t0: number;
+  drawing: boolean;
+}
+
 export class Input {
   private held = new Set<Action>();
   private pressedNow = new Set<Action>();
@@ -32,18 +48,21 @@ export class Input {
   mouseMoved = false;
   /** Last used device, to show the right hints and choose aim mode. */
   device: 'kbm' | 'pad' | 'touch' = 'kbm';
-  /** Touch: virtual stick (CSS px) and the brush button (UI units, 1080 tall). */
-  stick = { id: -1, ox: 0, oy: 0, x: 0, y: 0 };
-  stickVec: [number, number] = [0, 0];
-  private buttonId = -1;
-  readonly button = { x: 0, y: 0, r: 105 };
-  /** Last touch that asked for a Trait (CSS px). */
-  tapX = 0;
-  tapY = 0;
   padMove: [number, number] = [0, 0];
   padAim: [number, number] = [0, 0];
   private padPrev: boolean[] = [];
   anyPressed = false;
+
+  private gesture: Gesture | null = null;
+  /** Gesture events for this frame (CSS px). */
+  taps: [number, number][] = [];
+  drawStart: [number, number] | null = null;
+  drawPoints: [number, number][] = [];
+  drawEnd = false;
+  /** True while a finger or the right button is drawing. */
+  get drawing(): boolean {
+    return !!this.gesture?.drawing;
+  }
 
   constructor(el: HTMLElement) {
     window.addEventListener('keydown', (e) => {
@@ -69,21 +88,9 @@ export class Input {
     window.addEventListener('blur', () => {
       this.held.clear();
       this.keysHeld.clear();
+      this.endGesture(true);
     });
-    el.addEventListener('pointermove', (e) => {
-      if (e.pointerType === 'mouse') {
-        this.mouseX = e.clientX;
-        this.mouseY = e.clientY;
-        this.mouseMoved = true;
-        this.device = 'kbm';
-        return;
-      }
-      if (e.pointerId === this.stick.id) {
-        this.stick.x = e.clientX;
-        this.stick.y = e.clientY;
-        this.updateStick();
-      }
-    });
+
     el.addEventListener('pointerdown', (e) => {
       this.anyPressed = true;
       if (e.pointerType === 'mouse') {
@@ -91,82 +98,78 @@ export class Input {
         this.mouseX = e.clientX;
         this.mouseY = e.clientY;
         if (e.button === 0) { this.press('attack'); this.press('confirm'); }
-        if (e.button === 2) this.press('dodge');
+        if (e.button === 2) this.beginGesture(e);
         if (e.button === 1) { e.preventDefault(); this.press('release'); }
         return;
       }
       e.preventDefault();
       this.device = 'touch';
-      const w = window.innerWidth, h = window.innerHeight;
-      const [ux, uy] = this.toUi(e.clientX, e.clientY);
-      this.layoutButton();
-      if (Math.hypot(ux - this.button.x, uy - this.button.y) < this.button.r * 1.15 && this.buttonId < 0) {
-        this.buttonId = e.pointerId;
-        this.press('attack');
-        this.press('confirm');
-      } else if (e.clientX < w * 0.42 && this.stick.id < 0 && e.clientY > h * 0.18) {
-        this.stick = { id: e.pointerId, ox: e.clientX, oy: e.clientY, x: e.clientX, y: e.clientY };
-        this.updateStick();
-      } else {
-        // a tap anywhere else: Trait towards that point
-        this.mouseX = this.tapX = e.clientX;
-        this.mouseY = this.tapY = e.clientY;
-        this.press('dodge');
-        this.press('confirm');
-        this.held.delete('dodge');
-        this.held.delete('confirm');
+      this.press('confirm');
+      this.held.delete('confirm');
+      // one finger draws; a second finger simply ends the drawing
+      if (this.gesture) this.endGesture(false);
+      else this.beginGesture(e);
+    });
+    el.addEventListener('pointermove', (e) => {
+      if (e.pointerType === 'mouse') {
+        this.mouseX = e.clientX;
+        this.mouseY = e.clientY;
+        this.mouseMoved = true;
+        if (this.device !== 'kbm') this.device = 'kbm';
       }
+      const g = this.gesture;
+      if (!g || e.pointerId !== g.id) return;
+      // coalesced events give smoother drawings where supported
+      const evs = typeof e.getCoalescedEvents === 'function' ? e.getCoalescedEvents() : [];
+      for (const ev of evs.length ? evs : [e]) this.moveGesture(ev.clientX, ev.clientY);
     });
     const up = (e: PointerEvent) => {
       if (e.pointerType === 'mouse') {
         if (e.button === 0) { this.held.delete('attack'); this.held.delete('confirm'); }
-        if (e.button === 2) this.held.delete('dodge');
         if (e.button === 1) this.held.delete('release');
-        return;
       }
-      if (e.pointerId === this.stick.id) {
-        this.stick.id = -1;
-        this.stickVec = [0, 0];
-      }
-      if (e.pointerId === this.buttonId) {
-        this.buttonId = -1;
-        this.held.delete('attack');
-        this.held.delete('confirm');
-      }
+      if (this.gesture && e.pointerId === this.gesture.id) this.endGesture(false);
     };
     el.addEventListener('pointerup', up);
-    el.addEventListener('pointercancel', up);
+    el.addEventListener('pointercancel', (e) => {
+      if (this.gesture && e.pointerId === this.gesture.id) this.endGesture(true);
+    });
     el.addEventListener('contextmenu', (e) => e.preventDefault());
   }
 
-  /** CSS px to UI units (1080 tall, origin at centre). */
+  private beginGesture(e: PointerEvent): void {
+    this.gesture = { id: e.pointerId, sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY, t0: performance.now(), drawing: false };
+  }
+
+  private moveGesture(x: number, y: number): void {
+    const g = this.gesture!;
+    if (!g.drawing) {
+      if (Math.hypot(x - g.sx, y - g.sy) < DRAG_PX) return;
+      g.drawing = true;
+      this.drawStart = [g.sx, g.sy];
+      g.lx = g.sx;
+      g.ly = g.sy;
+    }
+    if (Math.hypot(x - g.lx, y - g.ly) >= 3) {
+      this.drawPoints.push([x, y]);
+      g.lx = x;
+      g.ly = y;
+    }
+  }
+
+  private endGesture(cancel: boolean): void {
+    const g = this.gesture;
+    if (!g) return;
+    this.gesture = null;
+    if (g.drawing) this.drawEnd = true;
+    else if (!cancel && performance.now() - g.t0 < TAP_MS * 3) this.taps.push([g.sx, g.sy]);
+  }
+
+  /** CSS px to UI units (origin at centre). */
   toUi(x: number, y: number): [number, number] {
     const w = window.innerWidth, h = window.innerHeight;
     const ui = uiSize(w, h);
     return [(x / w - 0.5) * ui.w, (0.5 - y / h) * ui.h];
-  }
-
-  /** Where the brush button sits (UI units). */
-  layoutButton(): void {
-    const w = window.innerWidth, h = window.innerHeight;
-    const ui = uiSize(w, h);
-    this.button.r = 105;
-    this.button.x = ui.w / 2 - this.button.r - 60;
-    this.button.y = -ui.h / 2 + this.button.r + 60;
-  }
-
-  private updateStick(): void {
-    const s = this.stick;
-    const R = Math.min(window.innerWidth, window.innerHeight) * 0.12;
-    let dx = (s.x - s.ox) / R, dy = -(s.y - s.oy) / R;
-    const l = Math.hypot(dx, dy);
-    if (l > 1) {
-      // the stick base follows the thumb when dragged far
-      s.ox = s.x - (dx / l) * R;
-      s.oy = s.y + (dy / l) * R;
-      dx /= l; dy /= l;
-    }
-    this.stickVec = l < 0.15 ? [0, 0] : [dx, dy];
   }
 
   private press(a: Action): void {
@@ -204,8 +207,6 @@ export class Input {
     if (this.held.has('down')) y -= 1;
     const [px, py] = this.padMove;
     if (Math.hypot(px, py) > 0.2) { x = px; y = py; }
-    const [tx, ty] = this.stickVec;
-    if (Math.hypot(tx, ty) > 0.1) { x = tx; y = ty; }
     const l = Math.hypot(x, y);
     return l > 1 ? [x / l, y / l] : [x, y];
   }
@@ -247,5 +248,19 @@ export class Input {
     this.keysPressed.clear();
     this.mouseMoved = false;
     this.anyPressed = false;
+    this.taps = [];
+    this.drawStart = null;
+    this.drawPoints = [];
+    this.drawEnd = false;
+  }
+
+  /** Testing helpers: feed gestures directly (CSS px). */
+  testTap(x: number, y: number): void {
+    this.taps.push([x, y]);
+  }
+  testDraw(points: [number, number][]): void {
+    this.drawStart = points[0];
+    this.drawPoints = points.slice(1);
+    this.drawEnd = true;
   }
 }

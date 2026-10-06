@@ -149,7 +149,7 @@ export const arena: RoomDef = {
     w.scripts.push((dt) => {
       stateT += dt;
       const p = w.player;
-      if (!dashedOnce && p.charges < 3) {
+      if (!dashedOnce && p.state === 'dash') {
         dashedOnce = true;
         g.after(1.0, () => g.hintOnce('cut', t('hintTraitCut'), 4));
         g.after(5.5, () => g.hintOnce('enso', g.input.device === 'touch' ? t('hintTouchEnso') : t('hintEnso'), 6));
@@ -195,7 +195,7 @@ export const arena: RoomDef = {
             state = 'victory';
             stateT = -1e9;
           }
-          if (stateT < -1e8 && g.input.pressed('attack')) {
+          if (stateT < -1e8 && (g.input.pressed('attack') || g.input.pressed('confirm'))) {
             g.ensoCount = 0;
             w.bestCombo = 0;
             void g.travel('arena', [17, 9]);

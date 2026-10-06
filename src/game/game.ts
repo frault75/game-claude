@@ -205,7 +205,7 @@ export class Game {
     w.update(dt);
     this.r.post.flash = w.flash;
     this.hud.setHp(Math.max(0, this.player.hp));
-    this.hud.setCharges(this.player.charges);
+    this.hud.setInk(this.player.inkFrac);
     this.hud.setCombo(w.combo, Math.max(0, w.comboT / 2.4));
     this.hud.update(dt);
     if (this.room?.exits && this.player.state !== 'dead') {

@@ -40,7 +40,7 @@ export class Renderer {
   readonly uiCamera: THREE.OrthographicCamera;
   /** World units visible vertically (grows in portrait so enough width stays visible). */
   viewH = 14;
-  baseViewH = 14;
+  baseViewH = IS_MOBILE ? 11.5 : 14;
   minViewW = 12;
   zoom = 1;
   /** UI virtual units: 1080 tall. */
