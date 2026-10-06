@@ -89,6 +89,14 @@ export class Input {
     this.held.add(a);
   }
 
+  /** Debug/testing: drive an action as if a button were pressed or released. */
+  simulate(a: Action, down: boolean, asPress = true): void {
+    if (down) {
+      if (asPress) this.press(a);
+      else this.held.add(a);
+    } else this.held.delete(a);
+  }
+
   isDown(a: Action): boolean {
     return this.held.has(a);
   }

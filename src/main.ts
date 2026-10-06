@@ -1,28 +1,49 @@
 import { Renderer } from './core/renderer';
 import { Input } from './core/input';
 import { DebugOverlay } from './ui/debug';
-import { TestScene } from './scenes/testScene';
+import { Game } from './game/game';
+import { sandbox } from './game/areas/sandbox';
+import { audio } from './audio/engine';
+import { Ambience } from './audio/sfx';
+import { t } from './i18n';
 import { PALETTES } from './game/palettes';
 
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 const loading = document.getElementById('loading') as HTMLDivElement;
 const loadingBar = document.getElementById('loading-bar') as HTMLElement;
 const loadingText = document.getElementById('loading-text') as HTMLElement;
-const fr = (navigator.language || 'fr').toLowerCase().startsWith('fr');
-loadingText.textContent = fr ? 'On broie l’encre…' : 'Grinding the ink…';
+loadingText.textContent = t('loading');
 
 const renderer = new Renderer(canvas);
 const input = new Input(canvas);
 const debug = new DebugOverlay();
 window.addEventListener('resize', () => renderer.resize());
+const params = new URLSearchParams(location.search);
+const debugMode = params.has('debug');
 
-const scene = new TestScene(renderer, input);
-const paletteKeys: Record<string, string> = { Digit1: 'orchard', Digit2: 'river', Digit3: 'hills', Digit4: 'studio', Digit5: 'blank' };
+const game = new Game(renderer, input);
+const ambience = new Ambience();
+let started = false;
+
+function startAudio() {
+  if (started) return;
+  started = true;
+  audio.start();
+  ambience.rain(0.2);
+  ambience.wind(0.12, 600);
+}
+window.addEventListener('pointerdown', startAudio, { once: false });
+window.addEventListener('keydown', startAudio, { once: false });
+
+if (debugMode) (window as unknown as Record<string, unknown>).__v = { game, input, renderer };
 
 async function start() {
-  await scene.build((t) => (loadingBar.style.width = `${Math.round(t * 100)}%`));
+  loadingBar.style.width = '30%';
+  await game.loadRoom(sandbox);
+  loadingBar.style.width = '100%';
   loading.style.opacity = '0';
   setTimeout(() => loading.remove(), 900);
+  game.hud.showHint(input.device === 'pad' ? t('hintPadMove') : `${t('hintMove')} · ${t('hintStrike')} · ${t('hintDodge')}`, 8);
   let last = performance.now();
   let time = 0;
   const frame = (now: number) => {
@@ -31,23 +52,22 @@ async function start() {
     time += dt;
     input.pollPad();
     if (input.pressed('debug')) debug.toggle();
-    for (const [code, name] of Object.entries(paletteKeys)) {
-      if (input.keyPressed(code)) {
-        scene.paletteName = name;
-        renderer.setPalette(PALETTES[name]);
-        renderer.post.night = name === 'hills' ? 0.35 : 0;
-      }
+    if (debugMode) {
+      if (input.keyPressed('KeyH')) { game.player.hp = 5; game.player.invuln = 99999; }
+      if (input.keyPressed('KeyB')) renderer.boilEnabled = !renderer.boilEnabled;
     }
-    if (input.keyPressed('KeyB')) renderer.boilEnabled = !renderer.boilEnabled;
-    if (input.keyPressed('KeyG')) renderer.post.washed = renderer.post.washed > 0.5 ? 0 : 1;
     const steps = Math.max(1, Math.ceil(dt / (1 / 60)));
-    for (let i = 0; i < steps; i++) scene.update(dt / steps, time);
-    renderer.render(time, scene.camX, scene.camY);
-    debug.set('area', `test scene — palette ${scene.paletteName}`);
-    debug.set('boss', 'none');
-    debug.set('calls', `${renderer.gl.info.render.calls}`);
+    if (!(window as unknown as { __pause?: boolean }).__pause) for (let i = 0; i < steps; i++) game.update(dt / steps);
+    const [cx, cy] = game.world.cameraWithShake();
+    renderer.render(time, cx, cy);
+    const w = game.world;
+    const p = game.player;
+    debug.set('area', `${w.areaName} / ${w.roomName}`);
+    debug.set('boss', w.bossState);
+    debug.set('child', `${p.x.toFixed(1)}, ${p.y.toFixed(1)}  hp ${p.hp}  ${p.state}${p.reeling ? ' (reeling)' : ''}`);
+    debug.set('thread', game.thread.debug);
+    debug.set('ents', `${w.entities.length}  calls ${renderer.gl.info.render.calls}`);
     debug.set('res', `${renderer.pxW}x${renderer.pxH}`);
-    debug.set('keys', '1-5 palette · B boil · G washed');
     debug.frame(dt);
     input.endFrame();
     requestAnimationFrame(frame);
@@ -55,6 +75,7 @@ async function start() {
   requestAnimationFrame(frame);
 }
 
+void PALETTES;
 start().catch((e) => {
   loadingText.textContent = String(e);
   console.error(e);

@@ -137,3 +137,60 @@ export function shadow(p: Painter, x: number, y: number, rx: number, ry: number,
 
 /** Faint calligraphic text fragment written on the ground is handled by ui/text. */
 export { PIG_A };
+
+/** A ravine: dark falling wash, dry-brush lips on the far edge. */
+export function chasm(p: Painter, poly: V2[], seed: number): void {
+  const rng = new Rng(seed);
+  washPoly(p, poly, { pig: INK, density: 0.5, soft: 0.05, edge: 0.9, seed });
+  // inner depth
+  let cx = 0, cy = 0;
+  for (const q of poly) { cx += q[0]; cy += q[1]; }
+  cx /= poly.length; cy /= poly.length;
+  washPoly(p, poly.map(([x, y]) => [cx + (x - cx) * 0.8, cy + (y - cy) * 0.8] as V2), { pig: INK, density: 0.35, soft: 0.7, seed: seed + 1 });
+  // rim strokes
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i], b = poly[(i + 1) % poly.length];
+    const l = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    if (l < 0.3) continue;
+    stroke(p, [a, [(a[0] + b[0]) / 2 + rng.gauss() * 0.05, (a[1] + b[1]) / 2 + rng.gauss() * 0.05], b], {
+      width: 0.13, load: 0.9, dry: 0.55, seed: rng.int(1, 1e6), taperStart: 0.05, taperEnd: 0.1, rough: 0.4,
+    });
+  }
+  // falling streaks
+  for (let i = 0; i < 30; i++) {
+    const q = poly[rng.int(0, poly.length - 1)];
+    const x = q[0] + (cx - q[0]) * rng.range(0.05, 0.25), y = q[1] + (cy - q[1]) * rng.range(0.05, 0.25);
+    stroke(p, [[x, y], [x + rng.gauss() * 0.05, y - rng.range(0.4, 1.1)]], { width: 0.05, load: 0.6, dry: 0.8, seed: rng.int(1, 1e6), body: 0.2, taperEnd: 0.9 });
+  }
+}
+
+/** Water filling a polygon (rivers, channels): wash, bank strokes, flowing ripples. */
+export function waterPoly(p: Painter, poly: V2[], seed: number, flow: [number, number] = [1, 0], density = 0.2): void {
+  const rng = new Rng(seed);
+  washPoly(p, poly, { pig: mixPig(INK, PIG_A, 0.25), density, soft: 0.1, edge: 0.9, seed });
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const q of poly) { minX = Math.min(minX, q[0]); minY = Math.min(minY, q[1]); maxX = Math.max(maxX, q[0]); maxY = Math.max(maxY, q[1]); }
+  const fl = Math.hypot(flow[0], flow[1]) || 1;
+  const fx = flow[0] / fl, fy = flow[1] / fl;
+  const area = (maxX - minX) * (maxY - minY);
+  const inPoly = (x: number, y: number) => {
+    let inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const [xi, yi] = poly[i], [xj, yj] = poly[j];
+      if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi + 1e-12) + xi) inside = !inside;
+    }
+    return inside;
+  };
+  for (let i = 0; i < area * 0.5; i++) {
+    const x = rng.range(minX, maxX), y = rng.range(minY, maxY);
+    if (!inPoly(x, y)) continue;
+    const l = rng.range(0.4, 1.3);
+    stroke(p, [[x - fx * l / 2, y - fy * l / 2], [x + fy * 0.04, y - fx * 0.04], [x + fx * l / 2, y + fy * l / 2]], {
+      width: 0.035, load: rng.range(0.25, 0.5), dry: 0.6, seed: rng.int(1, 1e6), body: 0.2, taperStart: 0.35, taperEnd: 0.45, press: 0,
+    });
+  }
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i], b = poly[(i + 1) % poly.length];
+    stroke(p, [a, b], { width: 0.1, load: 0.7, dry: 0.6, seed: rng.int(1, 1e6), taperStart: 0.1, taperEnd: 0.1, rough: 0.4 });
+  }
+}
