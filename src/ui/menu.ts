@@ -72,6 +72,27 @@ const CONTROLS_TOUCH = {
 const BEAST_ORDER = ['blot', 'mite', 'wisp', 'crow', 'scarecrow', 'splitter', 'totem', 'boar', 'fox', 'brute', 'bat', 'grub', 'soldier', 'lantern', 'mother', 'ram king', 'warden'];
 const FLOOR_IDS = ['cave1', 'cave2', 'temple1', 'temple2'];
 
+export const MENU_TABS: MenuTab[] = ['map', 'journal', 'bag', 'tree', 'settings'];
+
+/** The row of tabs at the top of every sheet (menu, bag, tree); returns where each tab is. */
+export function tabStrip(r: Renderer, pw: number, ph: number, active: MenuTab, keep: (s: Sprite) => void): { id: MenuTab; x: number; y: number; w: number; h: number }[] {
+  let tx = -pw / 2 + 56;
+  const ty = ph / 2 - 50;
+  const out: { id: MenuTab; x: number; y: number; w: number; h: number }[] = [];
+  for (const id of MENU_TABS) {
+    const on = id === active;
+    const art = brushText(L(T[id]), { size: 34, ppu: 1.4, weight: on ? 700 : 400, color: on ? [0.76, 0.23, 0.17] : undefined, lineHeight: 1.25 });
+    const s = new Sprite(art);
+    s.mesh.renderOrder = LAYER.ui + 33;
+    (on ? r.uiAcc : r.uiPig).add(s.mesh);
+    s.setPos(tx + art.w / 2, ty);
+    keep(s);
+    out.push({ id, x: tx + art.w / 2, y: ty, w: art.w + 30, h: 70 });
+    tx += art.w + 46;
+  }
+  return out;
+}
+
 export interface MapView {
   src: MapSource | null;
   px: number;
@@ -183,14 +204,8 @@ export class Menu {
     this.buttons = [];
     const pw = this.pw, ph = this.ph;
     // tabs
-    let tx = -pw / 2 + 56;
-    const ty = ph / 2 - 50;
-    for (const id of ['map', 'journal', 'bag', 'tree', 'settings'] as MenuTab[]) {
-      const on = id === this.tab;
-      const t = this.text(L(T[id]), 34, { bold: on, color: on ? [0.76, 0.23, 0.17] : undefined });
-      t.s.setPos(tx + t.w / 2, ty);
-      this.buttons.push({ x: tx + t.w / 2, y: ty, w: t.w + 30, h: 70, act: () => { sfx.ui(); this.open(id); } });
-      tx += t.w + 46;
+    for (const tb of tabStrip(this.r, pw, ph, this.tab, (sp) => this.dyn.push(sp))) {
+      this.buttons.push({ ...tb, act: () => { sfx.ui(); this.open(tb.id); } });
     }
     if (this.tab === 'map') this.mapTab();
     else if (this.tab === 'journal') this.journalTab();

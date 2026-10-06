@@ -13,6 +13,8 @@ import { audio } from './audio/engine';
 import { Ambience } from './audio/sfx';
 import { t } from './i18n';
 import { PALETTES } from './game/palettes';
+import { introShots } from './ui/cinematic';
+import { resetProgress } from './game/progress';
 
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 const loading = document.getElementById('loading') as HTMLDivElement;
@@ -59,8 +61,9 @@ window.addEventListener('keydown', startAudio, { once: false });
 if (debugMode) (window as unknown as Record<string, unknown>).__v = { game, input, renderer };
 
 async function start() {
+  let hasSave = false;
   if (params.has('reset')) resetSave();
-  else loadSave();
+  else hasSave = loadSave() && (save.main > 0 || save.level > 1);
   // the child was made before the save was read
   game.player.hp = game.player.maxHp;
   game.player.ink = game.player.inkMax;
@@ -70,6 +73,27 @@ async function start() {
   const startRoom = params.get('room') ?? 'overworld';
   if (startRoom === 'overworld') await game.loadRoom(overworld, shrineSpawn(save.shrine));
   else await game.loadRoom(game.rooms.has(startRoom) ? startRoom : 'overworld');
+  // the title, unless a test or a debug link asks for a room directly
+  if (!params.has('room') && !params.has('notitle')) {
+    game.showTitle(hasSave);
+    game.title.onChoose = (c) => {
+      if (c === 'continue') { game.endTitle(); return; }
+      // a new journey: forget everything, tell how it began, wake in the hamlet
+      resetSave();
+      resetProgress();
+      game.flags.clear();
+      game.cine.child = game.player.frames;
+      game.cine.play(introShots(), () => game.endTitle());
+      music.play('studio');
+      void game.loadRoom(overworld, shrineSpawn(0)).then(() => {
+        const p = game.player;
+        p.hp = p.maxHp;
+        p.ink = p.inkMax;
+        p.pigment = 0;
+        if (game.cine.active) music.play('studio');
+      });
+    };
+  }
   loadingBar.style.width = '100%';
   loading.style.opacity = '0';
   setTimeout(() => loading.remove(), 900);

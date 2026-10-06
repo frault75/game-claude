@@ -10,6 +10,7 @@ import { sfx } from '../audio/sfx';
 import { music } from '../audio/music';
 import { t, lang } from '../i18n';
 import { L, BESTIARY, JOURNAL_UI } from '../i18n/lore';
+import { inkShots } from '../ui/cinematic';
 
 export function giveXp(g: Game, n: number): void {
   const w = g.world;
@@ -82,7 +83,10 @@ export function unlockInk(g: Game, id: InkId): void {
   music.motif(false, 'bell', 1);
   g.world.flash = 0.4;
   g.player.pigment = g.player.pigmentMax;
-  void g.story.show([`${t('inkFound')} : ${def.name[lang]}`, def.verb[lang]], { size: 44, y: r.uiH / 2 - 230, hold: 3, italic: false, stagger: 0.6 });
-  g.after(2.5, () => g.hud.showHint(g.input.device === 'touch' ? t('inkSwitchTouch') : t('inkSwitchKbm'), 6));
+  // a sheet of its own: the colour blooms, its name, what it does
+  g.cine.play(inkShots(id), () => {
+    g.after(0.6, () => g.hud.showHint(g.input.device === 'touch' ? t('inkSwitchTouch') : t('inkSwitchKbm'), 6));
+  });
+  void r; void def;
   g.player.selectInk(id);
 }

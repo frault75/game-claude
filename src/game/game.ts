@@ -1,6 +1,8 @@
 /** Owns the world, player and HUD; loads rooms; exits, death, ensō, combo, music, story. */
 import type { Renderer } from '../core/renderer';
-import { Menu } from '../ui/menu';
+import { Title } from '../ui/title';
+import { Cinematic } from '../ui/cinematic';
+import { Menu, MenuTab } from '../ui/menu';
 import { settings } from './settings';
 import { REGIONS, regionAt } from '../world/layout';
 import { MapSource, reveal, flushFog } from '../ui/mapArt';
@@ -44,6 +46,10 @@ export class Game {
   readonly inventory: Inventory;
   readonly tree: Tree;
   readonly menu: Menu;
+  readonly title: Title;
+  readonly cine: Cinematic;
+  private titleT = 0;
+  private titleCam: V = [0, 0];
   /** Radius of the child's lamp in dark places. */
   lampRadius = 6.5;
   private pigmentHintT = 0;
@@ -95,10 +101,15 @@ export class Game {
     };
     this.tree = new Tree(r, input);
     this.tree.onChange = () => this.inventory.onChange?.();
+    this.title = new Title(r, input);
+    this.cine = new Cinematic(r, input);
     this.menu = new Menu(r, input);
     this.menu.onBag = () => { this.menu.close(); this.inventory.open(); };
     this.menu.onTree = () => { this.menu.close(); this.tree.open(); };
     this.menu.device = () => this.input.device;
+    const toTab = (id: MenuTab) => (id === 'bag' ? this.inventory.open() : id === 'tree' ? this.tree.open() : this.menu.open(id));
+    this.inventory.onTab = toTab;
+    this.tree.onTab = toTab;
     this.menu.view = () => ({ src: this.mapSrc, px: this.player.x, py: this.player.y, dir: Math.atan2(this.player.aim[1], this.player.aim[0]), goal: this.objective, place: this.placeName() });
     this.inventory.onGrind = (pig, name) => {
       const p = this.player;
@@ -313,7 +324,47 @@ export class Game {
     this.hud.showHint(text, dur);
   }
 
+  /** Show the title over the living world (the child waits, hidden). */
+  showTitle(hasSave: boolean): void {
+    this.title.open(hasSave);
+    this.titleT = 0;
+    this.titleCam = [this.player.x, this.player.y];
+    this.player.hidden = true;
+    this.player.locked = true;
+  }
+
+  /** Back to play after the title or the intro. */
+  endTitle(): void {
+    if (this.title.active) this.title.close();
+    this.player.hidden = false;
+    this.player.locked = false;
+    this.input.swallow();
+  }
+
   update(dt: number): void {
+    // the title and cinematics take the whole screen
+    if (this.title.active || this.cine.active) {
+      this.player.locked = true;
+      this.player.hidden = true;
+      this.hud.visible = false;
+      this.hud.panelOpen = true;
+      this.story.hidden = true;
+      this.input.uiMode = true;
+      this.input.uiRegions = [];
+      this.hud.setMinimap(null, false, 0, 0, 0, null, dt);
+      if (this.cine.active) this.cine.update(dt);
+      else if (!this.loading) {
+        const w = this.world;
+        w.update(dt);
+        this.titleT += dt;
+        w.camX = this.titleCam[0] + Math.sin(this.titleT * 0.05) * 16;
+        w.camY = this.titleCam[1] + 4 + Math.sin(this.titleT * 0.037) * 6;
+        w.clampCamera();
+        this.title.update(dt);
+      } else this.title.update(dt);
+      this.hud.update(dt);
+      return;
+    }
     this.story.update(dt);
     if (this.timers.length) {
       for (const tm of this.timers) tm.t -= dt;

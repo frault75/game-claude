@@ -84,6 +84,8 @@ export class Player extends Entity {
   private shadowS!: Sprite;
   frames!: ChildFrames;
   locked = false;
+  /** Not drawn (title screen, cinematics). */
+  hidden = false;
   /** Where the child is walking to, or whom it is attacking. */
   moveTarget: V | null = null;
   attackTarget: Entity | null = null;
@@ -847,7 +849,8 @@ export class Player extends Entity {
     this.shadowS.setPos(this.x, this.y);
     const flick = this.mistT > 0 ? 0.6 : this.invuln > 0.1 && !dashing && this.state !== 'dash' ? (Math.sin(this.world.time * 40) > 0 ? 0.55 : 0) : 0;
     this.pig.pale = flick;
-    this.pig.opacity = this.red.opacity = this.mistT > 0 ? 0.55 : 1;
+    this.pig.opacity = this.red.opacity = this.hidden ? 0 : this.mistT > 0 ? 0.55 : 1;
+    this.shadowS.opacity = this.hidden ? 0 : 1;
     if (this.state === 'fall' || this.state === 'dead') {
       const k = Math.min(1, this.stateT / (this.state === 'fall' ? 0.6 : 1.1));
       this.pig.dissolve = k;

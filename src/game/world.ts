@@ -325,8 +325,15 @@ export class World {
   updateCamera(dt: number): void {
     const p = this.player;
     const [ax, ay] = p.aim;
-    // while a finger is drawing, the page holds still under it
+    // while a finger is drawing, the page holds still under it, unless the child walks
+    // towards the edge (the other thumb on the stick): then it is kept in a box around the centre
     if (this.input.drawing) {
+      const vh = this.r.viewH / this.r.zoom, vw = vh * (this.r.pxW / this.r.pxH);
+      const bx = vw * 0.28, by = vh * 0.26;
+      const dx = p.x - this.camX, dy = p.y + 0.5 - this.camY;
+      const k = Math.min(1, dt * 8);
+      if (Math.abs(dx) > bx) this.camX += (dx - Math.sign(dx) * bx) * k;
+      if (Math.abs(dy) > by) this.camY += (dy - Math.sign(dy) * by) * k;
       this.clampCamera();
       if (this.shakeT > 0) this.shakeT -= dt;
       return;
