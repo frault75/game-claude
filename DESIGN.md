@@ -1,134 +1,106 @@
 # TRAIT — Document de design
 
-> *Chaque esquive est un coup de pinceau. Chaque boucle, une explosion d'encre.*
-> *Every dodge is a brushstroke. Every loop, a burst of ink.*
+> *Le maître a perdu ses encres dans l'orage. Va les chercher, une couleur à la fois.*
+> *The master lost his inks in the storm. Go and find them, one colour at a time.*
 
-Action/puzzle RPG en vue de dessus, nerveux, pour navigateur desktop. Durée visée : 20 à 30 minutes. Jeu bilingue français / anglais.
+Action-RPG en monde ouvert, vue de dessus, à la Diablo, dans un monde peint au lavis d'encre. Navigateur, **ordinateur et mobile**. Bilingue français / anglais.
 
-> **Révision 2.** Le premier concept (le fil rouge, ton mélancolique et lent) a été abandonné après playtest : sensations molles, concept peu amusant, ambiance trop calme. On garde le moteur de rendu en lavis d'encre et l'audio procédural, mais tout le reste change : jeu rapide, impacts forts, ambiance d'orage.
+> **Révision 3.** Après playtest du prototype en arène : les vagues dans une arène vide manquaient de variété, de but et d'évolution. On passe à un **monde ouvert** qu'on explore librement, avec des **camps d'ennemis**, des **niveaux**, des **boss** qui ouvrent les régions, et **plusieurs encres de couleur** qui sont autant d'armes. Le moteur (rendu lavis d'encre, audio procédural, le Trait et l'ensō) est conservé.
 
 ---
 
-## 1. L'idée en une phrase
+## 1. L'histoire en bref
 
-Un orage d'encre noire a renversé l'encrier du vieux maître calligraphe et noyé le monde peint sous des bêtes de tache. Tu es **Shu**, le dernier trait qu'il a tracé, un trait vivant d'encre vermillon. Tu fends l'orage à coups de pinceau et tu refermes des cercles parfaits (des *ensō*) pour rendre l'encre au papier.
+Un orage d'encre noire a renversé l'encrier du vieux maître calligraphe. Ses **encres de couleur** se sont dispersées dans sa grande peinture, gardées par des bêtes d'encre. Tu es **Shu**, son dernier trait, d'encre vermillon. Région après région, tu rends ses couleurs au monde. Au cœur de l'orage t'attend le maître lui-même. Le dernier geste du jeu est un ensō tracé lentement autour de lui, avec toutes les couleurs retrouvées.
 
-## 2. Piliers
+Peu de texte : un titre par région, une phrase par sanctuaire, une phrase par encre retrouvée.
 
-1. **Ça claque.** Chaque action donne un retour fort : gel d'image, éclaboussures, caméra qui réagit, coups de tambour.
-2. **Tracer, c'est se battre.** La même action sert à esquiver, frapper, résoudre une énigme et dessiner. On progresse en traçant mieux, pas en ramassant des objets.
-3. **Lire avant de foncer.** Les attaques ennemies sont clairement annoncées. La vitesse récompense le joueur qui a lu la scène et choisi son tracé.
-4. **L'orage est vivant.** Pluie battante, éclairs qui blanchissent le papier, tambours qui montent avec le combo.
+## 2. Boucle de jeu
 
-## 3. La mécanique : le Trait
+1. **Explorer** la carte librement. Chemins, forêts, étangs, ruines, village.
+2. **Nettoyer des camps** d'ennemis, de plus en plus coriaces à mesure qu'on s'éloigne du village. Certains ennemis sont des **élites** : plus gros, plus forts, avec un trait particulier.
+3. **Gagner de l'expérience**, monter de **niveau** : plus de vie, plus d'encre, plus de dégâts.
+4. **Activer les sanctuaires** : soin complet et point de reprise.
+5. **Vaincre le gardien** de la région : il libère une **nouvelle encre** et ouvre la région suivante.
 
-| Action | Clavier et souris | Manette | Mobile (tactile) |
-|--------|----------------|---------|------------------|
-| Se déplacer | ZQSD / WASD / flèches | Stick gauche | — (on se déplace en traçant) |
-| **Trait** (dash droit) | Clic droit ou Espace (vers le curseur) | A (direction du stick) | Taper un point |
-| **Dessiner un trait** que Shu suit | Clic droit maintenu et glissé | — | Glisser le doigt |
-| Coup de pinceau | Clic gauche | X | — (taper un ennemi le traverse) |
+## 3. Commandes
 
-**On joue en dessinant.** Sur mobile, un seul doigt suffit : glisser dessine un chemin que Shu parcourt à toute vitesse en peignant, taper lance un Trait droit. La longueur peinte est limitée par une **jauge d'encre** qui se recharge vite (plus vite avec le combo).
+Une même logique sur ordinateur et sur mobile.
 
-**Le jeu doit tourner sur mobile** : interface qui s'adapte au paysage comme au portrait, budget de pixels réduit et résolution adaptative, bruits du shader précalculés en texture.
+| Action | Ordinateur | Mobile |
+|--------|-----------|--------|
+| Aller à un endroit | Clic gauche (maintenir = suivre le curseur), ou ZQSD / WASD | Taper (maintenir = suivre le doigt) |
+| Attaquer un ennemi | Clic gauche sur lui | Taper sur lui |
+| **Tracer avec l'encre** | Clic droit glissé (clic droit seul = Trait droit), ou Espace | Glisser vite le doigt |
+| Changer d'encre | Touches 1 à 4, ou molette | Pots d'encre à l'écran |
 
-### Règles
+Tout trait consomme de l'**encre** (sa longueur). La jauge se recharge vite quand on ne peint pas, et des **orbes d'encre** tombent des ennemis.
 
-1. **Le Trait est un dash vers le curseur**, de 4 cases au plus, invulnérable pendant sa durée. Il laisse derrière lui un trait d'encre vermillon.
-2. **Un trait tranche.** Les ennemis traversés pendant le dash prennent un coup.
-3. **Tout trait consomme de l'encre** (sa longueur). La jauge se recharge dès qu'on arrête de peindre, plus vite avec le combo. Pendant qu'il court sur son trait, Shu est intouchable.
-4. **Fermer une boucle déclenche un ensō.** Quand un nouveau trait croise un trait encore frais, la boucle se referme. Tout ce qu'elle contient explose : gros dégâts aux ennemis, interrupteurs activés, projectiles effacés. Trois traits autour d'un ennemi suffisent à l'encercler.
-5. **Le trait frais est de l'encre solide** pendant ~2,5 s : il absorbe les projectiles d'encre et sert de pont au-dessus du vide.
-6. **Le trait coupe** les cordes, les lianes et les cloisons de papier qu'il croise.
+## 4. Les encres (armes)
 
-Le coup de pinceau (clic gauche) reste l'attaque de base, rapide et à courte portée.
+Chaque encre change ce que fait un **trait** et ce que fait une **boucle fermée** (ensō).
 
-### Pourquoi ça marche
+| Encre | Trait | Boucle (ensō) | Rôle |
+|-------|-------|---------------|------|
+| 🔴 **Vermillon** (départ) | Shu court sur le trait, tranche tout ce qu'il traverse, intouchable pendant la course | Tout ce qui est dedans explose | Mobilité, dégâts au corps à corps |
+| 🔵 **Indigo** (marée) | Le trait se peint à distance puis déferle : il gèle et blesse ce qu'il touche | Tourbillon qui fige tout ce qui est dedans | Contrôle, défense |
+| 🟡 **Or** (foudre) | La foudre frappe tout le long du trait après un court instant | Orage : plusieurs frappes à l'intérieur | Gros dégâts à distance |
+| 🟢 **Jade** (bambou) | Un mur de bambous pousse le long du trait, bloque et blesse | Bosquet qui soigne Shu tant qu'il reste dedans | Soutien, blocage |
 
-- **Lire et se placer** : on ne peut encercler un ennemi qu'en lisant ses déplacements. Tracer un triangle autour d'une bête qui charge, c'est du placement, pas du réflexe.
-- **Une seule action, plusieurs usages** : esquive, attaque, tracé de pont, bouclier, ciseaux, boucle. Chaque boss en teste un usage différent.
+## 5. Le monde
 
-## 4. Direction artistique
+Une grande carte continue, générée et peinte par code (graine fixe), découpée en régions avec leur palette :
 
-On garde le **lavis d'encre sur papier**, avec un seul accent vermillon, mais en plus contrasté et plus vivant :
+| Région | Palette (pigments) | Ennemis | Gardien | Encre libérée |
+|--------|-------------------|---------|---------|---------------|
+| Le Village (départ, sûr) | crème, encre, rose prunier | — | — | — |
+| La Plaine des pruniers | rose prunier, vert tendre | Pâtés, Nuées, Feux follets, Taches-mères, Puits d'encre, Béliers | **Le Bélier-Roi** | Indigo |
+| Les Rizières (étape suivante) | vert de pousse, ciel d'eau | créatures d'eau | Le Héron d'encre | Or |
+| La Forêt de bambous | bambou, lumière filtrée | rapides, embusqués | Le Tigre d'ombre | Jade |
+| Le Col des neiges | gris-bleu, bois | lourds, à distance | Le Moine de pierre | — |
+| L'Encrier | encre d'orage | tout | L'Orage, puis le maître | — |
 
-- **Le vermillon, c'est toi.** Shu, ses traits, ses ensō. Les ennemis sont noirs. Lisibilité immédiate.
-- **Le monde se peint pendant le combat.** Les traits laissent de fines traces rouges qui s'accumulent, les ennemis vaincus laissent des taches noires. Une arène après le combat raconte la bataille.
-- **L'orage** : pluie oblique, éclairs qui blanchissent le papier une fraction de seconde, brume qui défile.
-- **Télégraphes peints** : un lavis pâle annonce l'attaque et fonce jusqu'à l'impact. Le télégraphe inverse (le papier qui blanchit) est réservé aux attaques d'effacement.
-- **Pipeline existant** : rendu par densités de pigment, puis un shader de peinture (tremblement de ligne, accumulation de pigment aux bords, granulation, vermillon opaque, lumière et obscurité, vignette).
+### Ennemis
 
-### Palettes
+- **Pâté** : rampe et bondit après un télégraphe.
+- **Nuée** : petites taches volantes en groupe, idéales à encercler.
+- **Feu follet** : à distance, crache des gouttes lentes.
+- **Tache-mère** : grosse ; se divise en trois Pâtés quand on la tue.
+- **Puits d'encre** : fixe, fait naître des Pâtés tant qu'il n'est pas détruit. C'est l'objectif du camp.
+- **Bélier** : cuirassé de face, charge en ligne.
+- **Élites** : version plus grosse et plus résistante, auréolée de lavis, avec un trait (rapide, explosive...).
 
-Chaque zone se limite à papier + encre + 2 pigments + vermillon.
+### Gardien 1 : Le Bélier-Roi
 
-| Zone | Papier | Encre | Pigment A | Pigment B |
-|------|--------|-------|-----------|-----------|
-| Arène / Prologue (la cour du temple) | `#E8E2D0` | `#15171C` | `#4A6A8A` indigo d'orage | `#D9A441` or de lanterne |
-| 1. Les Rizières inondées | `#E6E4D2` | `#1A2026` | `#5F8A6A` vert de pousse | `#B9C7CF` ciel d'eau |
-| 2. Le Marché des lanternes | `#ECDCC0` | `#241A16` | `#D08C3A` ocre | `#9C3F2E` laque |
-| 3. La Forêt de bambous | `#E4E6D8` | `#141A16` | `#6E8F5A` bambou | `#C9C27A` lumière filtrée |
-| 4. Le Col des neiges | `#F2F1EC` | `#191C23` | `#98A6B6` gris-bleu | `#B7AB98` bois |
-| 5. L'Encrier (cœur de l'orage) | `#DCD6C8` | `#0E0E10` | `#3A3A44` encre d'orage | `#E8E2D0` éclair |
-| Partout | | | **Vermillon `#C23A2B`** | |
+Arène de pierres levées au bout de la plaine.
+- **Charges** en ligne, longuement annoncées.
+- **Piétinement** : anneaux de choc qui s'étendent, avec des trouées.
+- **Appel de la Nuée.**
+- **Phase 2** : doubles charges, piétinements plus rapides.
 
-## 5. Histoire
+## 6. Progression
 
-Ton énergique, quelques mots seulement, et une fin émouvante.
+- **Expérience** : chaque ennemi en donne, les élites et boss beaucoup plus.
+- **Niveau** : à chaque niveau, vie + encre + dégâts, soin complet, grand ensō vermillon autour de Shu.
+- **Ramassables** : gouttes d'encre noire (soin), orbes vermillon (encre).
+- **Chiffres de dégâts** calligraphiés au-dessus des ennemis.
+- **Sauvegarde** : niveau, expérience, encres libérées, boss vaincus, dernier sanctuaire.
 
-- **Prologue.** Le maître trace Shu, son plus beau trait, au moment où l'orage frappe. L'encrier se renverse et le maître disparaît dans l'encre noire. Shu s'élance.
-- **Les cinq zones** sont les grandes peintures du maître, envahies par l'orage. Chacune a un gardien : une œuvre du maître corrompue par l'encre noire. Le vaincre en le fermant dans un ensō rend ses couleurs à la peinture.
-- **Fin.** Au cœur de l'orage, Shu retrouve le maître. L'orage, c'est son pinceau qui tremble : il vieillit et il a peur de ne plus savoir tracer. Le dernier geste du jeu est un **ensō complet, tracé lentement autour du maître** : pas une explosion, une étreinte. L'orage se dissout, et le maître reprend le pinceau pour signer de son sceau vermillon, à côté de Shu.
+## 7. Direction artistique
 
-> *« Un cercle n'est jamais parfait. C'est pour ça qu'on le trace encore. »*
-> *"A circle is never perfect. That's why we keep drawing it."*
+On garde le **lavis d'encre sur papier** et son pipeline. Chaque encre a sa couleur opaque (gouache), rendue dans un tampon d'accent dédié ; le reste du monde reste en encre et pigments de région. Les combats laissent des traces de couleur et des taches au sol.
 
-## 6. Zones et gardiens
+Le monde est découpé en **morceaux** de 16 × 16 cases, peints à la volée autour du joueur à partir de tampons pré-peints (herbes, pierres, fleurs) et de variantes d'arbres et de rochers pré-dessinées. C'est indispensable pour tenir sur mobile.
 
-Chaque zone dure de 4 à 6 minutes : arènes de combat enchaînées, une ou deux énigmes de tracé, puis le gardien. Chaque gardien teste **un usage du Trait**.
+## 8. Audio
 
-| Zone | Mécanique d'environnement | Gardien | Usage testé |
-|------|--------------------------|---------|-------------|
-| 1. Rizières inondées | L'eau monte et descend ; les traits frais servent de ponts entre les diguettes | **Le Héron d'encre**, qui pique depuis les airs | **Pont** : tracer des chemins sur l'eau pour atteindre ses îlots |
-| 2. Marché des lanternes | Des cordes à lanternes barrent les rues ; les couper libère des passages | **Le Dragon de papier**, une procession articulée | **Couper** : trancher ses segments au bon moment |
-| 3. Forêt de bambous | Les bambous bloquent les dashs ; il faut tracer entre eux | **Le Tigre d'ombre**, rapide, qui charge en ligne | **Boucle** : l'encercler pendant ses temps morts |
-| 4. Col des neiges | Le vent dévie les traits ; la glace fait glisser | **Le Moine de pierre**, qui crache des rafales d'encre | **Bouclier** : absorber ses projectiles avec des traits frais |
-| 5. L'Encrier | L'encre efface le sol par vagues | **L'Orage**, puis le maître | **Tout** : la dernière boucle, tracée lentement |
+100 % Web Audio : musique générative par région, pilotée par l'intensité du combat (tambours, ostinato) ; un son par encre ; tonnerre, pluie, vent.
 
-### Ennemis communs (peu nombreux, très lisibles)
+## 9. Étapes
 
-- **Pâté** : rampe, se ramasse puis bondit. Fragile.
-- **Feu follet** : garde ses distances et crache des gouttes lentes, que les traits frais absorbent.
-- **Bélier** : gros et cuirassé de face. Il charge en ligne après un long télégraphe. Le traverser d'un Trait pendant sa charge le blesse deux fois plus.
-- **Nuée** : petites taches volantes en groupe, idéales à encercler d'un seul ensō.
+1. **Maintenant** : monde ouvert (village + plaine), camps, élites, niveaux, ramassables, chiffres de dégâts, sanctuaires, encres vermillon et indigo, Bélier-Roi.
+2. Encres or et jade, région des Rizières et son gardien.
+3. Forêt de bambous, Col des neiges, leurs gardiens.
+4. L'Encrier, la fin, l'écran titre et la finition.
 
-## 7. Sensations : la checklist
-
-- Gel d'image : coup 50 ms, Trait 40 ms, ensō 140 ms suivi de 0,3 s de ralenti.
-- Caméra : léger recul dans la direction du coup, petit zoom sur l'ensō.
-- Éclaboussures d'encre qui restent au sol, traits vermillon qui sèchent en laissant une trace.
-- Combo calligraphié en grand ; il accélère la recharge d'encre et l'intensité de la musique.
-- Chaque coup a son son : souffle, impact sec, tambour sur l'ensō.
-
-## 8. Direction audio
-
-100 % Web Audio, aucun fichier.
-
-- **Musique générative pilotée par l'intensité** : tambours taiko, cithare en ostinato, flûte. Au calme : pluie et cithare clairsemée. En combat : les tambours entrent. Combo élevé : la flûte et les doubles croches arrivent.
-- **Par zone** : un mode pentatonique et un instrument signature (rizières : flûte ; marché : vièle et percussions ; bambous : bois frappés ; col : cloches ; Encrier : silence et tambours).
-- **Le motif du maître**, cinq notes : entendu inachevé pendant tout le jeu, complété lors du dernier ensō.
-- **Effets** : souffle du Trait, coupe nette, impact humide, tonnerre, ensō (gong grave et accord), télégraphes ascendants.
-
-## 9. Ce que le jeu n'a pas
-
-Pas de butin, pas d'inventaire, pas d'expérience, pas de monnaie. On progresse en traçant mieux.
-
-## 10. Méthode
-
-1. **Prototype de sensations (maintenant)** : une arène sous l'orage, vagues d'ennemis, Trait, ensō, combo, musique d'intensité. Objectif : valider le fun avant tout le reste.
-2. Si le prototype plaît : zone 1 complète avec son gardien.
-3. Puis les zones 2 à 5 et leurs gardiens.
-4. Puis l'histoire, la fin, l'écran titre et la finition.
-
-Overlay de debug sur `F3`, déploiement automatique sur GitHub Pages à chaque fusion sur `main`.
+Overlay de debug sur `F3`. Déploiement automatique sur GitHub Pages à chaque fusion sur `main`.

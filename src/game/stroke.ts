@@ -5,12 +5,13 @@
 import * as THREE from 'three';
 import type { World } from './world';
 import { Ribbon } from '../gfx/ribbon';
-import { Painter, VERMILION, INK } from '../gfx/paint';
+import { Painter, INK } from '../gfx/paint';
 import { Sprite, LAYER } from '../gfx/sprite';
 import { stroke as brushStroke } from '../gfx/brush';
 import { dot } from '../gfx/brush';
 import { closestOnSeg, distToSeg, pointInPoly, segIntersect, V } from './physics';
 import { Rng } from '../gfx/rng';
+import { INKS, InkId } from './inks';
 
 export const STROKE = {
   life: 2.4,
@@ -19,7 +20,8 @@ export const STROKE = {
   snapClose: 0.75,
 };
 
-interface Seg {
+export interface Seg {
+  ink: InkId;
   ax: number; ay: number; bx: number; by: number;
   born: number;
   ribbon: Ribbon;
@@ -28,13 +30,14 @@ interface Seg {
 }
 
 export interface Enso {
+  ink: InkId;
   poly: V[];
   area: number;
   cx: number;
   cy: number;
 }
 
-/** Permanent faint marks left by the fight: vermilion traces and black splats. */
+/** Permanent faint marks left by the fight: coloured traces and black splats (one area of the world). */
 class StainLayer {
   readonly red: Painter;
   readonly ink: Painter;
@@ -42,17 +45,17 @@ class StainLayer {
   private inkS: Sprite;
   private dirtyT = 0;
   private dirty = false;
-  constructor(w: World) {
-    const b = w.bounds;
-    this.red = new Painter(b.w, b.h, 24, b.x, b.y);
-    this.red.glaze();
-    this.ink = new Painter(b.w, b.h, 24, b.x, b.y);
+  constructor(w: World, x: number, y: number, size: number) {
+    const ppu = size > 60 ? 12 : 24;
+    this.red = new Painter(size, size, ppu, x, y);
+    this.red.over();
+    this.ink = new Painter(size, size, ppu, x, y);
     this.ink.glaze();
     this.redS = new Sprite(this.red);
     this.inkS = new Sprite(this.ink);
     this.redS.mesh.renderOrder = LAYER.groundDetail + 1;
     this.inkS.mesh.renderOrder = LAYER.groundDetail + 1;
-    w.r.sceneRed.add(this.redS.mesh);
+    w.r.sceneAcc.add(this.redS.mesh);
     w.r.scenePig.add(this.inkS.mesh);
     w.roomSprites.push(this.redS, this.inkS);
   }
@@ -72,7 +75,7 @@ class StainLayer {
 
 export class Strokes {
   segs: Seg[] = [];
-  private fills: { mesh: THREE.Mesh; mat: THREE.MeshBasicMaterial; t: number }[] = [];
+  private fills: { mesh: THREE.Mesh; mat: THREE.MeshBasicMaterial; t: number; rgb: [number, number, number] }[] = [];
   private stains: StainLayer | null = null;
   private rng = new Rng(77);
   private seedN = 1;
@@ -80,20 +83,46 @@ export class Strokes {
 
   constructor(private w: World) {}
 
-  /** Call after a room is built (bounds known). */
+  onSegment?: (s: Seg) => void;
+  private stainCenter: V = [0, 0];
+  private stainSize = 0;
+
+  /** Call after a room is built (bounds known). Open worlds keep stains near the child only. */
   reset(): void {
     for (const s of this.segs) s.ribbon.dispose();
     this.segs = [];
     for (const f of this.fills) { f.mesh.removeFromParent(); f.mesh.geometry.dispose(); f.mat.dispose(); }
     this.fills = [];
-    this.stains = new StainLayer(this.w);
+    const b = this.w.bounds;
+    if (b.w <= 60 && b.h <= 60) {
+      this.stains = new StainLayer(this.w, b.x, b.y, Math.max(b.w, b.h));
+      this.stainSize = 0;
+    } else {
+      this.stains = null;
+      this.stainSize = 48;
+    }
   }
 
-  /** Start a stroke at the dash origin; extend it with `extend` while dashing. */
-  begin(x: number, y: number): Seg {
+  /** Open world: a stain sheet follows the child, re-centred when it walks off its middle. */
+  private ensureStains(x: number, y: number): void {
+    if (!this.stainSize) return;
+    const s = this.stainSize;
+    if (this.stains && Math.abs(x - this.stainCenter[0]) < s * 0.3 && Math.abs(y - this.stainCenter[1]) < s * 0.3) return;
+    if (this.stains) {
+      (this.stains as unknown as { redS: Sprite; inkS: Sprite }).redS.dispose();
+      (this.stains as unknown as { redS: Sprite; inkS: Sprite }).inkS.dispose();
+    }
+    this.stainCenter = [x, y];
+    this.stains = new StainLayer(this.w, x - s / 2, y - s / 2, s);
+  }
+
+  /** Start a stroke; extend it with `extend` while drawing. */
+  begin(x: number, y: number, ink: InkId = 'vermilion'): Seg {
+    this.ensureStains(x, y);
     const seg: Seg = {
+      ink,
       ax: x, ay: y, bx: x, by: y, born: this.w.time,
-      ribbon: new Ribbon(14, this.w.r.sceneRed, { density: 1, dry: 0.15, taper: 0.55, order: LAYER.groundDetail + 20 }),
+      ribbon: new Ribbon(14, this.w.r.sceneAcc, { density: 1, dry: 0.15, taper: 0.55, order: LAYER.groundDetail + 20, color: INKS[ink].rgb }),
       seed: this.seedN++,
       live: true,
     };
@@ -115,11 +144,13 @@ export class Strokes {
       this.remove(seg);
       return null;
     }
+    this.onSegment?.(seg);
     const n = this.segs.indexOf(seg);
     const A: V = [seg.ax, seg.ay], B: V = [seg.bx, seg.by];
-    // newest-first: the loop the player just drew
+    // newest-first: the loop the player just drew (only strokes of the same ink close it)
     for (let k = n - 1; k >= 0; k--) {
       const s = this.segs[k];
+      if (s.ink !== seg.ink) continue;
       const t = segIntersect(A[0], A[1], B[0], B[1], s.ax, s.ay, s.bx, s.by);
       let X: V | null = null;
       let fromK = k;
@@ -136,6 +167,7 @@ export class Strokes {
       if (!X) continue;
       const poly: V[] = [X, [this.segs[fromK].bx, this.segs[fromK].by]];
       for (let j = fromK + 1; j < n; j++) {
+        if (this.segs[j].ink !== seg.ink) continue;
         poly.push([this.segs[j].ax, this.segs[j].ay], [this.segs[j].bx, this.segs[j].by]);
       }
       poly.push(A);
@@ -146,9 +178,9 @@ export class Strokes {
       let cx = 0, cy = 0;
       for (const q of clean) { cx += q[0]; cy += q[1]; }
       cx /= clean.length; cy /= clean.length;
-      const enso: Enso = { poly: clean, area, cx, cy };
+      const enso: Enso = { ink: seg.ink, poly: clean, area, cx, cy };
       // the loop's strokes are consumed by the ensō
-      for (const s2 of this.segs.slice(fromK, n + 1)) this.remove(s2);
+      for (const s2 of this.segs.slice(fromK, n + 1)) if (s2.ink === seg.ink) this.remove(s2);
       this.fill(enso);
       this.onEnso?.(enso);
       return enso;
@@ -181,7 +213,7 @@ export class Strokes {
     const shape = new THREE.Shape(e.poly.map(([x, y]) => new THREE.Vector2(x, y)));
     const geo = new THREE.ShapeGeometry(shape);
     const mat = new THREE.MeshBasicMaterial({
-      color: new THREE.Color(1, 0, 0),
+      color: new THREE.Color(...INKS[e.ink].rgb),
       transparent: true,
       depthTest: false,
       depthWrite: false,
@@ -192,19 +224,21 @@ export class Strokes {
     });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.renderOrder = LAYER.groundDetail + 25;
-    this.w.r.sceneRed.add(mesh);
-    this.fills.push({ mesh, mat, t: 0 });
+    this.w.r.sceneAcc.add(mesh);
+    this.fills.push({ mesh, mat, t: 0, rgb: INKS[e.ink].rgb });
     // the circle stays on the paper
     const st = this.stains;
     if (st) {
       const pts = [...e.poly, e.poly[0]];
-      brushStroke(st.red, pts, { width: 0.24, pig: VERMILION, load: 0.35, dry: 0.5, seed: this.rng.int(1, 1e6), taperStart: 0.02, taperEnd: 0.2, body: 0.4, press: 0 });
+      const [r, g, b] = INKS[e.ink].rgb;
+      brushStroke(st.red, pts, { width: 0.24, pig: { ink: r, a: g, b }, load: 0.4, dry: 0.5, seed: this.rng.int(1, 1e6), taperStart: 0.02, taperEnd: 0.2, body: 0.4, press: 0 });
       st.mark();
     }
   }
 
   /** Black splat stamped on the ground where something was defeated. */
   splat(x: number, y: number, size = 1): void {
+    this.ensureStains(x, y);
     const st = this.stains;
     if (!st) return;
     dot(st.ink, x, y, 0.28 * size, INK, 0.45, this.rng.int(1, 1e6));
@@ -225,9 +259,17 @@ export class Strokes {
       pts.push([s.ax + (s.bx - s.ax) * t - dy * wob, s.ay + (s.by - s.ay) * t + dx * wob]);
     }
     const k = age / STROKE.life;
-    s.ribbon.set(pts, (t) => STROKE.width * (0.75 + 0.5 * Math.sin(Math.PI * Math.min(1, t * 1.4))) * (1 - k * 0.3));
+    // long single strokes keep a brush shape; short chained pieces stay even so a drawing reads as one line
+    const long = len > 2;
+    s.ribbon.mat.uniforms.taper.value = long ? 0.55 : 0.05;
+    s.ribbon.set(pts, (t) => STROKE.width * (long ? 0.75 + 0.5 * Math.sin(Math.PI * Math.min(1, t * 1.4)) : 1.05) * (1 - k * 0.3));
     s.ribbon.mat.uniforms.density.value = 1 - Math.pow(k, 2) * 0.85;
     s.ribbon.mat.uniforms.dry.value = 0.1 + k * 1.1;
+  }
+
+  /** Segments of one ink near a point, for effects. */
+  segsOf(ink: InkId): Seg[] {
+    return this.segs.filter((s) => s.ink === ink);
   }
 
   update(_dt: number): void {
@@ -240,7 +282,8 @@ export class Strokes {
     for (const s of expired) {
       const st = this.stains;
       if (st) {
-        brushStroke(st.red, [[s.ax, s.ay], [s.bx, s.by]], { width: 0.12, pig: VERMILION, load: 0.22, dry: 0.7, seed: s.seed, body: 0.2, press: 0, taperEnd: 0.5 });
+        const [r, g, b] = INKS[s.ink].rgb;
+        brushStroke(st.red, [[s.ax, s.ay], [s.bx, s.by]], { width: 0.12, pig: { ink: r, a: g, b }, load: 0.25, dry: 0.7, seed: s.seed, body: 0.2, press: 0, taperEnd: 0.5 });
         st.mark();
       }
       this.remove(s);
@@ -249,7 +292,7 @@ export class Strokes {
       f.t += _dt;
       const k = f.t / 0.55;
       const a = k < 0.15 ? k / 0.15 : Math.max(0, 1 - (k - 0.15) / 0.85);
-      f.mat.color.setRGB(0.85 * a, 0, 0);
+      f.mat.color.setRGB(f.rgb[0] * a * 0.85, f.rgb[1] * a * 0.85, f.rgb[2] * a * 0.85);
       f.mat.opacity = 1;
       // premultiplied: color carries density, opacity carries coverage
       (f.mat as unknown as { opacity: number }).opacity = a * 0.85;

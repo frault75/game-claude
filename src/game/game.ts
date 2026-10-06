@@ -14,6 +14,10 @@ import { progress, saveProgress } from './progress';
 import { Enso } from './stroke';
 import { Sprite, Frame, LAYER } from '../gfx/sprite';
 import { brushText } from '../gfx/text';
+import { InkFx } from './inkfx';
+import { Numbers } from './numbers';
+import { save, xpToNext } from './progression';
+import { INKS } from './inks';
 
 const nextFrame = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
 
@@ -22,6 +26,8 @@ export class Game {
   readonly player: Player;
   readonly hud: Hud;
   readonly story: Story;
+  readonly inkfx: InkFx;
+  readonly numbers: Numbers;
   room: RoomDef | null = null;
   rooms = new Map<string, RoomDef>();
   flags = new Set<string>();
@@ -48,7 +54,15 @@ export class Game {
     this.world.add(this.player);
     this.hud = new Hud(r);
     this.story = new Story(r);
+    this.numbers = new Numbers(r);
+    this.world.numbers = this.numbers;
+    this.inkfx = new InkFx(this.world);
+    this.inkfx.dmgMul = () => this.player.dmgMul;
+    this.inkfx.onLanded = (n) => this.world.addCombo(n);
     this.player.onDeath = () => { this.deathT = 0; };
+    this.input.uiRegions = [];
+    // ink pots are buttons
+    this.input.uiRegions.push({ x: 0, y: 0, r: 0, fn: () => {} });
     this.player.onLanded = (n) => this.world.addCombo(n);
     this.world.strokes.onEnso = (e) => this.enso(e);
   }
@@ -79,17 +93,8 @@ export class Game {
   /** A closed loop: everything inside bursts. */
   private enso(e: Enso): void {
     const w = this.world;
-    let hits = 0;
-    for (const en of w.entities) {
-      if (en.dead) continue;
-      const inside = pointInPoly(en.x, en.y + 0.15, e.poly) || pointInPoly(en.x, en.y + 0.5, e.poly);
-      if (!inside) continue;
-      if (en.team === 'enemy') {
-        if (en.onHit({ dmg: 4, fromX: e.cx, fromY: e.cy, kind: 'enso' })) hits++;
-      } else if (en.label === 'inkdrop') {
-        en.destroy();
-      }
-    }
+    const hits = this.inkfx.enso(e);
+    void pointInPoly;
     this.ensoCount++;
     w.hitstop = Math.max(w.hitstop, hits ? 0.08 : 0.03);
     if (hits) w.slow(0.4, 0.15);
@@ -97,7 +102,8 @@ export class Game {
     w.shake(hits ? 0.3 : 0.1, 0.3);
     sfx.enso(hits, e.area);
     if (hits) w.addCombo(hits * 2);
-    for (let i = 0; i < 3; i++) w.vfx.splat(e.cx, e.cy + 0.3, (i / 3) * Math.PI * 2, 8, 1.2, 'red');
+    if (e.ink === 'vermilion') for (let i = 0; i < 3; i++) w.vfx.splat(e.cx, e.cy + 0.3, (i / 3) * Math.PI * 2, 8, 1.2, 'red');
+    void INKS;
     if (!this.ensoWord) this.ensoWord = brushText('ensō', { size: 0.9, ppu: 64, italic: true, weight: 700 });
     const s = new Sprite(this.ensoWord);
     s.setPos(e.cx, e.cy + 0.6);
@@ -203,8 +209,14 @@ export class Game {
     if (this.loading) return;
     const w = this.world;
     w.update(dt);
+    this.inkfx.update(dt * w.timeScale);
+    this.numbers.update(dt);
     this.r.post.flash = w.flash;
-    this.hud.setHp(Math.max(0, this.player.hp));
+    this.hud.setHp(Math.max(0, this.player.hp), this.player.maxHp);
+    this.hud.setXp(save.xp / xpToNext(save.level), save.level);
+    this.hud.setInks(save.inks, save.ink);
+    // ink pots are touch/click targets
+    this.input.uiRegions = this.hud.potRegions.map((p) => ({ x: p.x, y: p.y, r: p.r, fn: () => this.player.selectInk(p.id) }));
     this.hud.setInk(this.player.inkFrac);
     this.hud.setCombo(w.combo, Math.max(0, w.comboT / 2.4));
     this.hud.update(dt);

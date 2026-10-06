@@ -3,6 +3,9 @@ import { Input } from './core/input';
 import { DebugOverlay } from './ui/debug';
 import { Game } from './game/game';
 import { arena } from './game/areas/arena';
+import { overworld, prepareOverworld, shrineSpawn } from './game/areas/overworld';
+import { loadSave, resetSave, save, gainXp } from './game/progression';
+import { SHRINES, ARENA } from './world/layout';
 import { music } from './audio/music';
 import { audio } from './audio/engine';
 import { Ambience } from './audio/sfx';
@@ -43,8 +46,8 @@ function startAudio() {
     }
   }
   audio.start();
-  ambience.rain(0.32);
-  ambience.wind(0.16, 500);
+  ambience.rain(0.18);
+  ambience.wind(0.14, 500);
   music.resume();
 }
 window.addEventListener('pointerdown', startAudio, { once: false });
@@ -53,10 +56,13 @@ window.addEventListener('keydown', startAudio, { once: false });
 if (debugMode) (window as unknown as Record<string, unknown>).__v = { game, input, renderer };
 
 async function start() {
-  loadingBar.style.width = '30%';
-  game.register([arena]);
-  const startRoom = params.get('room') ?? 'arena';
-  await game.loadRoom(game.rooms.has(startRoom) ? startRoom : 'arena');
+  if (params.has('reset')) resetSave();
+  else loadSave();
+  await prepareOverworld((k) => (loadingBar.style.width = `${Math.round(k * 90)}%`));
+  game.register([arena, overworld]);
+  const startRoom = params.get('room') ?? 'overworld';
+  if (startRoom === 'overworld') await game.loadRoom(overworld, shrineSpawn(save.shrine));
+  else await game.loadRoom(game.rooms.has(startRoom) ? startRoom : 'overworld');
   loadingBar.style.width = '100%';
   loading.style.opacity = '0';
   setTimeout(() => loading.remove(), 900);
@@ -70,6 +76,7 @@ async function start() {
     last = now;
     time += dt;
     input.pollPad();
+    input.tick();
     perfT += dt; perfFrames++;
     if (perfT > 2) {
       const avg = perfT / perfFrames;
@@ -84,6 +91,16 @@ async function start() {
     if (debugMode) {
       if (input.keyPressed('KeyH')) { game.player.hp = 5; game.player.invuln = 99999; }
       if (input.keyPressed('KeyB')) renderer.boilEnabled = !renderer.boilEnabled;
+      if (input.keyPressed('KeyT')) {
+        // teleport: shrines in turn, then the stone circle
+        const spots = [...SHRINES.map((sh) => [sh.x, sh.y - 1.6]), [ARENA.x - ARENA.r + 2, ARENA.y]];
+        const i = ((game as unknown as { _tp?: number })._tp ?? -1) + 1;
+        (game as unknown as { _tp?: number })._tp = i % spots.length;
+        const [x, y] = spots[i % spots.length];
+        game.player.x = x; game.player.y = y; game.world.camX = x; game.world.camY = y;
+      }
+      if (input.keyPressed('KeyL')) gainXp(200);
+      if (input.keyPressed('KeyU')) { for (const id of ['indigo', 'gold'] as const) if (!save.inks.includes(id)) save.inks.push(id); }
       if (input.keyPressed('KeyK')) {
         for (const e of game.world.entities) if ('maxHp' in e) { (e as unknown as { hp: number }).hp = 1; (e as unknown as { vulnerable: boolean }).vulnerable = true; }
       }

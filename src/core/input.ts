@@ -1,9 +1,10 @@
 import { uiSize } from './renderer';
 /**
- * Keyboard (physical key codes, so ZQSD and WASD both work), mouse, touch and gamepad,
- * merged into a small set of actions plus "brush gestures":
- *   - a tap (touch, or right click) asks for a Trait towards a point;
- *   - a drag (finger, or right button held) draws a path Shu follows.
+ * Keyboard, mouse, touch and gamepad merged into actions and "orders":
+ *   - tap / left click on the ground: go there; on a foe: attack it
+ *   - hold (finger or left button): keep walking towards the pointer
+ *   - quick drag (finger) / right-button drag: draw a stroke with the current ink
+ *   - right click: a straight stroke towards the cursor
  */
 export type Action = 'attack' | 'release' | 'dodge' | 'interact' | 'pause' | 'debug' | 'confirm' | 'back' | 'up' | 'down' | 'left' | 'right';
 
@@ -14,8 +15,7 @@ const KEYMAP: Record<string, Action[]> = {
   KeyD: ['right'], ArrowRight: ['right'],
   Space: ['dodge'],
   ShiftLeft: ['dodge'],
-  KeyE: ['interact'],
-  KeyF: ['release'],
+  KeyF: ['interact'],
   KeyJ: ['attack'],
   KeyK: ['dodge'],
   Escape: ['pause', 'back'],
@@ -24,18 +24,27 @@ const KEYMAP: Record<string, Action[]> = {
   Backquote: ['debug'],
 };
 
-/** Below this many CSS pixels of travel, a press is a tap, not a drawing. */
 const DRAG_PX = 14;
-const TAP_MS = 320;
+const HOLD_MS = 220;
 
 interface Gesture {
   id: number;
+  button: 'touch' | 'right';
   sx: number;
   sy: number;
+  x: number;
+  y: number;
   lx: number;
   ly: number;
   t0: number;
-  drawing: boolean;
+  mode: 'pending' | 'draw' | 'hold';
+}
+
+export interface UiRegion {
+  x: number;
+  y: number;
+  r: number;
+  fn: () => void;
 }
 
 export class Input {
@@ -46,7 +55,6 @@ export class Input {
   mouseX = 0;
   mouseY = 0;
   mouseMoved = false;
-  /** Last used device, to show the right hints and choose aim mode. */
   device: 'kbm' | 'pad' | 'touch' = 'kbm';
   padMove: [number, number] = [0, 0];
   padAim: [number, number] = [0, 0];
@@ -54,14 +62,22 @@ export class Input {
   anyPressed = false;
 
   private gesture: Gesture | null = null;
-  /** Gesture events for this frame (CSS px). */
-  taps: [number, number][] = [];
+  private leftHeld = false;
+  private leftT0 = 0;
+  /** Orders for this frame (CSS px). */
+  orderTaps: [number, number][] = [];
+  strokeTaps: [number, number][] = [];
+  holdPoint: [number, number] | null = null;
   drawStart: [number, number] | null = null;
   drawPoints: [number, number][] = [];
   drawEnd = false;
-  /** True while a finger or the right button is drawing. */
+  inkSelect: number | null = null;
+  inkCycle = 0;
+  /** Clickable HUD buttons (UI units). */
+  uiRegions: UiRegion[] = [];
+
   get drawing(): boolean {
-    return !!this.gesture?.drawing;
+    return this.gesture?.mode === 'draw';
   }
 
   constructor(el: HTMLElement) {
@@ -74,6 +90,10 @@ export class Input {
       this.anyPressed = true;
       this.keysHeld.add(e.code);
       this.keysPressed.add(e.code);
+      const m = /^Digit([1-4])$/.exec(e.code);
+      if (m) this.inkSelect = Number(m[1]) - 1;
+      if (e.code === 'KeyQ') this.inkCycle = -1;
+      if (e.code === 'KeyE') this.inkCycle = 1;
       const acts = KEYMAP[e.code];
       if (acts) {
         e.preventDefault();
@@ -88,45 +108,55 @@ export class Input {
     window.addEventListener('blur', () => {
       this.held.clear();
       this.keysHeld.clear();
+      this.leftHeld = false;
+      this.holdPoint = null;
       this.endGesture(true);
     });
+    el.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      this.inkCycle = e.deltaY > 0 ? 1 : -1;
+    }, { passive: false });
 
     el.addEventListener('pointerdown', (e) => {
       this.anyPressed = true;
-      if (e.pointerType === 'mouse') {
-        this.device = 'kbm';
-        this.mouseX = e.clientX;
-        this.mouseY = e.clientY;
-        if (e.button === 0) { this.press('attack'); this.press('confirm'); }
-        if (e.button === 2) this.beginGesture(e);
-        if (e.button === 1) { e.preventDefault(); this.press('release'); }
-        return;
-      }
-      e.preventDefault();
-      this.device = 'touch';
+      if (e.pointerType !== 'mouse') {
+        e.preventDefault();
+        this.device = 'touch';
+      } else this.device = 'kbm';
       this.press('confirm');
       this.held.delete('confirm');
-      // one finger draws; a second finger simply ends the drawing
+      if ((e.pointerType !== 'mouse' || e.button === 0) && this.hitUi(e.clientX, e.clientY)) return;
+      if (e.pointerType === 'mouse') {
+        this.mouseX = e.clientX;
+        this.mouseY = e.clientY;
+        if (e.button === 0) {
+          this.leftHeld = true;
+          this.leftT0 = performance.now();
+          this.orderTaps.push([e.clientX, e.clientY]);
+        }
+        if (e.button === 2) this.beginGesture(e, 'right');
+        if (e.button === 1) { e.preventDefault(); this.press('attack'); }
+        return;
+      }
       if (this.gesture) this.endGesture(false);
-      else this.beginGesture(e);
+      else this.beginGesture(e, 'touch');
     });
     el.addEventListener('pointermove', (e) => {
       if (e.pointerType === 'mouse') {
         this.mouseX = e.clientX;
         this.mouseY = e.clientY;
         this.mouseMoved = true;
-        if (this.device !== 'kbm') this.device = 'kbm';
+        if (this.leftHeld && this.holdPoint) this.holdPoint = [e.clientX, e.clientY];
       }
       const g = this.gesture;
       if (!g || e.pointerId !== g.id) return;
-      // coalesced events give smoother drawings where supported
       const evs = typeof e.getCoalescedEvents === 'function' ? e.getCoalescedEvents() : [];
       for (const ev of evs.length ? evs : [e]) this.moveGesture(ev.clientX, ev.clientY);
     });
     const up = (e: PointerEvent) => {
       if (e.pointerType === 'mouse') {
-        if (e.button === 0) { this.held.delete('attack'); this.held.delete('confirm'); }
-        if (e.button === 1) this.held.delete('release');
+        if (e.button === 0) { this.leftHeld = false; this.holdPoint = null; }
+        if (e.button === 1) this.held.delete('attack');
       }
       if (this.gesture && e.pointerId === this.gesture.id) this.endGesture(false);
     };
@@ -137,15 +167,37 @@ export class Input {
     el.addEventListener('contextmenu', (e) => e.preventDefault());
   }
 
-  private beginGesture(e: PointerEvent): void {
-    this.gesture = { id: e.pointerId, sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY, t0: performance.now(), drawing: false };
+  private hitUi(x: number, y: number): boolean {
+    const [ux, uy] = this.toUi(x, y);
+    for (const r of this.uiRegions) {
+      if (Math.hypot(ux - r.x, uy - r.y) < r.r) {
+        r.fn();
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private beginGesture(e: PointerEvent, button: 'touch' | 'right'): void {
+    this.gesture = { id: e.pointerId, button, sx: e.clientX, sy: e.clientY, x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, t0: performance.now(), mode: 'pending' };
   }
 
   private moveGesture(x: number, y: number): void {
     const g = this.gesture!;
-    if (!g.drawing) {
+    g.x = x;
+    g.y = y;
+    if (g.mode === 'hold') {
+      this.holdPoint = [x, y];
+      return;
+    }
+    if (g.mode === 'pending') {
       if (Math.hypot(x - g.sx, y - g.sy) < DRAG_PX) return;
-      g.drawing = true;
+      if (g.button === 'touch' && performance.now() - g.t0 > HOLD_MS) {
+        g.mode = 'hold';
+        this.holdPoint = [x, y];
+        return;
+      }
+      g.mode = 'draw';
       this.drawStart = [g.sx, g.sy];
       g.lx = g.sx;
       g.ly = g.sy;
@@ -161,11 +213,25 @@ export class Input {
     const g = this.gesture;
     if (!g) return;
     this.gesture = null;
-    if (g.drawing) this.drawEnd = true;
-    else if (!cancel && performance.now() - g.t0 < TAP_MS * 3) this.taps.push([g.sx, g.sy]);
+    if (g.mode === 'draw') this.drawEnd = true;
+    else if (g.mode === 'hold') this.holdPoint = null;
+    else if (!cancel) {
+      if (g.button === 'touch') this.orderTaps.push([g.sx, g.sy]);
+      else this.strokeTaps.push([g.sx, g.sy]);
+    }
   }
 
-  /** CSS px to UI units (origin at centre). */
+  /** Call once per frame: promotes a still finger to "hold", and a held left button to "hold". */
+  tick(): void {
+    const now = performance.now();
+    const g = this.gesture;
+    if (g && g.mode === 'pending' && g.button === 'touch' && now - g.t0 > HOLD_MS) {
+      g.mode = 'hold';
+      this.holdPoint = [g.x, g.y];
+    }
+    if (this.leftHeld && !this.holdPoint && now - this.leftT0 > 150) this.holdPoint = [this.mouseX, this.mouseY];
+  }
+
   toUi(x: number, y: number): [number, number] {
     const w = window.innerWidth, h = window.innerHeight;
     const ui = uiSize(w, h);
@@ -177,7 +243,6 @@ export class Input {
     this.held.add(a);
   }
 
-  /** Debug/testing: drive an action as if a button were pressed or released. */
   simulate(a: Action, down: boolean, asPress = true): void {
     if (down) {
       if (asPress) this.press(a);
@@ -198,7 +263,6 @@ export class Input {
     return this.keysHeld.has(code);
   }
 
-  /** Movement vector, length <= 1. */
   move(): [number, number] {
     let x = 0, y = 0;
     if (this.held.has('left')) x -= 1;
@@ -211,7 +275,6 @@ export class Input {
     return l > 1 ? [x / l, y / l] : [x, y];
   }
 
-  /** Poll the gamepad; call once per frame before reading. */
   pollPad(): void {
     const pads = navigator.getGamepads ? navigator.getGamepads() : [];
     const gp = pads && Array.from(pads).find((g) => g && g.connected);
@@ -222,9 +285,9 @@ export class Input {
     this.padMove = [mx, my];
     this.padAim = [ax, ay];
     if (Math.hypot(mx, my) > 0.3 || Math.hypot(ax, ay) > 0.3) this.device = 'pad';
-    const map: [number, Action[]][] = [
-      [0, ['dodge', 'confirm']], [1, ['release', 'back']], [2, ['attack']], [3, ['interact']],
-      [7, ['dodge']], [5, ['dodge']], [6, ['dodge']], [9, ['pause']], [8, ['debug']],
+    const map: [number, Action[] | 'inkPrev' | 'inkNext'][] = [
+      [0, ['dodge', 'confirm']], [1, ['back']], [2, ['attack']], [3, ['interact']],
+      [7, ['dodge']], [6, ['dodge']], [4, 'inkPrev'], [5, 'inkNext'], [9, ['pause']], [8, ['debug']],
       [12, ['up']], [13, ['down']], [14, ['left']], [15, ['right']],
     ];
     for (const [i, acts] of map) {
@@ -234,29 +297,33 @@ export class Input {
       if (down && !was) {
         this.device = 'pad';
         this.anyPressed = true;
-        for (const a of acts) this.press(a);
-      } else if (!down && was) {
+        if (acts === 'inkPrev') this.inkCycle = -1;
+        else if (acts === 'inkNext') this.inkCycle = 1;
+        else for (const a of acts) this.press(a);
+      } else if (!down && was && Array.isArray(acts)) {
         for (const a of acts) this.held.delete(a);
       }
       this.padPrev[i] = down;
     }
   }
 
-  /** Call at the end of each frame. */
   endFrame(): void {
     this.pressedNow.clear();
     this.keysPressed.clear();
     this.mouseMoved = false;
     this.anyPressed = false;
-    this.taps = [];
+    this.orderTaps = [];
+    this.strokeTaps = [];
     this.drawStart = null;
     this.drawPoints = [];
     this.drawEnd = false;
+    this.inkSelect = null;
+    this.inkCycle = 0;
   }
 
-  /** Testing helpers: feed gestures directly (CSS px). */
+  /** Testing helpers (CSS px). */
   testTap(x: number, y: number): void {
-    this.taps.push([x, y]);
+    this.orderTaps.push([x, y]);
   }
   testDraw(points: [number, number][]): void {
     this.drawStart = points[0];

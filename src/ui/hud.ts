@@ -5,6 +5,8 @@ import { Sprite, Frame, frameFrom, LAYER } from '../gfx/sprite';
 import { washPoly } from '../gfx/wash';
 import { stroke, V2 } from '../gfx/brush';
 import { brushText } from '../gfx/text';
+import { INKS, InkId, INK_ORDER } from '../game/inks';
+import { noisyOutline } from '../gfx/wash';
 
 const UI_PPU = 1.5;
 
@@ -23,9 +25,24 @@ export class Hud {
   private empty: Frame;
   private drops: Sprite[] = [];
   private shown = 5;
-  private splashT: number[] = [0, 0, 0, 0, 0];
-  private inkBar: Sprite;
+  private maxShown = 5;
+  private splashT: number[] = new Array(14).fill(0);
+  private inkBars = new Map<InkId, Sprite>();
+  private inkBar!: Sprite;
   private inkBg: Sprite;
+  private xpBar: Sprite;
+  private xpBg: Sprite;
+  private xpFrac = 0;
+  private levelS: Sprite | null = null;
+  private level = 0;
+  private pots: { id: InkId; ring: Sprite; fill: Sprite; x: number; y: number }[] = [];
+  private potFrames = new Map<InkId, Frame>();
+  private potRing!: Frame;
+  private currentInk: InkId = 'vermilion';
+  /** Positions of the ink pots in UI units (for touch/click). */
+  potRegions: { id: InkId; x: number; y: number; r: number }[] = [];
+  private arrow: Sprite;
+  arrowTarget: [number, number] | null = null;
   private inkFrac = 1;
   private inkLow = 0;
   private hint: Sprite | null = null;
@@ -56,19 +73,61 @@ export class Hud {
     const o = dropShape(0, 0, 17);
     stroke(pe, o.slice(2, 22), { width: 2.4, load: 0.45, dry: 0.7, seed: 5, taperStart: 0.1, taperEnd: 0.3 });
     this.empty = frameFrom(pe);
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 14; i++) {
       const s = new Sprite(this.full);
       s.mesh.renderOrder = LAYER.ui;
       r.uiPig.add(s.mesh);
       this.drops.push(s);
     }
-    // the ink gauge: one long vermilion stroke that empties as Shu paints
-    const ib = new Painter(300, 40, UI_PPU, -150, -20);
-    ib.glaze();
-    stroke(ib, [[-140, 1], [-40, 4], [60, 0], [140, -2]], { width: 15, pig: VERMILION, load: 1, dry: 0.4, seed: 21, taperStart: 0.03, taperEnd: 0.25, press: 0.5 });
-    this.inkBar = new Sprite(ib);
-    this.inkBar.mesh.renderOrder = LAYER.ui + 1;
-    r.uiRed.add(this.inkBar.mesh);
+    // the ink gauge: one long stroke in the current ink's colour that empties as Shu paints
+    for (const id of INK_ORDER) {
+      const [cr, cg, cb] = INKS[id].rgb;
+      const ib = new Painter(300, 40, UI_PPU, -150, -20);
+      ib.over();
+      stroke(ib, [[-140, 1], [-40, 4], [60, 0], [140, -2]], { width: 15, pig: { ink: cr, a: cg, b: cb }, load: 1, dry: 0.4, seed: 21, taperStart: 0.03, taperEnd: 0.25, press: 0.5 });
+      const s = new Sprite(ib);
+      s.mesh.renderOrder = LAYER.ui + 1;
+      s.opacity = 0;
+      r.uiAcc.add(s.mesh);
+      this.inkBars.set(id, s);
+      // ink pot: a round dab of the colour
+      const pp = new Painter(110, 110, 1, -55, -55);
+      pp.over();
+      const o = noisyOutline(0, 0, 34, 34, 0.12, 31 + INK_ORDER.indexOf(id));
+      pp.ctx.fillStyle = `rgba(${Math.round(cr * 255)},${Math.round(cg * 255)},${Math.round(cb * 255)},1)`;
+      pp.ctx.beginPath();
+      o.forEach((q, k) => (k === 0 ? pp.ctx.moveTo(q[0], q[1]) : pp.ctx.lineTo(q[0], q[1])));
+      pp.ctx.fill();
+      this.potFrames.set(id, frameFrom(pp));
+    }
+    this.inkBar = this.inkBars.get('vermilion')!;
+    const ringP = new Painter(130, 130, 1, -65, -65);
+    ringP.glaze();
+    const rp: V2[] = [];
+    for (let k = 0; k <= 30; k++) { const a = (k / 30) * Math.PI * 2.05 + 0.4; rp.push([Math.cos(a) * 46, Math.sin(a) * 46]); }
+    stroke(ringP, rp, { width: 6, load: 0.85, dry: 0.5, seed: 33, taperStart: 0.05, taperEnd: 0.3, press: 0.3 });
+    this.potRing = frameFrom(ringP);
+    // experience: a thin ink line that fills
+    const xb = new Painter(300, 20, UI_PPU, -150, -10);
+    xb.glaze();
+    stroke(xb, [[-140, 0], [0, 1], [140, -1]], { width: 5, pig: INK, load: 0.85, dry: 0.3, seed: 25, taperStart: 0.02, taperEnd: 0.1, press: 0 });
+    this.xpBar = new Sprite(xb);
+    this.xpBar.mesh.renderOrder = LAYER.ui + 1;
+    r.uiPig.add(this.xpBar.mesh);
+    const xg = new Painter(300, 20, UI_PPU, -150, -10);
+    xg.glaze();
+    stroke(xg, [[-140, 0], [0, 1], [140, -1]], { width: 5, pig: INK, load: 0.15, dry: 0.4, seed: 26, taperStart: 0.02, taperEnd: 0.1, body: 0.5, press: 0 });
+    this.xpBg = new Sprite(xg);
+    this.xpBg.mesh.renderOrder = LAYER.ui;
+    r.uiPig.add(this.xpBg.mesh);
+    // objective arrow at the screen edge
+    const ap = new Painter(80, 80, 1, -40, -40);
+    ap.glaze();
+    stroke(ap, [[-26, 0], [24, 0]], { width: 8, load: 0.9, dry: 0.4, seed: 27, taperStart: 0.05, taperEnd: 0.1 });
+    stroke(ap, [[8, 14], [26, 0], [8, -14]], { width: 8, load: 0.95, dry: 0.3, seed: 28, taperStart: 0.05, taperEnd: 0.3 });
+    this.arrow = new Sprite(ap);
+    this.arrow.mesh.renderOrder = LAYER.ui;
+    r.uiPig.add(this.arrow.mesh);
     const ig = new Painter(300, 40, UI_PPU, -150, -20);
     ig.glaze();
     stroke(ig, [[-140, 1], [-40, 4], [60, 0], [140, -2]], { width: 15, pig: INK, load: 0.12, dry: 0.5, seed: 22, taperStart: 0.03, taperEnd: 0.25, body: 0.5, press: 0 });
@@ -95,13 +154,47 @@ export class Hud {
     return f;
   }
 
-  setHp(hp: number): void {
-    for (let i = 0; i < 5; i++) {
+  setHp(hp: number, max = 5): void {
+    this.maxShown = Math.min(14, max);
+    for (let i = 0; i < 14; i++) {
       const has = i < hp;
       if (!has && i < this.shown) this.splashT[i] = 0.5;
       this.drops[i].setTexture(has ? this.full.tex : this.empty.tex);
     }
     this.shown = hp;
+  }
+
+  setXp(frac: number, level: number): void {
+    this.xpFrac = frac;
+    if (level !== this.level) {
+      this.level = level;
+      this.levelS?.dispose();
+      this.levelS = new Sprite(brushText(String(level), { size: 40, ppu: 1.5, italic: true, weight: 700 }));
+      this.levelS.mesh.renderOrder = LAYER.ui;
+      this.r.uiPig.add(this.levelS.mesh);
+    }
+  }
+
+  /** Show the inks the child owns as pots; the current one is ringed. */
+  setInks(owned: InkId[], current: InkId): void {
+    const ids = INK_ORDER.filter((i) => owned.includes(i));
+    if (ids.length !== this.pots.length) {
+      for (const p of this.pots) { p.ring.dispose(); p.fill.dispose(); }
+      this.pots = ids.map((id) => {
+        const fill = new Sprite(this.potFrames.get(id)!);
+        fill.mesh.renderOrder = LAYER.ui;
+        this.r.uiAcc.add(fill.mesh);
+        const ring = new Sprite(this.potRing);
+        ring.mesh.renderOrder = LAYER.ui + 1;
+        this.r.uiPig.add(ring.mesh);
+        return { id, ring, fill, x: 0, y: 0 };
+      });
+    }
+    if (current !== this.currentInk) {
+      this.inkBar.opacity = 0;
+      this.currentInk = current;
+    }
+    this.inkBar = this.inkBars.get(current)!;
   }
 
   setInk(frac: number): void {
@@ -165,14 +258,54 @@ export class Hud {
   update(dt: number): void {
     const r = this.r;
     const left = -r.uiW / 2 + 70, top = r.uiH / 2 - 62;
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 14; i++) {
       const s = this.drops[i];
       this.splashT[i] = Math.max(0, this.splashT[i] - dt);
       const k = this.splashT[i] / 0.5;
-      s.setPos(left + i * 50, top);
-      const sc = 1 + k * 0.6;
+      s.setPos(left + i * 46, top);
+      const sc = (1 + k * 0.6) * 0.92;
       s.mesh.scale.set(sc, sc, 1);
-      s.opacity = this.visible ? 1 - k * 0.5 : 0;
+      s.opacity = this.visible && i < this.maxShown ? 1 - k * 0.5 : 0;
+    }
+    // experience and level
+    const xx = left + 120, xy = top - 92;
+    this.xpBar.setPos(xx, xy);
+    this.xpBg.setPos(xx, xy);
+    this.xpBar.reveal = Math.max(0.001, this.xpFrac);
+    this.xpBar.opacity = this.visible ? 1 : 0;
+    this.xpBg.opacity = this.visible ? 0.9 : 0;
+    if (this.levelS) {
+      this.levelS.setPos(xx + 175, xy + 18);
+      this.levelS.opacity = this.visible ? 1 : 0;
+    }
+    // ink pots, bottom right
+    const n = this.pots.length;
+    this.potRegions = [];
+    for (let i = 0; i < n; i++) {
+      const p = this.pots[i];
+      p.x = r.uiW / 2 - 90 - (n - 1 - i) * 110;
+      p.y = -r.uiH / 2 + 90;
+      const sel = p.id === this.currentInk;
+      const sc = sel ? 1.15 : 0.8;
+      p.fill.setPos(p.x, p.y);
+      p.fill.mesh.scale.set(sc, sc, 1);
+      p.ring.setPos(p.x, p.y);
+      p.ring.mesh.scale.set(sc, sc, 1);
+      p.fill.opacity = this.visible && n > 1 ? (sel ? 1 : 0.7) : 0;
+      p.ring.opacity = this.visible && n > 1 && sel ? 1 : 0;
+      this.potRegions.push({ id: p.id, x: p.x, y: p.y, r: 60 });
+    }
+    // objective arrow when the goal is off screen
+    this.arrow.opacity = 0;
+    if (this.arrowTarget && this.visible) {
+      const [ux, uy] = this.arrowTarget;
+      const hw = r.uiW / 2 - 70, hh = r.uiH / 2 - 70;
+      if (Math.abs(ux) > hw || Math.abs(uy) > hh) {
+        const k = Math.min(hw / Math.max(1, Math.abs(ux)), hh / Math.max(1, Math.abs(uy)));
+        this.arrow.setPos(ux * k, uy * k);
+        this.arrow.mesh.rotation.z = Math.atan2(uy, ux);
+        this.arrow.opacity = 0.85;
+      }
     }
     this.inkLow = Math.max(0, this.inkLow - dt);
     const ix = left + 120, iy = top - 56;

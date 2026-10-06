@@ -38,7 +38,7 @@ export class Ribbon {
   readonly mesh: THREE.Mesh;
   private pos: Float32Array;
   readonly mat: THREE.ShaderMaterial;
-  constructor(readonly n: number, scene: THREE.Scene, opts: { red?: boolean; density?: number; dry?: number; taper?: number; order?: number } = {}) {
+  constructor(readonly n: number, scene: THREE.Scene, opts: { red?: boolean; density?: number; dry?: number; taper?: number; order?: number; color?: [number, number, number] } = {}) {
     const geo = new THREE.BufferGeometry();
     this.pos = new Float32Array(n * 2 * 3);
     const along = new Float32Array(n * 2);
@@ -68,7 +68,7 @@ export class Ribbon {
       blendSrc: THREE.OneFactor,
       blendDst: THREE.OneMinusSrcAlphaFactor,
       uniforms: {
-        channel: { value: new THREE.Vector3(1, 0, 0) },
+        channel: { value: opts.color ? new THREE.Vector3(...opts.color) : new THREE.Vector3(1, 0, 0) },
         density: { value: opts.density ?? 0.9 },
         dry: { value: opts.dry ?? 0.3 },
         seed: { value: Math.random() * 20 },
@@ -104,6 +104,10 @@ export class Ribbon {
   }
 
   set visible(v: boolean) { this.mesh.visible = v; }
+
+  setColor(rgb: [number, number, number]): void {
+    (this.mat.uniforms.channel.value as THREE.Vector3).set(rgb[0], rgb[1], rgb[2]);
+  }
 
   dispose(): void {
     this.mesh.removeFromParent();
