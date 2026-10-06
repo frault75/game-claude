@@ -2,7 +2,7 @@
 import { Entity, HitInfo } from './entity';
 import type { World } from './world';
 import { Sprite, Frame, ySort, LAYER } from '../gfx/sprite';
-import { buildBlotFrames, buildWispFrames, buildInkDropFrames } from '../gfx/gen/creatures';
+import { buildBlotFrames, buildWispFrames, buildInkDropFrames, buildBruteFrames, buildMiteFrames } from '../gfx/gen/creatures';
 import { Painter } from '../gfx/paint';
 import { shadow } from '../gfx/gen/ground';
 import { SPRITE_PPU } from '../gfx/gen/flora';
@@ -30,7 +30,10 @@ export class Creature extends Entity {
   protected shadowS!: Sprite;
   protected kx = 0;
   protected ky = 0;
+  protected knockback = 1;
   onDie?: () => void;
+  /** Rises out of an ink puddle when spawned. */
+  emerge = 0;
 
   constructor() {
     super();
@@ -40,43 +43,40 @@ export class Creature extends Entity {
   }
 
   onHit(h: HitInfo): boolean {
-    if (this.dying > 0 || this.dead) return false;
+    if (this.dying > 0 || this.dead || this.emerge > 0) return false;
     const w = this.world;
     this.hp -= h.dmg;
     this.flash = 0.12;
     const dx = this.x - h.fromX, dy = this.y - h.fromY;
     const l = Math.hypot(dx, dy) || 1;
-    this.kx = (dx / l) * 8;
-    this.ky = (dy / l) * 8;
+    const kb = (h.kind === 'enso' ? 12 : 8) * this.knockback;
+    this.kx = (dx / l) * kb;
+    this.ky = (dy / l) * kb;
     sfx.hit();
-    w.vfx.splat(this.x, this.y + 0.4, Math.atan2(dy, dx), 7, 0.9);
+    w.vfx.splat(this.x, this.y + 0.4, Math.atan2(dy, dx), h.kind === 'enso' ? 14 : 7, h.kind === 'enso' ? 1.4 : 0.9);
     if (this.hp <= 0) {
       this.dying = 0.001;
       w.vfx.stain(this.x, this.y, 1.1, 8);
+      w.strokes.splat(this.x, this.y, this.radius * 2);
       this.onDie?.();
     }
     return true;
   }
 
-  /** Move without crossing a taut thread (ink cannot pass it). */
   protected walk(dx: number, dy: number): void {
     const w = this.world;
-    if (w.crossesThread(this.x, this.y, this.x + dx * 3, this.y + dy * 3)) {
-      // pushed back by the thread
-      const s = w.tautSegment()!;
-      const sx = s[2] - s[0], sy = s[3] - s[1];
-      const sl = Math.hypot(sx, sy) || 1;
-      const nx = -sy / sl, ny = sx / sl;
-      const side = Math.sign((this.x - s[0]) * nx + (this.y - s[1]) * ny) || 1;
-      w.move(this, nx * side * 0.05, ny * side * 0.05);
-      return;
-    }
     const ox = this.x, oy = this.y;
     w.move(this, dx, dy);
     if (!this.airborne && w.hazardAt(this.x, this.y)) { this.x = ox; this.y = oy; }
   }
 
   protected baseUpdate(dt: number): boolean {
+    if (this.emerge > 0) {
+      this.emerge = Math.max(0, this.emerge - dt);
+      for (const s of this.sprites) s.dissolve = this.emerge / 0.6;
+      if (this.shadowS) this.shadowS.opacity = 1 - this.emerge / 0.6;
+      if (this.emerge > 0) { this.placeOnly(); return false; }
+    }
     this.flash = Math.max(0, this.flash - dt);
     this.stun = Math.max(0, this.stun - dt);
     if (this.kx || this.ky) {
@@ -93,6 +93,17 @@ export class Creature extends Entity {
       return false;
     }
     return true;
+  }
+
+  protected placeOnly(): void {
+    if (!this.body) return;
+    this.body.setPos(this.x, this.y + this.z);
+    this.body.mesh.renderOrder = ySort(this.y);
+    if (this.shadowS) this.shadowS.setPos(this.x, this.y);
+  }
+
+  onHit2(h: HitInfo): boolean {
+    return this.onHit(h);
   }
 
   protected place(frame: Frame, bob = 0): void {
@@ -232,6 +243,11 @@ export class InkDrop extends Entity {
     s.mesh.rotation.z = Math.atan2(this.vy, this.vx) + Math.PI;
     s.mesh.renderOrder = ySort(this.y);
     if (this.life > 5) { this.destroy(); return; }
+    if (w.strokes.absorbs(this.x, this.y, this.radius)) {
+      w.vfx.splat(this.x, this.y + 0.3, Math.atan2(this.vy, this.vx) + Math.PI, 4, 0.5, 'red');
+      this.destroy();
+      return;
+    }
     for (const c of w.colliders) {
       if (c.kind === 'circle' && Math.hypot(c.x - this.x, c.y - this.y) < c.r + this.radius) { this.pop(); return; }
     }
@@ -309,5 +325,164 @@ export class Wisp extends Creature {
       this.walk((this.hover[0] - this.x) * 0.5 * dt, (this.hover[1] - this.y) * 0.5 * dt);
     }
     this.place(wispFrames![Math.abs(Math.floor(this.animT * 6)) % 4]);
+  }
+}
+
+let bruteFrames: Frame[] | null = null;
+
+/** Brute (ram): armoured in front, charges in a line after a long telegraph. Cut it while it charges. */
+export class Brute extends Creature {
+  private mode: 'approach' | 'prep' | 'charge' | 'stunned' | 'recover' = 'approach';
+  private modeT = 0;
+  private dir: [number, number] = [1, 0];
+  private face = 1;
+  private cd = 1.5;
+  private chargeLeft = 0;
+  private tg: Telegraph | null = null;
+  private animT = 0;
+  constructor(x: number, y: number) {
+    super();
+    this.x = x; this.y = y;
+    this.radius = 0.75;
+    this.hp = 7;
+    this.knockback = 0.25;
+    this.label = 'brute';
+  }
+  init(w: World): void {
+    if (!bruteFrames) bruteFrames = buildBruteFrames(1501);
+    this.body = this.addSprite(new Sprite(bruteFrames[0]));
+    this.shadowS = makeShadow(w, 0.9);
+  }
+  onHit(h: HitInfo): boolean {
+    if (this.dying > 0 || this.dead || this.emerge > 0) return false;
+    const w = this.world;
+    const toAtt = [h.fromX - this.x, h.fromY - this.y];
+    const l = Math.hypot(toAtt[0], toAtt[1]) || 1;
+    const front = (toAtt[0] * this.dir[0] + toAtt[1] * this.dir[1]) / l > 0.35;
+    if (h.kind === 'brush' && front && this.mode !== 'stunned') {
+      sfx.clink();
+      w.vfx.dust(this.x + this.dir[0] * 0.6, this.y + 0.6, 3);
+      const p = w.player;
+      p.push[0] -= (toAtt[0] / l) * -6;
+      p.push[1] -= (toAtt[1] / l) * -6;
+      this.flash = 0.06;
+      return false;
+    }
+    if (h.kind === 'cut' && this.mode === 'charge') h = { ...h, dmg: 2 };
+    if (h.kind === 'enso') h = { ...h, dmg: 4 };
+    if (this.mode === 'stunned' && h.kind === 'brush') h = { ...h, dmg: 2 };
+    return super.onHit(h);
+  }
+  update(dt: number): void {
+    if (!this.baseUpdate(dt)) return;
+    const w = this.world;
+    const p = w.player;
+    const f = bruteFrames!;
+    this.animT += dt;
+    this.modeT += dt;
+    this.cd -= dt;
+    const dx = p.x - this.x, dy = p.y - this.y;
+    const d = Math.hypot(dx, dy) || 1;
+    let frame = f[Math.abs(Math.floor(this.animT * 3)) % 2];
+    switch (this.mode) {
+      case 'approach':
+        this.dir = [dx / d, dy / d];
+        this.walk((dx / d) * 1.3 * dt, (dy / d) * 1.3 * dt);
+        if (d < 8.5 && this.cd <= 0 && p.state !== 'dead') {
+          this.mode = 'prep';
+          this.modeT = 0;
+          const b = w.bounds;
+          let L = 2;
+          while (L < 12) {
+            const ex = this.x + this.dir[0] * L, ey = this.y + this.dir[1] * L;
+            if (ex < b.x + 0.8 || ex > b.x + b.w - 0.8 || ey < b.y + 0.8 || ey > b.y + b.h - 0.8) break;
+            L += 0.25;
+          }
+          this.chargeLeft = L;
+          this.tg = w.tele.add({ kind: 'line', length: L, width: 1.9 }, this.x, this.y, Math.atan2(this.dir[1], this.dir[0]), 1.0, { hold: 0.2 });
+          sfx.telegraph('low', 1.0);
+        }
+        break;
+      case 'prep':
+        frame = f[2];
+        this.x += Math.sin(this.modeT * 50) * 0.01;
+        if (this.tg) this.tg.x = this.x;
+        if (this.modeT > 1.0) { this.mode = 'charge'; this.modeT = 0; this.tg = null; w.shake(0.08, 0.15); }
+        break;
+      case 'charge': {
+        frame = f[3];
+        const step = 14 * dt;
+        const ox = this.x, oy = this.y;
+        w.move(this, this.dir[0] * step, this.dir[1] * step);
+        const moved = Math.hypot(this.x - ox, this.y - oy);
+        this.chargeLeft -= moved;
+        if (Math.random() < 0.6) w.vfx.dust(this.x - this.dir[0] * 0.6, this.y, 1);
+        if (Math.hypot(p.x - this.x, p.y - this.y) < this.radius + p.radius + 0.1) p.hurt(1, this.x, this.y);
+        if (moved < step * 0.5) {
+          // slammed into the edge: dazed
+          this.mode = 'stunned';
+          this.modeT = 0;
+          sfx.impact(true);
+          w.shake(0.25, 0.25);
+          w.vfx.splat(this.x + this.dir[0] * 0.7, this.y + 0.5, Math.atan2(-this.dir[1], -this.dir[0]), 8, 1);
+        } else if (this.chargeLeft <= 0) {
+          this.mode = 'recover';
+          this.modeT = 0;
+        }
+        break;
+      }
+      case 'stunned':
+        frame = f[4];
+        if (this.modeT > 1.6) { this.mode = 'approach'; this.modeT = 0; this.cd = 1.8; }
+        break;
+      case 'recover':
+        frame = f[0];
+        if (this.modeT > 0.7) { this.mode = 'approach'; this.modeT = 0; this.cd = 2.2; }
+        break;
+    }
+    if (this.mode === 'approach') this.face = this.dir[0] < 0 ? -1 : 1;
+    this.place(frame);
+    this.body.mesh.scale.x = this.face;
+  }
+}
+
+let miteFrames: Frame[] | null = null;
+
+/** Swarm mite: tiny, fast, comes in groups. One hit. Perfect to circle. */
+export class Mite extends Creature {
+  private t = Math.random() * 10;
+  private orbit: number;
+  constructor(x: number, y: number) {
+    super();
+    this.x = x; this.y = y;
+    this.radius = 0.22;
+    this.hp = 1;
+    this.airborne = true;
+    this.z = 0.7;
+    this.orbit = Math.random() * Math.PI * 2;
+    this.label = 'mite';
+  }
+  init(w: World): void {
+    if (!miteFrames) miteFrames = buildMiteFrames(1601);
+    this.body = this.addSprite(new Sprite(miteFrames[0]));
+    this.shadowS = makeShadow(w, 0.2);
+  }
+  update(dt: number): void {
+    if (!this.baseUpdate(dt)) return;
+    const w = this.world;
+    const p = w.player;
+    this.t += dt;
+    // circle the child, then dart in
+    const dart = Math.sin(this.t * 0.9 + this.orbit) > 0.75;
+    const r = dart ? 0.2 : 2.6;
+    const a = this.orbit + this.t * 1.4;
+    const tx = p.x + Math.cos(a) * r, ty = p.y + Math.sin(a) * r * 0.8;
+    const sp = dart ? 6.5 : 3.2;
+    const dx = tx - this.x, dy = ty - this.y;
+    const d = Math.hypot(dx, dy) || 1;
+    this.walk((dx / d) * Math.min(d, sp * dt), (dy / d) * Math.min(d, sp * dt));
+    this.z = 0.7 + Math.sin(this.t * 7) * 0.1;
+    if (Math.hypot(p.x - this.x, p.y - this.y) < this.radius + p.radius + 0.05) p.hurt(1, this.x, this.y);
+    this.place(miteFrames![Math.abs(Math.floor(this.t * 14)) % 2]);
   }
 }

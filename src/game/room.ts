@@ -11,16 +11,31 @@ import { brushText } from '../gfx/text';
 import { V } from './physics';
 import type { V2 } from '../gfx/brush';
 import type { PostParams } from '../core/renderer';
+import type { Game } from './game';
+
+export interface Exit {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  to: string;
+  spawn: V;
+  /** Closed exits do nothing (e.g. until the guardian is restored). */
+  open?: () => boolean;
+}
 
 export interface RoomDef {
   id: string;
+  /** Area key: palette, music and restoration are per area. */
   area: string;
   w: number;
   h: number;
   palette: string;
   spawn: V;
   goal: V;
+  music?: string;
   post?: Partial<PostParams>;
+  exits?: Exit[];
   build(b: RoomBuilder): void;
 }
 
@@ -28,7 +43,7 @@ export class RoomBuilder {
   readonly ground: Painter;
   private texts: { x: number; y: number; str: string; size: number; load: number }[] = [];
 
-  constructor(readonly world: World, readonly def: RoomDef) {
+  constructor(readonly world: World, readonly def: RoomDef, readonly game: Game) {
     this.ground = new Painter(def.w, def.h, GROUND_PPU, 0, 0);
     this.ground.glaze();
   }

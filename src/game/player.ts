@@ -1,4 +1,4 @@
-/** The child: walks, strikes with the brush, dodges, casts the thread. */
+/** Shu, the last stroke: runs, slashes, and dashes in strokes of vermilion ink. */
 import { Entity, HitInfo } from './entity';
 import type { World } from './world';
 import { Sprite, LAYER, ySort } from '../gfx/sprite';
@@ -7,23 +7,34 @@ import { buildChildFrames, ChildFrames, Facing, ChildPose } from '../gfx/gen/chi
 import { shadow } from '../gfx/gen/ground';
 import { SPRITE_PPU } from '../gfx/gen/flora';
 import { sfx } from '../audio/sfx';
-import { angleDiff, V } from './physics';
+import { angleDiff, distToSeg, V } from './physics';
 
-type State = 'normal' | 'strike' | 'dodge' | 'hurt' | 'fall' | 'dead' | 'frozen';
+type State = 'normal' | 'strike' | 'dash' | 'hurt' | 'fall' | 'dead' | 'frozen';
 
 export const PLAYER = {
-  speed: 4.6,
-  accel: 32,
+  speed: 6.2,
+  accel: 70,
   maxHp: 5,
-  dodgeTime: 0.18,
-  dodgeSpeed: 14,
-  dodgeIframes: 0.24,
-  dodgeCooldown: 0.45,
-  strikeRange: 1.45,
-  strikeHalf: 1.0,
+  dashSpeed: 30,
+  dashMin: 1.3,
+  dashMax: 4.3,
+  dashIframesExtra: 0.08,
+  charges: 3,
+  rechargeTime: 0.5,
+  rechargeDelay: 0.16,
+  strikeRange: 1.5,
+  strikeHalf: 1.05,
 };
 
 let framesCache: ChildFrames | null = null;
+
+interface DashState {
+  dir: V;
+  dist: number;
+  done: number;
+  seg: ReturnType<World['strokes']['begin']>;
+  hit: Set<Entity>;
+}
 
 export class Player extends Entity {
   state: State = 'normal';
@@ -33,34 +44,36 @@ export class Player extends Entity {
   aim: V = [0, -1];
   moveDir: V = [0, 0];
   invuln = 0;
-  dodgeCd = 0;
-  private dodgeDir: V = [1, 0];
+  charges = PLAYER.charges;
+  private chargeT = 0;
+  private sinceDash = 10;
+  private dash: DashState | null = null;
+  private queued: V | null = null;
   private combo = 0;
   private comboQueued = false;
   private strikeHit = false;
   private animT = 0;
   lastSafe: V = [0, 0];
   private safeT = 0;
-  /** Reeling: the thread pulls the child; input is ignored and hazards are crossed. */
-  reeling = false;
-  /** External push (wind, waves). */
   push: V = [0, 0];
   private pig!: Sprite;
   private red!: Sprite;
   private shadowS!: Sprite;
   frames!: ChildFrames;
-  /** Disable all input (cutscenes). */
   locked = false;
   onDeath?: () => void;
+  /** Read by the HUD and music: recent hits. */
+  onLanded?: (n: number, kind: string) => void;
+  /** Kept for compatibility with older room code. */
+  reeling = false;
 
   constructor() {
     super();
     this.radius = 0.28;
-    this.weight = 1;
     this.team = 'player';
     this.hp = PLAYER.maxHp;
     this.knotY = 0.45;
-    this.label = 'child';
+    this.label = 'shu';
   }
 
   init(w: World): void {
@@ -78,23 +91,11 @@ export class Player extends Entity {
     this.lastSafe = [this.x, this.y];
   }
 
-  /** Re-add sprites after a room change cleared scenes. */
-  reattach(): void {
-    const r = this.world.r;
-    r.scenePig.add(this.pig.mesh, this.shadowS.mesh);
-    r.sceneRed.add(this.red.mesh);
-  }
-
-  wrist(): V {
-    return [this.x + 0.16 * (this.facing === 'side' ? this.flip : 1), this.y + 0.42 + this.z];
-  }
-
-  knot(): [number, number] {
-    return this.wrist();
-  }
-
   get busy(): boolean {
-    return this.state === 'dodge' || this.state === 'hurt' || this.state === 'fall' || this.state === 'dead' || this.state === 'frozen';
+    return this.state === 'hurt' || this.state === 'fall' || this.state === 'dead' || this.state === 'frozen';
+  }
+  get dodging(): boolean {
+    return this.state === 'dash';
   }
 
   private updateAim(): void {
@@ -124,12 +125,26 @@ export class Player extends Entity {
     } else this.facing = dy > 0 ? 'up' : 'down';
   }
 
+  /** Where a dash requested now would aim. */
+  private dashTarget(): V {
+    const w = this.world;
+    const inp = w.input;
+    if (inp.device === 'pad') {
+      let [dx, dy] = this.moveDir;
+      if (Math.hypot(dx, dy) < 0.2) [dx, dy] = this.aim;
+      const l = Math.hypot(dx, dy) || 1;
+      return [this.x + (dx / l) * PLAYER.dashMax, this.y + (dy / l) * PLAYER.dashMax];
+    }
+    const [mx, my] = w.mouseWorld();
+    return [mx, my - 0.35];
+  }
+
   update(dt: number): void {
     const w = this.world;
     const inp = w.input;
     this.stateT += dt;
     this.invuln = Math.max(0, this.invuln - dt);
-    this.dodgeCd = Math.max(0, this.dodgeCd - dt);
+    this.sinceDash += dt;
     const [mx, my] = this.locked ? [0, 0] : inp.move();
     this.moveDir = [mx, my];
     this.updateAim();
@@ -139,57 +154,59 @@ export class Player extends Entity {
       this.sync(dt);
       return;
     }
-
     if (this.state === 'fall') {
       this.vx *= 0.9; this.vy *= 0.9;
-      if (this.stateT > 0.7) this.finishFall();
+      if (this.stateT > 0.6) this.finishFall();
       this.sync(dt);
       return;
     }
 
-    if (!this.locked && !this.busy && inp.pressed('dodge') && this.dodgeCd <= 0) this.startDodge();
+    // ink recharges while not dashing (faster with a combo)
+    if (this.state !== 'dash' && this.charges < PLAYER.charges && this.sinceDash > PLAYER.rechargeDelay) {
+      this.chargeT += dt * (1 + Math.min(20, w.combo) * 0.05);
+      if (this.chargeT >= PLAYER.rechargeTime) {
+        this.chargeT = 0;
+        this.charges++;
+        sfx.charge(this.charges);
+      }
+    }
+
+    if (!this.locked && !this.busy && inp.pressed('dodge')) {
+      const target = this.dashTarget();
+      if (this.state === 'dash') this.queued = target;
+      else if (this.charges > 0) this.startDash(target);
+      else sfx.empty();
+    }
     if (!this.locked && (this.state === 'normal' || this.state === 'strike') && inp.pressed('attack')) {
       if (this.state === 'normal') this.startStrike(0);
-      else if (this.combo === 0 && this.stateT > 0.05) this.comboQueued = true;
+      else if (this.combo === 0 && this.stateT > 0.04) this.comboQueued = true;
     }
 
     let tvx = 0, tvy = 0;
-    if (this.state === 'normal' && !this.reeling) {
+    if (this.state === 'normal') {
       tvx = mx * PLAYER.speed;
       tvy = my * PLAYER.speed;
       if (Math.hypot(mx, my) > 0.1) this.faceTowards(mx, my);
     }
-    if (this.state === 'strike') this.updateStrike(dt);
-    if (this.state === 'dodge') {
-      tvx = this.dodgeDir[0] * PLAYER.dodgeSpeed;
-      tvy = this.dodgeDir[1] * PLAYER.dodgeSpeed;
-      this.vx = tvx; this.vy = tvy;
-      if (this.stateT > PLAYER.dodgeTime) {
-        this.state = 'normal';
-        this.stateT = 0;
-        this.vx *= 0.3; this.vy *= 0.3;
-      }
-    }
-    if (this.state === 'hurt' && this.stateT > 0.28) { this.state = 'normal'; this.stateT = 0; }
-
-    if (!this.reeling && this.state !== 'dodge') {
-      const k = Math.min(1, PLAYER.accel * dt / PLAYER.speed);
+    if (this.state === 'strike') this.updateStrike();
+    if (this.state === 'dash') {
+      this.updateDash(dt);
+    } else {
+      if (this.state === 'hurt' && this.stateT > 0.25) { this.state = 'normal'; this.stateT = 0; }
+      const k = Math.min(1, (PLAYER.accel * dt) / PLAYER.speed);
       this.vx += (tvx - this.vx) * k;
       this.vy += (tvy - this.vy) * k;
+      const px = this.push[0] + w.wind[0], py = this.push[1] + w.wind[1];
+      this.push[0] *= Math.max(0, 1 - dt * 6);
+      this.push[1] *= Math.max(0, 1 - dt * 6);
+      w.move(this, (this.vx + px) * dt, (this.vy + py) * dt);
     }
-    // wind and other pushes
-    const px = this.push[0] + w.wind[0], py = this.push[1] + w.wind[1];
-    this.push[0] *= Math.max(0, 1 - dt * 6);
-    this.push[1] *= Math.max(0, 1 - dt * 6);
 
-    w.move(this, (this.vx + (this.reeling ? 0 : px)) * dt, (this.vy + (this.reeling ? 0 : py)) * dt);
-
-    // hazards
-    const airborne = this.reeling || this.airborne;
-    if (!airborne) {
+    // the void: fresh ink is a bridge
+    if (this.state !== 'dash') {
       const hz = w.hazardAt(this.x, this.y);
-      if (hz) this.startFall(hz.kind);
-      else {
+      if (hz && !w.strokes.bridgeAt(this.x, this.y)) this.startFall(hz.kind);
+      else if (!hz) {
         this.safeT += dt;
         if (this.safeT > 0.2 && !w.nearHazard(this.x, this.y, 0.7)) {
           this.lastSafe = [this.x, this.y];
@@ -200,6 +217,69 @@ export class Player extends Entity {
     this.sync(dt);
   }
 
+  private startDash(target: V): void {
+    const w = this.world;
+    let dx = target[0] - this.x, dy = target[1] - this.y;
+    let d = Math.hypot(dx, dy);
+    if (d < 0.01) { [dx, dy] = this.aim; d = 1; }
+    const dir: V = [dx / d, dy / d];
+    const dist = Math.max(PLAYER.dashMin, Math.min(PLAYER.dashMax, d));
+    this.charges--;
+    this.chargeT = 0;
+    this.sinceDash = 0;
+    this.state = 'dash';
+    this.stateT = 0;
+    this.queued = null;
+    this.dash = { dir, dist, done: 0, seg: w.strokes.begin(this.x, this.y + 0.05), hit: new Set() };
+    this.invuln = Math.max(this.invuln, dist / PLAYER.dashSpeed + PLAYER.dashIframesExtra);
+    this.faceTowards(dir[0], dir[1]);
+    sfx.trait(dist);
+  }
+
+  private updateDash(dt: number): void {
+    const w = this.world;
+    const ds = this.dash!;
+    const step = Math.min(PLAYER.dashSpeed * dt, ds.dist - ds.done);
+    const ox = this.x, oy = this.y;
+    w.move(this, ds.dir[0] * step, ds.dir[1] * step);
+    const moved = Math.hypot(this.x - ox, this.y - oy);
+    ds.done += step;
+    this.vx = ds.dir[0] * PLAYER.dashSpeed;
+    this.vy = ds.dir[1] * PLAYER.dashSpeed;
+    w.strokes.extend(ds.seg, this.x, this.y + 0.05);
+    // the stroke cuts what it passes through
+    for (const e of w.entities) {
+      if (e === this || e.dead || e.team !== 'enemy' || ds.hit.has(e)) continue;
+      const ey = e.y + Math.min(0.4, e.z * 0.5);
+      if (distToSeg(e.x, ey, ox, oy, this.x, this.y) < e.radius + 0.38) {
+        ds.hit.add(e);
+        if (e.onHit({ dmg: 1, fromX: ox, fromY: oy, kind: 'cut' })) {
+          w.hitstop = Math.max(w.hitstop, 0.035);
+          w.kick(ds.dir[0] * 0.12, ds.dir[1] * 0.12);
+          sfx.cut();
+          this.onLanded?.(1, 'cut');
+        }
+      }
+    }
+    if (ds.done >= ds.dist - 1e-4 || moved < step * 0.3) this.endDash();
+  }
+
+  private endDash(): void {
+    const w = this.world;
+    const ds = this.dash!;
+    this.dash = null;
+    this.state = 'normal';
+    this.stateT = 0;
+    this.vx = ds.dir[0] * PLAYER.speed * 0.6;
+    this.vy = ds.dir[1] * PLAYER.speed * 0.6;
+    w.strokes.finish(ds.seg);
+    if (this.queued && this.charges > 0) {
+      const q = this.queued;
+      this.queued = null;
+      this.startDash(q);
+    }
+  }
+
   private startStrike(combo: number): void {
     this.state = 'strike';
     this.stateT = 0;
@@ -208,16 +288,15 @@ export class Player extends Entity {
     this.strikeHit = false;
     const [ax, ay] = this.aim;
     this.faceTowards(ax, ay);
-    this.vx = ax * 3.2;
-    this.vy = ay * 3.2;
+    this.vx = ax * 4;
+    this.vy = ay * 4;
   }
 
-  private updateStrike(dt: number): void {
-    void dt;
+  private updateStrike(): void {
     const w = this.world;
     const t = this.stateT;
-    const windup = 0.05, active = 0.1;
-    this.vx *= 0.85; this.vy *= 0.85;
+    const windup = 0.04, active = 0.08;
+    this.vx *= 0.82; this.vy *= 0.82;
     if (t >= windup && !this.strikeHit) {
       this.strikeHit = true;
       const [ax, ay] = this.aim;
@@ -225,7 +304,7 @@ export class Player extends Entity {
       const ang = Math.atan2(ay, ax);
       w.vfx.strikeArc(cx + ax * 0.25, cy + ay * 0.25, ang, this.combo);
       sfx.strike(this.combo);
-      let landed = false;
+      let landed = 0;
       for (const e of w.entities) {
         if (e === this || e.dead || e.team === 'player') continue;
         const ex = e.x, ey = e.y + Math.min(0.5, e.knotY) + e.z * 0.3;
@@ -233,14 +312,16 @@ export class Player extends Entity {
         const d = Math.hypot(dx, dy) - e.radius * 0.8;
         if (d > PLAYER.strikeRange) continue;
         if (Math.abs(angleDiff(Math.atan2(dy, dx), ang)) > PLAYER.strikeHalf && d > 0.35) continue;
-        if (e.onHit({ dmg: 1, fromX: this.x, fromY: this.y, kind: 'brush' })) landed = true;
+        if (e.onHit({ dmg: 1, fromX: this.x, fromY: this.y, kind: 'brush' })) landed++;
       }
       if (landed) {
-        w.hitstop = Math.max(w.hitstop, 0.07);
-        w.shake(0.08, 0.12);
+        w.hitstop = Math.max(w.hitstop, 0.055);
+        w.kick(ax * 0.15, ay * 0.15);
+        w.shake(0.06, 0.1);
+        this.onLanded?.(landed, 'brush');
       }
     }
-    const end = this.combo === 0 ? windup + active + 0.16 : windup + active + 0.26;
+    const end = this.combo === 0 ? windup + active + 0.12 : windup + active + 0.2;
     if (t >= windup + active && this.comboQueued && this.combo === 0) {
       this.startStrike(1);
       return;
@@ -252,40 +333,22 @@ export class Player extends Entity {
     }
   }
 
-  private startDodge(): void {
-    let [dx, dy] = this.moveDir;
-    if (Math.hypot(dx, dy) < 0.2) [dx, dy] = this.aim;
-    const l = Math.hypot(dx, dy) || 1;
-    this.dodgeDir = [dx / l, dy / l];
-    this.state = 'dodge';
-    this.stateT = 0;
-    this.dodgeCd = PLAYER.dodgeCooldown + PLAYER.dodgeTime;
-    this.invuln = Math.max(this.invuln, PLAYER.dodgeIframes);
-    this.faceTowards(dx, dy);
-    this.world.vfx.streak(this.x, this.y, Math.atan2(dy, dx));
-    sfx.dodge();
-  }
-
-  get dodging(): boolean {
-    return this.state === 'dodge';
-  }
-
-  /** Damage from an attack. Returns true if it landed. */
   hurt(dmg: number, fromX: number, fromY: number): boolean {
-    if (this.invuln > 0 || this.state === 'dead' || this.state === 'fall' || this.state === 'frozen') return false;
+    if (this.invuln > 0 || this.state === 'dead' || this.state === 'fall' || this.state === 'frozen' || this.state === 'dash') return false;
     const w = this.world;
     this.hp -= dmg;
     this.invuln = 1.0;
     const dx = this.x - fromX, dy = this.y - fromY;
     const l = Math.hypot(dx, dy) || 1;
-    this.vx = (dx / l) * 7;
-    this.vy = (dy / l) * 7;
+    this.vx = (dx / l) * 8;
+    this.vy = (dy / l) * 8;
     this.state = 'hurt';
     this.stateT = 0;
     sfx.hurt();
-    w.vfx.splat(this.x, this.y + 0.5, Math.atan2(dy, dx), 10, 1);
-    w.hitstop = Math.max(w.hitstop, 0.09);
-    w.shake(0.18, 0.25);
+    w.vfx.splat(this.x, this.y + 0.5, Math.atan2(dy, dx), 10, 1, 'red');
+    w.hitstop = Math.max(w.hitstop, 0.1);
+    w.shake(0.22, 0.25);
+    w.combo = 0;
     if (this.hp <= 0) this.die();
     return true;
   }
@@ -297,7 +360,6 @@ export class Player extends Entity {
   private startFall(kind: 'water' | 'void'): void {
     this.state = 'fall';
     this.stateT = 0;
-    this.world.thread.release(false);
     if (kind === 'water') {
       sfx.splash();
       this.world.vfx.ripple(this.x, this.y, 1.2);
@@ -307,10 +369,7 @@ export class Player extends Entity {
   private finishFall(): void {
     this.hp -= 1;
     this.invuln = 1.2;
-    if (this.hp <= 0) {
-      this.die();
-      return;
-    }
+    if (this.hp <= 0) { this.die(); return; }
     sfx.hurt();
     this.x = this.lastSafe[0];
     this.y = this.lastSafe[1];
@@ -322,21 +381,20 @@ export class Player extends Entity {
   private die(): void {
     this.state = 'dead';
     this.stateT = 0;
-    this.world.thread.release(false);
+    this.dash = null;
     this.onDeath?.();
   }
 
-  /** Back to life at a position (after death or checkpoint). */
   revive(x: number, y: number): void {
     this.x = x;
     this.y = y;
     this.vx = 0; this.vy = 0;
     this.hp = PLAYER.maxHp;
+    this.charges = PLAYER.charges;
     this.state = 'normal';
     this.stateT = 0;
     this.invuln = 1.5;
     this.lastSafe = [x, y];
-    this.reeling = false;
     this.pig.dissolve = 0;
     this.red.dissolve = 0;
   }
@@ -353,42 +411,34 @@ export class Player extends Entity {
     const speed = Math.hypot(this.vx, this.vy);
     if (this.state === 'strike') { pose = 'strike'; fps = 0; }
     else if (this.state === 'hurt') pose = 'hurt';
-    else if (this.reeling) pose = 'cast';
-    else if (this.world.thread.castingRecently()) pose = 'cast';
-    else if (speed > 0.6 && this.state !== 'dodge') { pose = 'walk'; fps = 9 * Math.min(1.3, speed / PLAYER.speed + 0.3); }
+    else if (this.state === 'dash') pose = 'cast';
+    else if (speed > 0.6) { pose = 'walk'; fps = 11 * Math.min(1.3, speed / PLAYER.speed + 0.3); }
     const set = this.frames.pig[this.facing][pose];
     let idx: number;
-    if (pose === 'strike') idx = this.stateT < 0.05 ? 0 : 1;
+    if (pose === 'strike') idx = this.stateT < 0.04 ? 0 : 1;
     else idx = Math.floor(this.animT * fps);
     idx = Number.isFinite(idx) ? ((idx % set.length) + set.length) % set.length : 0;
     this.pig.setTexture(set[idx].tex);
     this.red.setTexture(this.frames.red[this.facing][pose][idx].tex);
     const sx = this.facing === 'side' ? this.flip : 1;
-    let sy = 1;
-    if (this.state === 'dodge') sy = 0.85;
+    const dashing = this.state === 'dash';
     for (const s of [this.pig, this.red]) {
-      s.mesh.scale.set(sx * (this.state === 'dodge' ? 1.12 : 1), sy, 1);
+      s.mesh.scale.set(sx * (dashing ? 1.25 : 1), dashing ? 0.8 : 1, 1);
       s.setPos(this.x, this.y + this.z);
       s.mesh.renderOrder = ySort(this.y);
     }
     this.shadowS.setPos(this.x, this.y);
-    // invulnerability flicker: the figure pales
-    const flick = this.invuln > 0 && this.state !== 'dodge' ? (Math.sin(this.world.time * 40) > 0 ? 0.55 : 0) : 0;
+    const flick = this.invuln > 0 && !dashing ? (Math.sin(this.world.time * 40) > 0 ? 0.55 : 0) : 0;
     this.pig.pale = flick;
-    if (this.state === 'fall') {
-      const k = Math.min(1, this.stateT / 0.7);
-      this.pig.dissolve = k;
-      this.red.dissolve = k;
-      this.shadowS.opacity = 1 - k;
-    } else if (this.state === 'dead') {
-      const k = Math.min(1, this.stateT / 1.2);
+    if (this.state === 'fall' || this.state === 'dead') {
+      const k = Math.min(1, this.stateT / (this.state === 'fall' ? 0.6 : 1.1));
       this.pig.dissolve = k;
       this.red.dissolve = k;
       this.shadowS.opacity = 1 - k;
     } else {
       this.pig.dissolve = 0;
       this.red.dissolve = 0;
-      this.shadowS.opacity = this.reeling ? 0.5 : 1;
+      this.shadowS.opacity = dashing ? 0.4 : 1;
     }
   }
 

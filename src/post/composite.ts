@@ -33,6 +33,7 @@ uniform float fogScale;
 uniform vec2 fogDrift;
 uniform float vignette;
 uniform float fade;
+uniform float flash;
 varying vec2 vUv;
 
 float hash(vec2 p) {
@@ -160,6 +161,8 @@ void main() {
   float g = hash(vUv * res + boil * 1.7) - 0.5;
   col += g * 0.018;
 
+  // lightning: the page goes white for an instant, ink stays a ghost
+  col = mix(col, vec3(1.0, 0.99, 0.96) * (0.9 + 0.1 * fib), clamp(flash, 0.0, 1.0) * 0.82);
   col = mix(col, cPaper, fade);
   gl_FragColor = vec4(col, 1.0);
 }

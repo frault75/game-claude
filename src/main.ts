@@ -2,7 +2,8 @@ import { Renderer } from './core/renderer';
 import { Input } from './core/input';
 import { DebugOverlay } from './ui/debug';
 import { Game } from './game/game';
-import { sandbox } from './game/areas/sandbox';
+import { arena } from './game/areas/arena';
+import { music } from './audio/music';
 import { audio } from './audio/engine';
 import { Ambience } from './audio/sfx';
 import { t } from './i18n';
@@ -29,8 +30,9 @@ function startAudio() {
   if (started) return;
   started = true;
   audio.start();
-  ambience.rain(0.2);
-  ambience.wind(0.12, 600);
+  ambience.rain(0.32);
+  ambience.wind(0.16, 500);
+  music.resume();
 }
 window.addEventListener('pointerdown', startAudio, { once: false });
 window.addEventListener('keydown', startAudio, { once: false });
@@ -39,11 +41,12 @@ if (debugMode) (window as unknown as Record<string, unknown>).__v = { game, inpu
 
 async function start() {
   loadingBar.style.width = '30%';
-  await game.loadRoom(sandbox);
+  game.register([arena]);
+  const startRoom = params.get('room') ?? 'arena';
+  await game.loadRoom(game.rooms.has(startRoom) ? startRoom : 'arena');
   loadingBar.style.width = '100%';
   loading.style.opacity = '0';
   setTimeout(() => loading.remove(), 900);
-  game.hud.showHint(input.device === 'pad' ? t('hintPadMove') : `${t('hintMove')} · ${t('hintStrike')} · ${t('hintDodge')}`, 8);
   let last = performance.now();
   let time = 0;
   const frame = (now: number) => {
@@ -56,6 +59,9 @@ async function start() {
     if (debugMode) {
       if (input.keyPressed('KeyH')) { game.player.hp = 5; game.player.invuln = 99999; }
       if (input.keyPressed('KeyB')) renderer.boilEnabled = !renderer.boilEnabled;
+      if (input.keyPressed('KeyK')) {
+        for (const e of game.world.entities) if ('maxHp' in e) { (e as unknown as { hp: number }).hp = 1; (e as unknown as { vulnerable: boolean }).vulnerable = true; }
+      }
     }
     const steps = Math.max(1, Math.ceil(dt / (1 / 60)));
     if (!(window as unknown as { __pause?: boolean }).__pause) for (let i = 0; i < steps; i++) game.update(dt / steps);
@@ -66,7 +72,7 @@ async function start() {
     debug.set('area', `${w.areaName} / ${w.roomName}`);
     debug.set('boss', w.bossState);
     debug.set('child', `${p.x.toFixed(1)}, ${p.y.toFixed(1)}  hp ${p.hp}  ${p.state}${p.reeling ? ' (reeling)' : ''}`);
-    debug.set('thread', game.thread.debug);
+    debug.set('ink', `${p.charges} charges · combo ${w.combo}`);
     debug.set('ents', `${w.entities.length}  calls ${renderer.gl.info.render.calls}`);
     debug.set('res', `${renderer.pxW}x${renderer.pxH}`);
     debug.frame(dt);

@@ -170,7 +170,7 @@ export class Vfx {
   }
 
   ripple(x: number, y: number, size = 1): void {
-    this.spawn(this.ring, false, { x, y, max: 0.9, scale: 0.3 * size, grow: 1.6 * size, alpha: 0.6, order: LAYER.groundDetail + 6 });
+    this.spawn(this.ring, false, { x, y, max: 0.7, scale: 0.3 * size, grow: 1.6 * size, alpha: 0.35, order: LAYER.groundDetail + 6 });
   }
 
   petal(x: number, y: number, vx: number, vy: number): void {

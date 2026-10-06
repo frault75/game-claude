@@ -2,11 +2,11 @@
 import type { Renderer } from '../core/renderer';
 import type { Input } from '../core/input';
 import { Entity } from './entity';
-import { Collider, pushOut, pointInPoly, distToPoly, V, segIntersect, side } from './physics';
+import { Collider, pushOut, pointInPoly, distToPoly, V } from './physics';
 import { Telegraphs } from './telegraph';
 import { Vfx } from './vfx';
 import type { Player } from './player';
-import type { Thread } from './thread';
+import { Strokes } from './stroke';
 import { Sprite } from '../gfx/sprite';
 
 export interface Hazard {
@@ -22,7 +22,7 @@ export class World {
   hazards: Hazard[] = [];
   bounds: Bounds = { x: 0, y: 0, w: 30, h: 20 };
   player!: Player;
-  thread!: Thread;
+  readonly strokes: Strokes;
   readonly tele: Telegraphs;
   readonly vfx: Vfx;
   camX = 0;
@@ -49,6 +49,35 @@ export class World {
   constructor(readonly r: Renderer, readonly input: Input) {
     this.tele = new Telegraphs(r);
     this.vfx = new Vfx(r);
+    this.strokes = new Strokes(this);
+  }
+
+  /** Slow motion (ensō). Recovers on its own. */
+  timeScale = 1;
+  private slowT = 0;
+  slow(scale: number, seconds: number): void {
+    this.timeScale = Math.min(this.timeScale, scale);
+    this.slowT = Math.max(this.slowT, seconds);
+  }
+  private zoomPunch = 0;
+  punch(amount: number): void {
+    this.zoomPunch = Math.max(this.zoomPunch, amount);
+  }
+  private kickX = 0;
+  private kickY = 0;
+  kick(dx: number, dy: number): void {
+    this.kickX += dx;
+    this.kickY += dy;
+  }
+  flash = 0;
+  /** Current combo (hits chained with no more than ~2.4 s between). */
+  combo = 0;
+  comboT = 0;
+  bestCombo = 0;
+  addCombo(n: number): void {
+    this.combo += n;
+    this.comboT = 2.4;
+    this.bestCombo = Math.max(this.bestCombo, this.combo);
   }
 
   add<T extends Entity>(e: T): T {
@@ -100,55 +129,53 @@ export class World {
     return false;
   }
 
-  /** Does a straight line cross a thread-blocking wall? */
+  /** Does a straight line cross a blocking wall? */
   lineBlocked(ax: number, ay: number, bx: number, by: number): boolean {
-    for (const c of this.colliders) {
-      if (!c.blocksThread || c.kind !== 'seg') continue;
-      if (segIntersect(ax, ay, bx, by, c.ax, c.ay, c.bx, c.by) >= 0) return true;
-    }
+    void ax; void ay; void bx; void by;
     return false;
   }
 
-  /** The taut (tied) thread as a segment, if any. */
-  tautSegment(): [number, number, number, number] | null {
-    return this.thread ? this.thread.tautSegment() : null;
-  }
-
-  /** Would moving from (x0,y0) to (x1,y1) cross the taut thread? */
-  crossesThread(x0: number, y0: number, x1: number, y1: number): boolean {
-    const s = this.tautSegment();
-    if (!s) return false;
-    return side(x0, y0, s[0], s[1], s[2], s[3]) !== side(x1, y1, s[0], s[1], s[2], s[3]) && segIntersect(x0, y0, x1, y1, s[0], s[1], s[2], s[3]) >= 0;
-  }
-
-  update(dt: number): void {
-    this.time += dt;
+  update(rawDt: number): void {
+    // juice timers run in real time
+    this.flash = Math.max(0, this.flash - rawDt * 6);
+    this.zoomPunch *= Math.max(0, 1 - rawDt * 7);
+    this.r.zoom = 1 + this.zoomPunch;
+    this.kickX *= Math.max(0, 1 - rawDt * 14);
+    this.kickY *= Math.max(0, 1 - rawDt * 14);
+    if (this.slowT > 0) {
+      this.slowT -= rawDt;
+      if (this.slowT <= 0) this.timeScale = 1;
+    } else this.timeScale += (1 - this.timeScale) * Math.min(1, rawDt * 8);
     if (this.hitstop > 0) {
-      this.hitstop -= dt;
-      this.vfx.update(dt * 0.25);
+      this.hitstop -= rawDt;
+      this.vfx.update(rawDt * 0.2);
+      this.updateCamera(rawDt);
       return;
     }
+    const dt = rawDt * this.timeScale;
+    this.time += dt;
+    if (this.combo > 0) {
+      this.comboT -= dt;
+      if (this.comboT <= 0) this.combo = 0;
+    }
     for (const e of this.entities) if (!e.dead) e.update(dt);
-    this.thread.update(dt);
     for (const s of this.scripts) s(dt);
+    this.strokes.update(dt);
     this.tele.update(dt);
     this.vfx.update(dt);
     const dead = this.entities.filter((e) => e.dead);
     if (dead.length) {
-      for (const e of dead) {
-        this.thread.forget(e);
-        e.dispose();
-      }
+      for (const e of dead) e.dispose();
       this.entities = this.entities.filter((e) => !e.dead);
     }
-    this.updateCamera(dt);
+    this.updateCamera(rawDt);
   }
 
   updateCamera(dt: number): void {
     const p = this.player;
     const [ax, ay] = p.aim;
-    const tx = p.x + ax * 0.8, ty = p.y + 0.5 + ay * 0.6;
-    const k = Math.min(1, dt * 4);
+    const tx = p.x + ax * 1.2, ty = p.y + 0.5 + ay * 0.9;
+    const k = Math.min(1, dt * 5);
     this.camX += (tx - this.camX) * k;
     this.camY += (ty - this.camY) * k;
     this.clampCamera();
@@ -167,9 +194,10 @@ export class World {
   }
 
   cameraWithShake(): V {
-    if (this.shakeAmp <= 0) return [this.camX, this.camY];
+    const x = this.camX + this.kickX, y = this.camY + this.kickY;
+    if (this.shakeAmp <= 0) return [x, y];
     const a = this.shakeAmp * Math.min(1, this.shakeT * 4);
-    return [this.camX + (Math.random() - 0.5) * a, this.camY + (Math.random() - 0.5) * a];
+    return [x + (Math.random() - 0.5) * a, y + (Math.random() - 0.5) * a];
   }
 
   /** Remove everything (room change). The player and thread are kept by the caller. */

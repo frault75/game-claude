@@ -7,7 +7,7 @@ export interface HitInfo {
   dmg: number;
   fromX: number;
   fromY: number;
-  kind: 'brush' | 'thread' | 'fire' | 'lantern' | 'crash' | 'reflect';
+  kind: 'brush' | 'cut' | 'enso' | 'fire' | 'lantern' | 'crash' | 'reflect';
 }
 
 /** Anything that lives in a room. */
