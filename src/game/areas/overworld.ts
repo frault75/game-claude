@@ -32,6 +32,7 @@ import { Npc, Stele } from '../npc';
 import { Brambles } from '../brambles';
 import { STEP, setMain } from '../quests';
 import { giveXp, onKill, hasColour } from '../rewards';
+import { dropLoot } from '../loot';
 
 let stamps: StampSet | null = null;
 let art: ArtCache | null = null;
@@ -361,6 +362,7 @@ export const overworld: RoomDef = {
             const bonus = 15 * c.def.tier;
             g.hud.showHint(`${t('campCleared')}  +${bonus}`, 2.5);
             giveXp(g, bonus);
+            if (Math.random() < 0.35) dropLoot(g, c.def.x, c.def.y, 'normal', c.def.tier * 2);
             sfx.wave();
             w.vfx.ripple(c.def.x, c.def.y, 3);
             if (save.main === STEP.orchard && ORCHARD_CAMPS.every((id) => save.camps.includes(id))) g.after(2.6, () => setMain(g, STEP.orchardBack));
@@ -392,6 +394,7 @@ export const overworld: RoomDef = {
         giveXp(g, 300);
         for (let i = 0; i < 4; i++) b.add(new Pickup(boss!.x, boss!.y, i % 2 ? 'ink' : 'life', i % 2 ? 10 : 2));
         if (hasColour()) b.add(new Pickup(boss!.x, boss!.y, 'pigment', 8));
+        dropLoot(g, boss!.x, boss!.y, 'boss', 6);
         // the temple's waters recede
         w.removeColliders('templePool');
         chunks.invalidate(TEMPLE.x, TEMPLE.y, 10);

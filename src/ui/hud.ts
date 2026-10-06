@@ -62,6 +62,12 @@ export class Hud {
   private comboPop = 0;
   comboFrac = 0;
   visible = true;
+  private bag: Sprite;
+  private bagDot: Sprite;
+  /** Shows a vermilion dot on the bag. */
+  bagNew = false;
+  /** Where the bag button is (UI units), for taps. */
+  bagRegion = { x: 0, y: 0, r: 0 };
   private stickRing: Sprite;
   private stickKnob: Sprite;
   private stickVis = 0;
@@ -158,6 +164,34 @@ export class Hud {
     this.comboBar = new Sprite(bar);
     this.comboBar.mesh.renderOrder = LAYER.ui;
     r.uiRed.add(this.comboBar.mesh);
+    // the bag: a cloth bundle tied at the top
+    const bp = new Painter(120, 120, 1, -60, -60);
+    const bundle: V2[] = [];
+    for (let k = 0; k <= 28; k++) {
+      const a = (k / 28) * Math.PI * 2;
+      const rr = 1 + 0.06 * Math.sin(a * 5);
+      bundle.push([Math.cos(a) * 36 * rr, -10 + Math.sin(a) * (Math.sin(a) > 0 ? 24 : 30) * rr]);
+    }
+    bp.reserve(() => bundle.forEach((q, k) => (k === 0 ? bp.ctx.moveTo(q[0], q[1]) : bp.ctx.lineTo(q[0], q[1]))), 1);
+    bp.glaze();
+    washPoly(bp, bundle, { pig: INK, density: 0.42, soft: 0.05, edge: 0.9, seed: 63 });
+    // the knot and its two ears
+    washPoly(bp, noisyOutline(0, 16, 11, 8, 0.1, 64), { pig: INK, density: 0.9, soft: 0.05, edge: 0.5, seed: 64 });
+    stroke(bp, [[-4, 18], [-18, 34], [-24, 30]], { width: 7, load: 1, dry: 0.3, seed: 65, taperEnd: 0.6 });
+    stroke(bp, [[4, 18], [18, 36], [26, 32]], { width: 7, load: 1, dry: 0.3, seed: 66, taperEnd: 0.6 });
+    // a woven pattern
+    bp.lift();
+    for (const [dx, dy] of [[-16, -14], [0, -20], [16, -14], [-8, -2], [8, -2]] as V2[]) bp.circle(dx, dy, 3.2, INK, 0.8);
+    bp.glaze();
+    this.bag = new Sprite(frameFrom(bp));
+    this.bag.mesh.renderOrder = LAYER.ui + 1;
+    r.uiPig.add(this.bag.mesh);
+    const dp = new Painter(40, 40, 1, -20, -20);
+    dp.glaze();
+    dp.dab(0, 0, 11, VERMILION, 1, 0.7);
+    this.bagDot = new Sprite(frameFrom(dp));
+    this.bagDot.mesh.renderOrder = LAYER.ui + 2;
+    r.uiRed.add(this.bagDot.mesh);
     // the floating stick (phones): a brushed ring and an ink dab
     const sr = new Painter(240, 240, 1, -120, -120);
     sr.glaze();
@@ -410,6 +444,13 @@ export class Hud {
       this.hint.opacity = Math.max(0, Math.min(1, (this.hintDur - t) / 0.8));
       if (t > this.hintDur) { this.hint.dispose(); this.hint = null; }
     }
+    // the bag button, under the experience line
+    const bx = left - 6, by = top - 168;
+    this.bag.setPos(bx, by);
+    this.bag.opacity = this.visible ? 1 : 0;
+    this.bagDot.setPos(bx + 30, by + 26);
+    this.bagDot.opacity = this.visible && this.bagNew ? 0.75 + Math.sin(performance.now() / 200) * 0.25 : 0;
+    this.bagRegion = { x: bx, y: by, r: 62 };
     // the thumb stick
     const sp = this.stickPos;
     const sa = this.stickRing.opacity + ((this.stickVis * 0.55) - this.stickRing.opacity) * Math.min(1, dt * 14);

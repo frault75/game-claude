@@ -1,5 +1,6 @@
 /** Experience, levels, unlocked inks, cleared camps, defeated guardians. Saved in localStorage. */
 import type { InkId } from './inks';
+import { Item, Slot, Stat, totals } from './items';
 
 const KEY = 'trait.save.v1';
 
@@ -22,12 +23,28 @@ export interface Save {
   madder: boolean;
   pip: number;
   pigment: number;
+  /** Loot carried and worn. */
+  bag: Item[];
+  equip: Partial<Record<Slot, Item>>;
+  newItems: boolean;
 }
+
+export const BAG_SIZE = 16;
 
 const fresh = (): Save => ({
   level: 1, xp: 0, inks: ['vermilion'], ink: 'vermilion', camps: [], bosses: [], shrine: 0, shrines: [0],
   main: 0, steles: [], brambles: false, madder: false, pip: 0, pigment: 0,
+  bag: [], equip: {}, newItems: false,
 });
+
+let gearCache: Record<Stat, number> | null = null;
+/** Qualities of the worn items, summed. */
+export function gear(): Record<Stat, number> {
+  return (gearCache ??= totals(save.equip));
+}
+export function gearChanged(): void {
+  gearCache = null;
+}
 
 export const save: Save = fresh();
 
@@ -57,6 +74,7 @@ export function loadSave(): boolean {
       save.shrine = 0;
       save.shrines = [0];
     }
+    gearChanged();
     return true;
   } catch {
     return false;
@@ -73,6 +91,7 @@ export function writeSave(): void {
 
 export function resetSave(): void {
   Object.assign(save, fresh());
+  gearChanged();
   writeSave();
 }
 

@@ -67,8 +67,10 @@ export class Input {
   anyPressed = false;
 
   private gesture: Gesture | null = null;
+  /** A panel (dialogue, bag) is open: every touch is a tap or a drag, no stick. */
+  uiMode = false;
   /** The floating stick: where the thumb landed and where it is now (CSS px). */
-  stick: { id: number; ox: number; oy: number; x: number; y: number } | null = null;
+  stick: { id: number; ox: number; oy: number; x: number; y: number; t0: number; live: boolean } | null = null;
   private leftHeld = false;
   private leftT0 = 0;
   /** Orders for this frame (CSS px). */
@@ -146,8 +148,9 @@ export class Input {
         if (e.button === 1) { e.preventDefault(); this.press('attack'); }
         return;
       }
-      if (!this.stick && e.clientX < window.innerWidth * STICK_ZONE) {
-        this.stick = { id: e.pointerId, ox: e.clientX, oy: e.clientY, x: e.clientX, y: e.clientY };
+      if (!this.uiMode && !this.stick && e.clientX < window.innerWidth * STICK_ZONE) {
+        // a stick only once the thumb moves or rests; a quick tap stays a tap
+        this.stick = { id: e.pointerId, ox: e.clientX, oy: e.clientY, x: e.clientX, y: e.clientY, t0: performance.now(), live: false };
         return;
       }
       if (this.gesture) this.endGesture(false);
@@ -164,6 +167,7 @@ export class Input {
       if (st && e.pointerId === st.id) {
         st.x = e.clientX;
         st.y = e.clientY;
+        if (!st.live && Math.hypot(st.x - st.ox, st.y - st.oy) > DRAG_PX) st.live = true;
         // the base follows a thumb that wanders too far
         const dx = st.x - st.ox, dy = st.y - st.oy, d = Math.hypot(dx, dy);
         if (d > STICK_R * 1.6) {
@@ -178,7 +182,12 @@ export class Input {
       for (const ev of evs.length ? evs : [e]) this.moveGesture(ev.clientX, ev.clientY);
     });
     const up = (e: PointerEvent) => {
-      if (this.stick && e.pointerId === this.stick.id) { this.stick = null; return; }
+      if (this.stick && e.pointerId === this.stick.id) {
+        const st = this.stick;
+        this.stick = null;
+        if (!st.live) this.orderTaps.push([st.ox, st.oy]);
+        return;
+      }
       if (e.pointerType === 'mouse') {
         if (e.button === 0) { this.leftHeld = false; this.holdPoint = null; }
         if (e.button === 1) this.held.delete('attack');
@@ -252,6 +261,7 @@ export class Input {
       this.holdPoint = [g.x, g.y];
     }
     if (this.leftHeld && !this.holdPoint && now - this.leftT0 > 150) this.holdPoint = [this.mouseX, this.mouseY];
+    if (this.stick && !this.stick.live && now - this.stick.t0 > 200) this.stick.live = true;
   }
 
   toUi(x: number, y: number): [number, number] {
@@ -302,7 +312,7 @@ export class Input {
   /** Stick deflection, -1..1 (y up), with a dead zone. */
   stickMove(): [number, number] {
     const st = this.stick;
-    if (!st) return [0, 0];
+    if (!st || !st.live) return [0, 0];
     const dx = (st.x - st.ox) / STICK_R, dy = -(st.y - st.oy) / STICK_R;
     const d = Math.hypot(dx, dy);
     if (d < 0.18) return [0, 0];
@@ -359,6 +369,11 @@ export class Input {
   /** Forget the current gesture and this frame's orders (dialogue opened or closed). */
   swallow(): void {
     this.stick = null;
+    // the frame may be split into several game steps: what was read now must not be read again
+    this.pressedNow.clear();
+    this.keysPressed.clear();
+    this.inkSelect = null;
+    this.inkCycle = 0;
     this.orderTaps = [];
     this.strokeTaps = [];
     this.drawStart = null;

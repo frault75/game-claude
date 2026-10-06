@@ -3,7 +3,8 @@ import type { Game } from './game';
 import type { Entity } from './entity';
 import type { Creature } from './enemies';
 import { Pickup } from './pickups';
-import { save, writeSave, gainXp } from './progression';
+import { save, writeSave, gainXp, gear } from './progression';
+import { dropLoot } from './loot';
 import { INKS, InkId } from './inks';
 import { sfx } from '../audio/sfx';
 import { music } from '../audio/music';
@@ -38,6 +39,18 @@ export function onKill(g: Game, e: Entity): void {
   if (Math.random() < lifeChance) g.world.add(new Pickup(e.x, e.y, 'life', 1));
   if (Math.random() < inkChance) g.world.add(new Pickup(e.x, e.y, 'ink', 7));
   if (hasColour() && Math.random() < (c.elite ? 1 : 0.12)) g.world.add(new Pickup(e.x, e.y, 'pigment', c.elite ? 5 : 2.5));
+  // loot
+  if (c.tier !== undefined && Math.random() < (c.elite ? 0.65 : 0.07)) {
+    dropLoot(g, e.x, e.y, c.elite ? 'elite' : 'normal', c.tier * 2 - 1 + (c.elite ? 1 : 0) + Math.floor(Math.random() * 2));
+  }
+  // what the child wears
+  const gr = gear();
+  const p = g.player;
+  if (gr.heal > 0 && Math.random() * 100 < gr.heal && p.hp < p.maxHp) {
+    p.heal(1);
+    g.world.numbers?.pop(p.x, p.y + 1.4, '+1', { size: 0.4 });
+  }
+  if (gr.pigKill > 0 && hasColour()) p.pigment = Math.min(p.pigmentMax, p.pigment + gr.pigKill);
   if (!g.flags.has('drawHint')) {
     g.flags.add('drawHint');
     g.after(1.5, () => g.hud.showHint(g.input.device === 'touch' ? t('owHintDraw') : t('hintEnso'), 6));

@@ -12,7 +12,10 @@ import { SPRITE_PPU } from '../gfx/gen/flora';
 import { sfx } from '../audio/sfx';
 import { angleDiff, distToSeg, V } from './physics';
 import { INKS, INK_ORDER, InkId } from './inks';
-import { save, stats } from './progression';
+import { save, stats, gear } from './progression';
+import { lang } from '../i18n';
+
+const PARRY = () => (lang === 'fr' ? 'parade' : 'parry');
 
 type State = 'normal' | 'strike' | 'dash' | 'hurt' | 'fall' | 'dead' | 'frozen';
 
@@ -103,19 +106,28 @@ export class Player extends Entity {
   }
 
   get maxHp(): number {
-    return stats.maxHp(save.level);
+    return stats.maxHp(save.level) + gear().hp;
   }
   get inkMax(): number {
-    return stats.inkMax(save.level);
+    return stats.inkMax(save.level) + gear().ink;
   }
   get dmgMul(): number {
-    return stats.dmg(save.level);
+    return stats.dmg(save.level) * (1 + gear().dmg / 100);
+  }
+  /** Walking speed with what the child wears. */
+  get speed(): number {
+    return PLAYER.speed * (1 + gear().speed / 100);
+  }
+  /** Damage of a blow, maybe a critical one (doubled). */
+  roll(base: number): { dmg: number; crit: boolean } {
+    const crit = Math.random() * 100 < gear().crit;
+    return { dmg: Math.round(base * this.dmgMul * (crit ? 2 : 1)), crit };
   }
   get inkFrac(): number {
     return this.ink / this.inkMax;
   }
   get pigmentMax(): number {
-    return stats.pigmentMax(save.level);
+    return stats.pigmentMax(save.level) + gear().pigment;
   }
   get pigmentFrac(): number {
     return this.pigment / this.pigmentMax;
@@ -254,7 +266,7 @@ export class Player extends Entity {
     }
 
     if (this.sinceInk > PLAYER.inkDelay && this.ink < this.inkMax) {
-      this.ink = Math.min(this.inkMax, this.ink + dt * PLAYER.inkRegen * (1 + Math.min(20, w.combo) * 0.04));
+      this.ink = Math.min(this.inkMax, this.ink + dt * PLAYER.inkRegen * (1 + gear().regen / 100) * (1 + Math.min(20, w.combo) * 0.04));
     }
 
     if (!this.locked) {
@@ -288,7 +300,7 @@ export class Player extends Entity {
       this.updateRun(dt);
     } else {
       if (this.state === 'hurt' && this.stateT > 0.18) { this.state = 'normal'; this.stateT = 0; }
-      const k = Math.min(1, (PLAYER.accel * dt) / PLAYER.speed);
+      const k = Math.min(1, (PLAYER.accel * dt) / this.speed);
       this.vx += (tvx - this.vx) * k;
       this.vy += (tvy - this.vy) * k;
       const px = this.push[0] + w.wind[0], py = this.push[1] + w.wind[1];
@@ -351,7 +363,7 @@ export class Player extends Entity {
       this.attackTarget = null;
       this.talkTarget = null;
       this.faceTowards(mx, my);
-      return [mx * PLAYER.speed, my * PLAYER.speed];
+      return [mx * this.speed, my * this.speed];
     }
     const tk = this.talkTarget;
     if (tk) {
@@ -359,7 +371,7 @@ export class Player extends Entity {
       const dx = tk.x - this.x, dy = tk.y - this.y;
       const d = Math.hypot(dx, dy) || 1;
       this.faceTowards(dx, dy);
-      if (d > tk.radius + 1.3) return [(dx / d) * PLAYER.speed, (dy / d) * PLAYER.speed];
+      if (d > tk.radius + 1.3) return [(dx / d) * this.speed, (dy / d) * this.speed];
       this.talkTarget = null;
       tk.interact();
       return [0, 0];
@@ -372,7 +384,7 @@ export class Player extends Entity {
       this.attackT += dt;
       if (d > PLAYER.strikeRange + t.radius * 0.6 - 0.25) {
         this.faceTowards(dx, dy);
-        return [(dx / d) * PLAYER.speed, (dy / d) * PLAYER.speed];
+        return [(dx / d) * this.speed, (dy / d) * this.speed];
       }
       this.aim = [dx / d, dy / d];
       this.startStrike(0);
@@ -385,7 +397,7 @@ export class Player extends Entity {
       const d = Math.hypot(dx, dy);
       if (d < 0.25) { this.moveTarget = null; return [0, 0]; }
       this.faceTowards(dx, dy);
-      const sp = PLAYER.speed * Math.min(1, d / 0.6);
+      const sp = this.speed * Math.min(1, d / 0.6);
       return [(dx / d) * sp, (dy / d) * sp];
     }
     return [0, 0];
@@ -594,7 +606,8 @@ export class Player extends Entity {
       const ey = e.y + Math.min(0.4, e.z * 0.5);
       if (distToSeg(e.x, ey, ox, oy, this.x, this.y) < e.radius + 0.4) {
         r.hit.set(e, w.time);
-        if (e.onHit({ dmg: Math.round(PLAYER.cutDmg * this.dmgMul), fromX: ox, fromY: oy, kind: 'cut' })) {
+        const rl = this.roll(PLAYER.cutDmg);
+        if (e.onHit({ dmg: rl.dmg, crit: rl.crit, fromX: ox, fromY: oy, kind: 'cut' })) {
           w.hitstop = Math.max(w.hitstop, 0.025);
           w.kick(r.dir[0] * 0.12, r.dir[1] * 0.12);
           sfx.cut();
@@ -654,8 +667,8 @@ export class Player extends Entity {
         const d = Math.hypot(dx, dy) - e.radius * 0.8;
         if (d > PLAYER.strikeRange) continue;
         if (Math.abs(angleDiff(Math.atan2(dy, dx), ang)) > PLAYER.strikeHalf && d > 0.35) continue;
-        const dmg = Math.round(PLAYER.strikeDmg * this.dmgMul * (this.combo === 1 ? 1.4 : 1));
-        if (e.onHit({ dmg, fromX: this.x, fromY: this.y, kind: 'brush' })) landed++;
+        const rl = this.roll(PLAYER.strikeDmg * (this.combo === 1 ? 1.4 : 1));
+        if (e.onHit({ dmg: rl.dmg, crit: rl.crit, fromX: this.x, fromY: this.y, kind: 'brush' })) landed++;
       }
       if (landed) {
         w.hitstop = Math.max(w.hitstop, 0.04);
@@ -686,6 +699,13 @@ export class Player extends Entity {
   hurt(dmg: number, fromX: number, fromY: number): boolean {
     if (this.invuln > 0 || this.state === 'dead' || this.state === 'fall' || this.state === 'frozen') return false;
     const w = this.world;
+    // a good robe turns some blows aside
+    if (Math.random() * 100 < gear().guard) {
+      this.invuln = 0.5;
+      sfx.clink();
+      w.numbers?.pop(this.x, this.y + 1.4, PARRY(), { size: 0.4 });
+      return false;
+    }
     if (this.run) this.endRun();
     this.hp -= dmg;
     this.invuln = 1.0;

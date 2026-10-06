@@ -28,8 +28,11 @@ Pushing to `main` builds and deploys to GitHub Pages (Settings → Pages → Sou
 | Change ink | Keys 1-4, mouse wheel | Ink pots (bottom right) |
 | Talk / read a stele | Click on them, or `F` nearby | Tap on them |
 | Read on in a dialogue | Click, `Enter`, `Space` or `F` | Tap anywhere |
+| Bag (equipment) | `I`, or the bundle under the experience line | Tap the bundle (top left) |
 
 Inks: vermilion (run along the stroke and cut; loops burst), indigo (freezes; loops hold everything still), gold (lightning along the stroke; loops become a storm).
+
+**Loot:** beasts (often elites, always guardians) drop brushes, robes, talismans and seals: common, magic (indigo), rare (gold) or unique (vermilion), with rolled qualities (damage, life, ink, pigment, critical strikes, parry, speed, ensō damage, healing or pigment on kill…). Walk over an item to take it; a bare slot is filled at once. In the bag, tap an item to compare it with what you wear, equip it, or grind it into pigment.
 
 Vermilion flows back on its own. Coloured inks use **pigment**, which does not: refill it at shrines, with Madder the dyer in the hamlet, or from the pigment orbs some beasts drop.
 

@@ -16,11 +16,13 @@ import { Sprite, Frame, LAYER } from '../gfx/sprite';
 import { brushText } from '../gfx/text';
 import { InkFx } from './inkfx';
 import { Numbers } from './numbers';
-import { save, xpToNext } from './progression';
+import { save, xpToNext, gear } from './progression';
 import { INKS } from './inks';
 import { Dialog, Speaker } from '../ui/dialog';
+import { Inventory } from '../ui/inventory';
 import { questLine } from './quests';
 import { L, UI } from '../i18n/lore';
+import { lang } from '../i18n';
 
 const nextFrame = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
 
@@ -32,6 +34,7 @@ export class Game {
   readonly inkfx: InkFx;
   readonly numbers: Numbers;
   readonly dialog: Dialog;
+  readonly inventory: Inventory;
   /** Radius of the child's lamp in dark places. */
   lampRadius = 6.5;
   private pigmentHintT = 0;
@@ -63,6 +66,18 @@ export class Game {
     this.story = new Story(r);
     this.numbers = new Numbers(r);
     this.dialog = new Dialog(r, input);
+    this.inventory = new Inventory(r, input);
+    this.inventory.onChange = () => {
+      const p = this.player;
+      p.hp = Math.min(p.hp, p.maxHp);
+      p.ink = Math.min(p.ink, p.inkMax);
+      p.pigment = Math.min(p.pigment, p.pigmentMax);
+    };
+    this.inventory.onGrind = (pig, name) => {
+      const p = this.player;
+      p.pigment = Math.min(p.pigmentMax, p.pigment + pig);
+      this.hud.showHint(`${name} — ${lang === 'fr' ? 'broyé en pigment' : 'ground into pigment'} (+${pig})`, 2.5);
+    };
     this.player.pigment = save.pigment;
     this.player.onNoPigment = () => {
       if (this.pigmentHintT > 0) return;
@@ -71,7 +86,8 @@ export class Game {
     };
     this.world.numbers = this.numbers;
     this.inkfx = new InkFx(this.world);
-    this.inkfx.dmgMul = () => this.player.dmgMul;
+    this.inkfx.roll = (base) => this.player.roll(base);
+    this.inkfx.ensoMul = () => 1 + gear().enso / 100;
     this.inkfx.onLanded = (n) => this.world.addCombo(n);
     this.player.onDeath = () => { this.deathT = 0; };
     this.input.uiRegions = [];
@@ -183,7 +199,7 @@ export class Game {
   /** Draw the thumb stick where the thumb is. */
   private showStick(): void {
     const st = this.input.stick;
-    if (!st) { this.hud.setStick(null); return; }
+    if (!st || !st.live) { this.hud.setStick(null); return; }
     const [bx, by] = this.input.toUi(st.ox, st.oy);
     const [kx0, ky0] = this.input.toUi(st.x, st.y);
     const r = (this.r.uiH / window.innerHeight) * 56;
@@ -210,6 +226,7 @@ export class Game {
     this.timers = [];
     this.story.clear();
     this.dialog.close(false);
+    this.inventory.close();
     await this.loadRoom(to, spawn);
     this.player.locked = false;
     this.fadeTarget = 0;
@@ -246,14 +263,20 @@ export class Game {
     }
     this.words = this.words.filter((wd) => wd.t <= 1.2);
     this.dialog.update(dt);
+    const invWas = this.inventory.active;
+    this.inventory.update(dt);
     if (this.loading) return;
+    if (!invWas && !this.dialog.active && this.input.keyPressed('KeyI') && this.player.state !== 'dead') this.inventory.open();
     const w = this.world;
     this.pigmentHintT -= dt;
     save.pigment = this.player.pigment;
     this.r.post.lamp = [this.player.x, this.player.y + 0.5, this.lampRadius];
     this.hud.setQuest(...questLine());
     this.hud.backdrop = this.story.backdrop = Math.min(1, this.r.post.gloom * 1.5);
-    if (this.dialog.active) {
+    this.hud.bagNew = save.newItems;
+    this.input.uiMode = this.dialog.active || this.inventory.active;
+    if (this.dialog.active || this.inventory.active) {
+      this.input.uiRegions = [];
       // the world holds its breath while someone speaks
       w.updateCamera(dt);
       this.hud.update(dt);
@@ -268,6 +291,8 @@ export class Game {
     this.hud.setInks(save.inks, save.ink);
     // ink pots are touch/click targets
     this.input.uiRegions = this.hud.potRegions.map((p) => ({ x: p.x, y: p.y, r: p.r, fn: () => this.player.selectInk(p.id) }));
+    const bg = this.hud.bagRegion;
+    if (bg.r > 0) this.input.uiRegions.push({ x: bg.x, y: bg.y, r: bg.r, fn: () => this.inventory.open() });
     this.hud.setInk(INKS[save.ink].runs ? this.player.inkFrac : this.player.pigmentFrac);
     this.showStick();
     this.hud.setCombo(w.combo, Math.max(0, w.comboT / 2.4));

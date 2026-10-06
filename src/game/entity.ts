@@ -8,6 +8,8 @@ export interface HitInfo {
   fromX: number;
   fromY: number;
   kind: 'brush' | 'cut' | 'enso' | 'ink' | 'fire' | 'lantern' | 'crash' | 'reflect';
+  /** A critical blow (shown bigger). */
+  crit?: boolean;
 }
 
 /** Anything that lives in a room. */
