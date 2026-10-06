@@ -519,3 +519,40 @@ export function inkShots(id: InkId): Shot[] {
     tick(t, kit) { if (t > 0.2 && kit.once('bloom')) { sfx.uiConfirm(); music.motif(false, 'bell', 1); } },
   }];
 }
+
+/** The opening sheet of an act: a painted vista, the act's number and name. */
+export function act2Shots(title: { act: string; name: string; line: string }): Shot[] {
+  const vista = painted('act2vista', () => {
+    const p = new Painter(1500, 700, 0.6, -750, -380);
+    p.glaze();
+    // far mountains in the mist
+    washPoly(p, roughen(ridge(7, 40, 220, 1500), 6, 211, 20), { pig: mixPig(INK, PIG_B, 0.5), density: 0.12, soft: 0.6, seed: 212 });
+    // the terraced hill: curved bands of water, each with its bank
+    for (let k = 0; k < 9; k++) {
+      const r = 120 + k * 52;
+      const pts: V2[] = [];
+      for (let i = 0; i <= 30; i++) {
+        const a = Math.PI * (0.08 + 0.84 * (i / 30));
+        pts.push([-120 + Math.cos(a) * r * 1.6, -380 + Math.sin(a) * r * 0.9]);
+      }
+      stroke(p, pts, { width: 9, pig: mixPig(INK, PIG_B, 0.55), load: 0.38, dry: 0.55, seed: 220 + k, taperStart: 0.04, taperEnd: 0.06 });
+      stroke(p, pts.map(([x, y]) => [x, y - 10] as V2), { width: 3, load: 0.5, dry: 0.7, seed: 240 + k, taperStart: 0.1, taperEnd: 0.1 });
+    }
+    // a heron crossing the sky
+    stroke(p, [[380, 230], [430, 250], [470, 238]], { width: 10, load: 1, seed: 260, taperEnd: 0.6 });
+    stroke(p, [[420, 248], [400, 290], [360, 300]], { width: 6, load: 0.8, seed: 261, taperEnd: 0.9 });
+    stroke(p, [[430, 246], [460, 296], [500, 306]], { width: 6, load: 0.8, seed: 262, taperEnd: 0.9 });
+    stroke(p, [[470, 238], [500, 232]], { width: 4, load: 1, seed: 263, taperEnd: 0.4 });
+    return p;
+  });
+  return [{
+    dur: 7.5,
+    lines: [{ text: title.line, at: 2.6 }],
+    build(kit) {
+      kit.add(vista, 'pig', { y: -40, at: 0.2, dur: 2.4, drift: [-6, 0] });
+      kit.add(text(title.act, 54, { italic: true }), 'pig', { y: 300, at: 0.8, dur: 0.9 });
+      kit.add(text(title.name, 92, { bold: true }), 'pig', { y: 210, at: 1.4, dur: 1.2 });
+    },
+    tick(t, kit) { if (t > 1.4 && kit.once('gong')) music.motif(false, 'bell', 0); },
+  }];
+}

@@ -6,7 +6,7 @@ import { washPoly, noisyOutline, roughen } from '../gfx/wash';
 import { stroke } from '../gfx/brush';
 import { SPRITE_PPU } from '../gfx/gen/flora';
 
-export type ThingId = 'kite' | 'root' | 'gall' | 'spring' | 'helmet' | 'doll' | 'oil';
+export type ThingId = 'kite' | 'root' | 'gall' | 'spring' | 'helmet' | 'doll' | 'oil' | 'tea' | 'net';
 
 const art = new Map<ThingId, { pig: Frame; red: Frame }>();
 
@@ -50,6 +50,21 @@ function paint(id: ThingId): { pig: Frame; red: Frame } {
       washPoly(p, noisyOutline(0, 0.32, 0.24, 0.22, 0.1, 16), { pig: INK, density: 0.6, soft: 0.05, edge: 0.6, seed: 16 });
       stroke(p, [[-0.08, 0.56], [0.08, 0.56]], { width: 0.08, load: 0.9, seed: 17 });
       stroke(r, [[0, 0.62], [0.02, 0.82]], { width: 0.06, pig: VERMILION, load: 1, seed: 18, taperEnd: 0.9 });
+      break;
+    case 'tea':
+      for (let k = 0; k < 7; k++) {
+        const a = -1.2 + k * 0.4;
+        stroke(p, [[0, 0.1], [Math.cos(a + Math.PI / 2) * 0.35, 0.3 + Math.sin(a + Math.PI / 2) * 0.45]], { width: 0.12, pig: mixPig(INK, PIG_B, 0.2), load: 0.85, seed: 20 + k, taperStart: 0.2, taperEnd: 0.9 });
+      }
+      stroke(r, [[0.05, 0.62], [0.12, 0.7]], { width: 0.06, pig: VERMILION, load: 0.9, seed: 29 });
+      break;
+    case 'net':
+      for (let k = 0; k < 5; k++) {
+        stroke(p, [[-0.4 + k * 0.2, 0.05], [-0.3 + k * 0.15, 0.75]], { width: 0.025, load: 0.8, seed: 30 + k });
+        stroke(p, [[-0.42, 0.12 + k * 0.15], [0.42, 0.18 + k * 0.13]], { width: 0.025, load: 0.8, seed: 40 + k });
+      }
+      p.circle(0.35, 0.75, 0.06, INK, 0.9);
+      stroke(r, [[-0.42, 0.78], [-0.2, 0.86]], { width: 0.05, pig: VERMILION, load: 0.9, seed: 49 });
       break;
   }
   const f = { pig: frameFrom(p), red: frameFrom(r) };

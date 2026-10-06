@@ -99,14 +99,14 @@ export const WILLOW: Record<number, TrList> = {
   },
   11: {
     fr: [
-      'Les Rizières sont au-delà des montagnes de l’est. Le col est encore pris dans l’encre : il s’ouvrira bientôt (Acte II).',
-      'En attendant, le monde a besoin de toi : purifie les derniers camps, et écris chaque page du bestiaire.',
-      'Les stèles du maître ne sont pas toutes lues, non plus. Ton carnet le dira.',
+      'Quand tu as rapporté l’or, j’ai senti le col de l’est respirer. L’encre a reculé des montagnes.',
+      'Passe à l’est du Cercle de pierres : le sentier monte dans la brume jusqu’aux Rizières en terrasses.',
+      'Là-bas vit la Dame Héron-Blanc, au Village des Roseaux. Elle gardait le jade du maître. Si quelqu’un sait où il est passé, c’est elle.',
     ],
     en: [
-      'The Rice Terraces lie beyond the eastern mountains. The pass is still caught in ink: it will open soon (Act II).',
-      'Until then, the world needs you: cleanse the last camps, and write every page of the bestiary.',
-      'Not all of the master’s steles have been read, either. Your notebook will tell.',
+      'When you brought back the gold, I felt the eastern pass breathe. The ink drew back from the mountains.',
+      'Go east of the Stone Circle: the path climbs into the mist up to the Rice Terraces.',
+      'There lives Lady White Heron, in the Reed Village. She kept the master’s jade. If anyone knows where it went, it is she.',
     ],
   },
 };
@@ -285,7 +285,12 @@ export const MAIN: QuestStep[] = [
   { title: { fr: 'Le Temple englouti', en: 'The Sunken Temple' }, goal: { fr: 'Entre dans le temple, au sud de la plaine', en: 'Enter the temple, south of the plain' } },
   { title: { fr: 'Le Temple englouti', en: 'The Sunken Temple' }, goal: { fr: 'Trouve l’or au cœur du temple', en: 'Find the gold at the heart of the temple' } },
   { title: { fr: 'Le Temple englouti', en: 'The Sunken Temple' }, goal: { fr: 'Rapporte l’or à l’Aïeule Saule', en: 'Bring the gold to Grandmother Willow' } },
-  { title: { fr: 'Fin de l’Acte I · l’Acte II arrive', en: 'End of Act I · Act II is coming' }, goal: { fr: 'Purifie les camps et complète le bestiaire', en: 'Cleanse the camps and fill the bestiary' } },
+  { title: { fr: 'Le col de l’Est', en: 'The Eastern Pass' }, goal: { fr: 'Franchis le col, à l’est du Cercle de pierres', en: 'Cross the pass, east of the Stone Circle' } },
+  // Act II
+  { title: { fr: 'Les Rizières en terrasses', en: 'The Rice Terraces' }, goal: { fr: 'Suis la route jusqu’au Village des Roseaux', en: 'Follow the road to the Reed Village' } },
+  { title: { fr: 'La Dame Héron-Blanc', en: 'Lady White Heron' }, goal: { fr: 'Parle à la Dame Héron-Blanc, au village', en: 'Speak to Lady White Heron, in the village' } },
+  { title: { fr: 'Les trois vannes', en: 'The Three Sluices' }, goal: { fr: 'Rouvre les trois vannes des terrasses', en: 'Reopen the three sluices of the terraces' } },
+  { title: { fr: 'Le Roi Crapaud', en: 'The Toad King' }, goal: { fr: 'L’eau descend… mais quelque chose l’attend en bas (Acte II, suite à venir)', en: 'The water flows down… but something waits below (Act II continues soon)' } },
 ];
 
 export const UI = {
@@ -436,6 +441,34 @@ export const BESTIARY: Record<string, BeastLore> = {
     text: {
       fr: 'La statue qui veillait sur l’or depuis que l’eau a recouvert le temple. Elle n’obéit qu’à une seule règle, gravée à ses pieds : « Fige-moi, et je m’inclinerai. »',
       en: 'The statue that has watched over the gold since the water covered the temple. It obeys one rule, carved at its feet: “Freeze me, and I shall bow.”',
+    },
+  },
+  frog: {
+    name: { fr: 'Grenouille d’encre', en: 'Ink Frog' }, where: { fr: 'Les terrasses inondées', en: 'The flooded terraces' },
+    text: {
+      fr: 'Née d’une goutte tombée dans l’eau des rizières. Elle s’accroupit, et le cercle qu’elle va écraser se peint sur le sol avant elle. Qui reste dans le cercle n’a jamais lu ce qui était écrit.',
+      en: 'Born of a drop fallen into the paddies. It crouches, and the circle it will crush paints itself on the ground ahead. Whoever stays in the circle never read what was written.',
+    },
+  },
+  goat: {
+    name: { fr: 'Chèvre de brume', en: 'Mist Goat' }, where: { fr: 'Le Col des Brumes', en: 'The Misty Pass' },
+    text: {
+      fr: 'Les bergers du col disent qu’elles étaient blanches avant l’orage. Elles chargent en zigzag, comme le sentier, et se cognent aux rochers qu’elles ont oubliés.',
+      en: 'The pass herders say they were white before the storm. They charge in zig-zags, like the path, and crash into rocks they have forgotten.',
+    },
+  },
+  wraith: {
+    name: { fr: 'Spectre de brume', en: 'Mist Wraith' }, where: { fr: 'Le col, la nuit des rizières', en: 'The pass, the night of the paddies' },
+    text: {
+      fr: 'Un voile qui se souvient d’avoir été quelqu’un. Quand il devient brume, rien ne le touche ; quand il revient, il crache ce qu’il a avalé.',
+      en: 'A veil that remembers being someone. When it turns to mist, nothing touches it; when it returns, it spits out what it swallowed.',
+    },
+  },
+  mantis: {
+    name: { fr: 'Mante de jade', en: 'Jade Mantis' }, where: { fr: 'La Bambouseraie', en: 'The Bamboo Grove' },
+    text: {
+      fr: 'Le maître la peignait pour les élèves impatients : « Elle attend, elle attend, puis c’est fini. » L’encre lui a laissé l’attente et a pris la patience.',
+      en: 'The master painted it for impatient pupils: “It waits, it waits, then it is over.” The ink left it the waiting and took the patience.',
     },
   },
 };

@@ -2,18 +2,15 @@
 import type { World } from '../game/world';
 import { Painter, INK, PIG_A, PIG_B, mixPig, pigStyle } from '../gfx/paint';
 import { Sprite, LAYER, ySort, makeTexture } from '../gfx/sprite';
-import { washBlob, washPoly, noisyOutline } from '../gfx/wash';
+import { washBlob, washPoly } from '../gfx/wash';
 import { stroke, dot } from '../gfx/brush';
-import { pond, shadow, puddle } from '../gfx/gen/ground';
+import { pond, shadow } from '../gfx/gen/ground';
 import { StampSet, stampAt } from './stamps';
 import { ArtCache, PropArt } from './artCache';
-import {
-  WORLD, ROAD, PATHS, PONDS, VILLAGE, ARENA, CAMPS, SHRINES, V, RIVER_SAMPLES, BRIDGE, PADDIES, FIXED, TEMPLE, CAVE, NORTH_WALL,
-  forestDensity, isClearing, cellRng, regionAt, roadDist, riverHalf,
-} from './layout';
+import type { Land, V } from './land';
+import { cellRng } from './layout';
 import { noise } from '../gfx/noise';
 import { roughen } from '../gfx/wash';
-import { save } from '../game/progression';
 
 interface PropInst {
   sprites: Sprite[];
@@ -31,11 +28,10 @@ interface Chunk {
 }
 
 /** Road polylines resampled into dabs at fixed arc-length positions (seamless across chunks). */
-function roadDabs(): { x: number; y: number; w: number; i: number }[] {
+function roadDabs(land: Land): { x: number; y: number; w: number; i: number }[] {
   const out: { x: number; y: number; w: number; i: number }[] = [];
   let k = 0;
-  const lines: [V[], number][] = [[ROAD, 2.6], ...PATHS.map((p) => [p, 1.7] as [V[], number])];
-  for (const [pts, w] of lines) {
+  for (const { pts, w } of land.roads) {
     for (let i = 0; i < pts.length - 1; i++) {
       const [ax, ay] = pts[i], [bx, by] = pts[i + 1];
       const L = Math.hypot(bx - ax, by - ay);
@@ -51,10 +47,12 @@ function roadDabs(): { x: number; y: number; w: number; i: number }[] {
 export class Chunks {
   private loaded = new Map<string, Chunk>();
   private queue: string[] = [];
-  private dabs = roadDabs();
+  private dabs: { x: number; y: number; w: number; i: number }[];
   private fadeList: PropInst[] = [];
 
-  constructor(private w: World, private stamps: StampSet, private art: ArtCache, private ppu: number) {}
+  constructor(private w: World, private stamps: StampSet, private art: ArtCache, private ppu: number, readonly land: Land) {
+    this.dabs = roadDabs(land);
+  }
 
   get count(): number {
     return this.loaded.size;
@@ -66,10 +64,10 @@ export class Chunks {
 
   /** Chunks needed around a point (view half-sizes in world units). */
   private wanted(x: number, y: number, hw: number, hh: number, margin: number): string[] {
-    const S = WORLD.chunk;
+    const L = this.land, S = L.chunk;
     const out: { k: string; d: number }[] = [];
-    const x0 = Math.max(0, Math.floor((x - hw - margin) / S)), x1 = Math.min(Math.ceil(WORLD.w / S) - 1, Math.floor((x + hw + margin) / S));
-    const y0 = Math.max(0, Math.floor((y - hh - margin) / S)), y1 = Math.min(Math.ceil(WORLD.h / S) - 1, Math.floor((y + hh + margin) / S));
+    const x0 = Math.max(0, Math.floor((x - hw - margin) / S)), x1 = Math.min(Math.ceil(L.w / S) - 1, Math.floor((x + hw + margin) / S));
+    const y0 = Math.max(0, Math.floor((y - hh - margin) / S)), y1 = Math.min(Math.ceil(L.h / S) - 1, Math.floor((y + hh + margin) / S));
     for (let cx = x0; cx <= x1; cx++) {
       for (let cy = y0; cy <= y1; cy++) {
         const d = Math.hypot((cx + 0.5) * S - x, (cy + 0.5) * S - y);
@@ -120,7 +118,7 @@ export class Chunks {
 
   /** Forget chunks around a point so they are painted again (the world changed there). */
   invalidate(x: number, y: number, r: number): void {
-    const S = WORLD.chunk;
+    const S = this.land.chunk;
     for (const c of [...this.loaded.values()]) {
       const cx = Math.max(c.cx * S, Math.min((c.cx + 1) * S, x)), cy = Math.max(c.cy * S, Math.min((c.cy + 1) * S, y));
       if (Math.hypot(cx - x, cy - y) < r) this.unload(c);
@@ -129,7 +127,7 @@ export class Chunks {
 
   private build(key: string): void {
     const [cx, cy] = key.split(',').map(Number);
-    const S = WORLD.chunk;
+    const S = this.land.chunk;
     const x0 = cx * S, y0 = cy * S;
     const g = new Painter(S, S, this.ppu, x0, y0);
     g.glaze();
@@ -147,7 +145,8 @@ export class Chunks {
   }
 
   private paintGround(g: Painter, x0: number, y0: number): void {
-    const S = WORLD.chunk;
+    const land = this.land;
+    const S = land.chunk;
     const st = this.stamps;
     const M = 4; // margin: features from neighbouring cells overlap this chunk
     // 1. quiet washes on an 8-unit grid
@@ -158,8 +157,8 @@ export class Chunks {
         for (let k = 0; k < n; k++) {
           const x = ix * 8 + r.range(0, 8), y = iy * 8 + r.range(0, 8);
           const s = r.range(3, 6);
-          const reg = regionAt(x, y);
-          const pig = reg === 'arena' ? INK : r.chance(0.7) ? PIG_B : INK;
+          const reg = land.regionAt(x, y);
+          const pig = land.washPig?.(reg, r) ?? (r.chance(0.7) ? PIG_B : INK);
           washBlob(g, x, y, s, s * r.range(0.35, 0.6), { pig, density: r.chance(0.7) ? r.range(0.05, 0.11) : r.range(0.02, 0.04), soft: 0.9, seed: r.int(1, 1e6), rot: r.gauss() * 0.25, rough: 0.35 });
         }
       }
@@ -176,25 +175,26 @@ export class Chunks {
       }
     }
     // 3. ponds
-    for (const p of PONDS) {
+    for (const p of land.ponds) {
       if (p.x + p.rx + 2 < x0 || p.x - p.rx - 2 > x0 + S || p.y + p.ry + 2 < y0 || p.y - p.ry - 2 > y0 + S) continue;
       pond(g, p.x, p.y, p.rx, p.ry, p.seed);
     }
-    // 3b. the river, the old bridge, the paddies, the temple pool, the cave's trodden ground
+    // 3b. the river, its bridge, the paddies, and what is the land's own
     this.paintRiver(g, x0, y0);
     const near = (x: number, y: number, r: number) => x + r > x0 - M && x - r < x0 + S + M && y + r > y0 - M && y - r < y0 + S + M;
-    if (near(BRIDGE.x, BRIDGE.y, 6)) {
-      const deck: [number, number][] = [[BRIDGE.x0, BRIDGE.y - BRIDGE.half], [BRIDGE.x1, BRIDGE.y - BRIDGE.half], [BRIDGE.x1, BRIDGE.y + BRIDGE.half], [BRIDGE.x0, BRIDGE.y + BRIDGE.half]];
-      washBlob(g, BRIDGE.x, BRIDGE.y - BRIDGE.half - 0.2, 4.4, 0.4, { pig: INK, density: 0.25, soft: 0.8, seed: 611 });
+    const BR = land.bridge;
+    if (BR && near(BR.x, BR.y, 6)) {
+      const deck: [number, number][] = [[BR.x0, BR.y - BR.half], [BR.x1, BR.y - BR.half], [BR.x1, BR.y + BR.half], [BR.x0, BR.y + BR.half]];
+      washBlob(g, BR.x, BR.y - BR.half - 0.2, 4.4, 0.4, { pig: INK, density: 0.25, soft: 0.8, seed: 611 });
       g.reserve(() => deck.forEach((q, i) => (i === 0 ? g.ctx.moveTo(q[0], q[1]) : g.ctx.lineTo(q[0], q[1]))), 1);
       g.glaze();
       washPoly(g, roughen(deck, 0.04, 612, 0.2), { pig: mixPig(INK, PIG_B, 0.45), density: 0.3, soft: 0.05, edge: 0.7, seed: 612 });
       let k = 0;
-      for (let x = BRIDGE.x0 + 0.25; x < BRIDGE.x1; x += 0.48, k++) {
-        stroke(g, [[x, BRIDGE.y - BRIDGE.half + 0.05], [x + 0.02, BRIDGE.y + BRIDGE.half - 0.05]], { width: 0.035, load: 0.55, dry: 0.6, seed: 620 + k, body: 0.2, taperStart: 0.05, taperEnd: 0.05 });
+      for (let x = BR.x0 + 0.25; x < BR.x1; x += 0.48, k++) {
+        stroke(g, [[x, BR.y - BR.half + 0.05], [x + 0.02, BR.y + BR.half - 0.05]], { width: 0.035, load: 0.55, dry: 0.6, seed: 620 + k, body: 0.2, taperStart: 0.05, taperEnd: 0.05 });
       }
     }
-    for (const [pi, pd] of PADDIES.entries()) {
+    for (const [pi, pd] of land.paddies.entries()) {
       if (!near(pd.x + pd.w / 2, pd.y + pd.h / 2, Math.max(pd.w, pd.h))) continue;
       const rect = roughen([[pd.x, pd.y], [pd.x + pd.w, pd.y], [pd.x + pd.w, pd.y + pd.h], [pd.x, pd.y + pd.h]], 0.12, 700 + pi, 0.3);
       g.ctx.fillStyle = pigStyle(mixPig(INK, PIG_B, 0.55), 0.16);
@@ -210,42 +210,9 @@ export class Chunks {
         }
       }
     }
-    if (near(TEMPLE.x, TEMPLE.y, 9)) {
-      if (!save.bosses.includes('ramking')) pond(g, TEMPLE.x, TEMPLE.y - 0.6, 6.4, 3.4, 731);
-      else {
-        washBlob(g, TEMPLE.x, TEMPLE.y - 1.2, 6, 3, { pig: INK, density: 0.1, soft: 0.6, seed: 732 });
-        const r = cellRng(9, 9, 733);
-        for (let i = 0; i < 5; i++) puddle(g, TEMPLE.x + r.range(-5, 5), TEMPLE.y - r.range(2.5, 4), r.range(0.5, 1), r.range(0.3, 0.5), r.int(1, 1e6));
-      }
-    }
-    if (near(CAVE.x, CAVE.y, 8)) {
-      washBlob(g, CAVE.x, CAVE.y - 0.4, 4, 1.6, { pig: INK, density: 0.14, soft: 0.7, seed: 741 });
-      washBlob(g, CAVE.x, CAVE.y + 1.4, 5, 2.4, { pig: INK, density: 0.1, soft: 0.8, seed: 742 });
-    }
-    if (y0 + S > NORTH_WALL - 3) {
-      washPoly(g, [[x0 - 1, NORTH_WALL - 1.5], [x0 + S + 1, NORTH_WALL - 1.5], [x0 + S + 1, WORLD.h + 1], [x0 - 1, WORLD.h + 1]], { pig: mixPig(INK, PIG_B, 0.4), density: 0.1, soft: 0.7, seed: 751 });
-    }
-    // 4. village plaza and the stone circle
-    if (Math.hypot(VILLAGE.x - (x0 + S / 2), VILLAGE.y - (y0 + S / 2)) < VILLAGE.r + S) {
-      const r = cellRng(1, 2, 99);
-      for (let i = 0; i < 60; i++) {
-        const a = r.range(0, Math.PI * 2), d = Math.sqrt(r.next()) * 6;
-        const x = VILLAGE.x + Math.cos(a) * d, y = VILLAGE.y + Math.sin(a) * d * 0.8;
-        if (x < x0 - 1 || x > x0 + S + 1 || y < y0 - 1 || y > y0 + S + 1) continue;
-        stampAt(g, st.stones[r.int(0, st.stones.length - 1)], x, y, r.chance(0.5), 0.8);
-      }
-    }
-    if (Math.hypot(ARENA.x - (x0 + S / 2), ARENA.y - (y0 + S / 2)) < ARENA.r + S) {
-      washPoly(g, noisyOutline(ARENA.x, ARENA.y, ARENA.r, ARENA.r * 0.82, 0.08, 4242), { pig: INK, density: 0.08, soft: 0.6, seed: 4242 });
-      const ring: [number, number][] = [];
-      for (let k = 0; k <= 48; k++) {
-        const a = (k / 48) * Math.PI * 2;
-        ring.push([ARENA.x + Math.cos(a) * ARENA.r, ARENA.y + Math.sin(a) * ARENA.r * 0.82]);
-      }
-      stroke(g, ring, { width: 0.18, load: 0.5, dry: 0.7, seed: 4243, taperStart: 0.01, taperEnd: 0.02, body: 0.3, press: 0 });
-    }
+    land.ground?.(g, x0, y0, S, st);
     // 5. camps: ink seeping into the ground
-    for (const c of CAMPS) {
+    for (const c of land.camps) {
       if (Math.hypot(c.x - (x0 + S / 2), c.y - (y0 + S / 2)) > c.r + S) continue;
       washBlob(g, c.x, c.y, c.r * 0.8, c.r * 0.5, { pig: INK, density: 0.1, soft: 0.8, seed: 500 + c.id });
       const r = cellRng(c.id, 0, 55);
@@ -257,12 +224,12 @@ export class Chunks {
       for (let iy = Math.floor((y0 - 1) / 2); iy <= Math.floor((y0 + S + 1) / 2); iy++) {
         const r = cellRng(ix, iy, 2);
         const x = ix * 2 + r.range(0, 2), y = iy * 2 + r.range(0, 2);
-        if (roadDist(x, y) < 1.4) continue;
-        const lush = n.fbm(x * 0.08, y * 0.08, 2) * 0.5 + 0.5 + forestDensity(x, y) * 0.4;
+        if (land.roadDist(x, y) < 1.4) continue;
+        const lush = n.fbm(x * 0.08, y * 0.08, 2) * 0.5 + 0.5 + land.forestDensity(x, y) * 0.4;
         const roll = r.next();
         if (roll < lush * 0.42) stampAt(g, st.grass[r.int(0, st.grass.length - 1)], x, y, r.chance(0.5));
         else if (roll < lush * 0.42 + 0.05) stampAt(g, st.stones[r.int(0, st.stones.length - 1)], x, y, r.chance(0.5), 0.8);
-        else if (roll < lush * 0.42 + 0.1 && regionAt(x, y) !== 'arena') stampAt(g, st.flowers[r.int(0, st.flowers.length - 1)], x, y, r.chance(0.5));
+        else if (roll < lush * 0.42 + 0.1 && !land.bare?.(land.regionAt(x, y))) stampAt(g, st.flowers[r.int(0, st.flowers.length - 1)], x, y, r.chance(0.5));
         else if (roll < lush * 0.42 + 0.16) stampAt(g, st.tufts[r.int(0, st.tufts.length - 1)], x, y, r.chance(0.5));
       }
     }
@@ -270,8 +237,11 @@ export class Chunks {
 
   /** The river: a crisp wash (seams match across chunks), bank strokes in fixed pieces, ripples. */
   private paintRiver(g: Painter, x0: number, y0: number): void {
-    const S = WORLD.chunk, M = 6;
-    const R = RIVER_SAMPLES;
+    const river = this.land.river;
+    if (!river) return;
+    const S = this.land.chunk, M = 6;
+    const R = river.samples;
+    const riverHalf = river.half;
     let i0 = -1, i1 = -1;
     for (let i = 0; i < R.length; i++) {
       const s = R[i];
@@ -346,20 +316,21 @@ export class Chunks {
   }
 
   private placeProps(g: Painter, x0: number, y0: number, props: PropInst[], key: string): void {
-    const S = WORLD.chunk;
+    const land = this.land;
+    const S = land.chunk;
     const A = this.art;
     const species = noise(93);
     for (let ix = x0 / 3; ix < (x0 + S) / 3; ix++) {
       for (let iy = y0 / 3; iy < (y0 + S) / 3; iy++) {
         const r = cellRng(ix, iy, 5);
         const x = ix * 3 + r.range(0.3, 2.7), y = iy * 3 + r.range(0.3, 2.7);
-        if (x < 1 || y < 1 || x > WORLD.w - 1 || y > WORLD.h - 1) continue;
-        if (isClearing(x, y)) continue;
-        const dens = forestDensity(x, y);
+        if (x < 1 || y < 1 || x > land.w - 1 || y > land.h - 1) continue;
+        if (land.isClearing(x, y)) continue;
+        const dens = land.forestDensity(x, y);
         const roll = r.next();
         if (roll < dens * 0.7) {
           const sp = species.get(x * 0.03, y * 0.03);
-          const list = sp > 0.25 ? A.pine : sp < -0.35 ? A.bamboo : r.chance(0.15) ? A.willow : A.plum;
+          const list = land.species?.(x, y, sp, r, A) ?? (sp > 0.25 ? A.pine : sp < -0.35 ? A.bamboo : r.chance(0.15) ? A.willow : A.plum);
           const art = list[r.int(0, list.length - 1)];
           this.addProp(art, x, y, r.chance(0.5), props, key, g, 1.6);
         } else if (roll < dens * 0.7 + 0.035) {
@@ -369,90 +340,16 @@ export class Chunks {
         }
       }
     }
-    // fixed props: the hamlet, the bridge, entrances, ruins, mountains
+    // the land's own props: houses, bridges, entrances, ruins, mountains…
     const inChunk = (x: number, y: number) => x >= x0 && x < x0 + S && y >= y0 && y < y0 + S;
     const ow = 'chunk:' + key;
-    const box = (x: number, y: number, hw: number, d: number) => {
-      const c = [[x - hw, y + 0.15], [x + hw, y + 0.15], [x + hw, y + d], [x - hw, y + d]];
-      for (let i = 0; i < 4; i++) {
-        const a = c[i], b2 = c[(i + 1) % 4];
-        this.w.addCollider({ kind: 'seg', ax: a[0], ay: a[1], bx: b2[0], by: b2[1], r: 0.22 }, ow);
-      }
-    };
-    for (const f of FIXED) {
-      if (!inChunk(f.x, f.y)) continue;
-      const fl = !!f.flip;
-      switch (f.kind) {
-        case 'house': {
-          const wide = [1, 0.85, 1.15][f.v ?? 0];
-          this.addProp(A.house[f.v ?? 0], f.x, f.y, fl, props, key, g, 3.4 * wide, false);
-          box(f.x, f.y, 2.3 * wide + 0.1, 1.5);
-          break;
-        }
-        case 'hut':
-          this.addProp(A.hut[(f.v ?? 0) % A.hut.length], f.x, f.y, fl, props, key, g, 3.0, false);
-          box(f.x, f.y, 1.95, 1.3);
-          break;
-        case 'stallDyer': case 'stallFood': case 'stallPots': {
-          const k = f.kind === 'stallDyer' ? 'dyer' : f.kind === 'stallFood' ? 'food' : 'pots';
-          this.addProp(A.stall[k], f.x, f.y, fl, props, key, g, 2.2, false);
-          this.w.addCollider({ kind: 'seg', ax: f.x - 1.6, ay: f.y + 0.35, bx: f.x + 1.6, by: f.y + 0.35, r: 0.35 }, ow);
-          break;
-        }
-        case 'well':
-          this.addProp(A.well, f.x, f.y, fl, props, key, g, 1.2, false);
-          this.w.addCollider({ kind: 'circle', x: f.x, y: f.y + 0.3, r: 0.95 }, ow);
-          break;
-        case 'fence':
-          this.addProp(A.fence, f.x, f.y, fl, props, key, g, 0, false);
-          this.w.addCollider({ kind: 'seg', ax: f.x - 1.5, ay: f.y + 0.1, bx: f.x + 1.5, by: f.y + 0.1, r: 0.12 }, ow);
-          break;
-        case 'gate':
-          this.addProp(A.gate, f.x, f.y, fl, props, key, g, 0, false);
-          for (const sx of [-2.2, 2.2]) this.w.addCollider({ kind: 'circle', x: f.x + sx, y: f.y + 0.05, r: 0.3 }, ow);
-          break;
-        case 'lamp':
-          this.addProp(A.lamp[0], f.x, f.y, fl, props, key, g, 0.6);
-          break;
-        case 'bigWillow':
-          this.addProp(A.bigWillow, f.x, f.y, fl, props, key, g, 2.6);
-          break;
-        case 'railN': case 'railS':
-          this.addProp(A.rail, f.x, f.y, fl, props, key, g, 0, false);
-          break;
-        case 'cave':
-          this.addProp(A.cave, f.x, f.y, fl, props, key, g, 0, false);
-          for (const [cx, cy, cr] of [[f.x - 2.6, f.y + 0.9, 1.5], [f.x + 2.6, f.y + 0.9, 1.5], [f.x, f.y + 2.6, 1.6], [f.x - 3.6, f.y + 1.8, 1.2], [f.x + 3.6, f.y + 1.8, 1.2]]) {
-            this.w.addCollider({ kind: 'circle', x: cx, y: cy, r: cr }, ow);
-          }
-          break;
-        case 'templeGate':
-          this.addProp(A.templeGate, f.x, f.y, fl, props, key, g, 0, false);
-          for (const sx of [-2.0, 2.0]) this.w.addCollider({ kind: 'circle', x: f.x + sx, y: f.y + 0.2, r: 0.5 }, ow);
-          this.w.addCollider({ kind: 'seg', ax: f.x - 3, ay: f.y + 1.6, bx: f.x + 3, by: f.y + 1.6, r: 0.3 }, ow);
-          break;
-        case 'pillar':
-          this.addProp(A.pillar, f.x, f.y, fl, props, key, g, 0.9);
-          break;
-        case 'broken':
-          this.addProp(A.broken[(f.v ?? 0) % A.broken.length], f.x, f.y, fl, props, key, g, 0.8);
-          break;
-        case 'ruinWall':
-          this.addProp(A.ruinWall[(f.v ?? 0) % A.ruinWall.length], f.x, f.y, fl, props, key, g, 1.8, false);
-          this.w.addCollider({ kind: 'seg', ax: f.x - 1.85, ay: f.y + 0.2, bx: f.x + 1.85, by: f.y + 0.2, r: 0.3 }, ow);
-          break;
-        case 'mountains':
-          this.addProp(A.mountains[(f.v ?? 0) % A.mountains.length], f.x, f.y, fl, props, key, g, 0, false);
-          break;
-      }
-    }
-    for (let k = 0; k < 14; k++) {
-      const a = (k / 14) * Math.PI * 2;
-      if (Math.abs(Math.cos(a) + 1) < 0.25) continue; // gap facing west: the way in
-      const x = ARENA.x + Math.cos(a) * (ARENA.r + 1.2), y = ARENA.y + Math.sin(a) * (ARENA.r + 1.2) * 0.82;
-      if (inChunk(x, y)) this.addProp(A.bigRock[k % A.bigRock.length], x, y, k % 2 === 0, props, key, g, 1.4);
-    }
-    for (const s of SHRINES) {
+    land.props?.({
+      add: (art, x, y, flip, shadowR, solid) => this.addProp(art, x, y, flip, props, key, g, shadowR, solid),
+      collider: (c) => this.w.addCollider(c, ow),
+      inChunk,
+      world: this.w,
+    }, A);
+    for (const s of land.shrines) {
       for (const [dx, dy] of [[-1.6, 0.6], [1.6, 0.6]] as V[]) {
         const x = s.x + dx, y = s.y + dy;
         if (inChunk(x, y)) this.addProp(A.lamp[0], x, y, false, props, key, g, 0.6);
