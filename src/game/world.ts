@@ -174,8 +174,14 @@ export class World {
   updateCamera(dt: number): void {
     const p = this.player;
     const [ax, ay] = p.aim;
-    const tx = p.x + ax * 1.4 + p.vx * 0.06, ty = p.y + 0.5 + ay * 1.0 + p.vy * 0.06;
-    const k = Math.min(1, dt * 9);
+    // while a finger is drawing, the page holds still under it
+    if (this.input.drawing) {
+      this.clampCamera();
+      if (this.shakeT > 0) this.shakeT -= dt;
+      return;
+    }
+    const tx = p.x + ax * 1.4 + p.vx * 0.04, ty = p.y + 0.5 + ay * 1.0 + p.vy * 0.04;
+    const k = Math.min(1, dt * 7);
     this.camX += (tx - this.camX) * k;
     this.camY += (ty - this.camY) * k;
     this.clampCamera();
