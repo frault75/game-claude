@@ -513,8 +513,10 @@ export class Player extends Entity {
   }
 
   private addPoint(p: V): void {
-    const r = this.run!;
-    const last = r.pts[r.pts.length - 1];
+    const r = this.run;
+    if (!r) return;
+    // the run may have been cut short by a wall: start again from where Shu stands
+    const last: V = r.pts.length ? r.pts[r.pts.length - 1] : [this.x, this.y];
     if (Math.hypot(p[0] - last[0], p[1] - last[1]) < PLAYER.waypointGap) return;
     r.pts.push(p);
   }
