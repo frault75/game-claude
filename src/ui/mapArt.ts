@@ -8,7 +8,7 @@ import { SERIF } from '../gfx/text';
 
 export type MarkKind =
   | 'player' | 'goal' | 'shrine' | 'shrineOn' | 'camp' | 'door' | 'arena' | 'npc' | 'quest'
-  | 'stele' | 'steleRead' | 'up' | 'down' | 'basin' | 'boss' | 'relic' | 'side';
+  | 'stele' | 'steleRead' | 'up' | 'down' | 'basin' | 'boss' | 'relic' | 'side' | 'chest';
 
 export interface Mark { x: number; y: number; kind: MarkKind; dir?: number }
 
@@ -270,6 +270,13 @@ export function drawMark(ctx: CanvasRenderingContext2D, m: Mark, x: number, y: n
       ctx.beginPath();
       for (let k = 0; k < 3; k++) { const yy = -s * 0.5 + k * s * 0.5; const ww = s * (0.4 + k * 0.2) * (m.kind === 'up' ? 1 : 1.6 - k * 0.4); ctx.moveTo(-ww, yy); ctx.lineTo(ww, yy); }
       ctx.stroke();
+      break;
+    }
+    case 'chest': {
+      ctx.fillStyle = 'rgba(110,80,50,0.95)';
+      ctx.fillRect(-s * 0.55, -s * 0.35, s * 1.1, s * 0.75);
+      ctx.fillStyle = VERM;
+      ctx.fillRect(-s * 0.12, -s * 0.2, s * 0.24, s * 0.3);
       break;
     }
     case 'side': {

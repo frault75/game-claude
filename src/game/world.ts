@@ -58,6 +58,10 @@ export class World {
   scripts: ((dt: number) => void)[] = [];
   /** Called when the room is cleared (free chunks, etc.). */
   cleanups: (() => void)[] = [];
+  /** Indigo froze something here (strokes, loops, the wave). */
+  onFreeze: ((x: number, y: number, r: number) => void)[] = [];
+  /** Gold lightning struck here. */
+  onBolt: ((x: number, y: number, r: number) => void)[] = [];
 
   constructor(readonly r: Renderer, readonly input: Input) {
     this.tele = new Telegraphs(r);
@@ -174,8 +178,10 @@ export class World {
 
   resolve(e: Entity): void {
     const near = this.collidersNear(e.x, e.y, e.radius + 1);
+    const misty = e === this.player && this.player.misty;
     for (let it = 0; it < 2; it++) {
       for (const c of near) {
+        if (misty && c.tag === 'thorn') continue;
         const p = pushOut(e.x, e.y, e.radius, c);
         if (p) { e.x = p[0]; e.y = p[1]; }
       }
@@ -372,6 +378,8 @@ export class World {
     this.roomSprites = [];
     for (const c of this.cleanups) c();
     this.cleanups = [];
+    this.onFreeze = [];
+    this.onBolt = [];
     this.clearGrid();
     this.colliders = [];
     this.hazards = [];

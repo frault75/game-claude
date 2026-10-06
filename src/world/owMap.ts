@@ -6,7 +6,7 @@ import { lang } from '../i18n';
 import { MapSource, Mark, blob, polyline } from '../ui/mapArt';
 import {
   WORLD, NORTH_WALL, RIVER_SAMPLES, RIVER_HALF, ROAD, PATHS, PONDS, PADDIES, FIXED, BRIDGE, ARENA, CAVE, TEMPLE,
-  SHRINES, CAMPS, STELE_SPOTS, REGIONS, VILLAGE, forestDensity, isClearing,
+  SHRINES, CAMPS, STELE_SPOTS, REGIONS, VILLAGE, CHESTS, GLADES, ISLETS, forestDensity, isClearing,
 } from './layout';
 
 export function owMapSource(g: Game): MapSource {
@@ -75,6 +75,14 @@ export function owMapSource(g: Game): MapSource {
       ctx.lineWidth = BRIDGE.half * 2;
       polyline(ctx, [[BRIDGE.x0 + 0.6, BRIDGE.y], [BRIDGE.x1 - 0.6, BRIDGE.y]]);
       ctx.stroke();
+      // glades: a ring of thorns, bamboo or stones
+      for (const gl of GLADES) {
+        ctx.strokeStyle = gl.gate === 'thorn' ? 'rgba(40,36,40,0.75)' : gl.gate === 'thicket' ? 'rgba(58,90,60,0.75)' : 'rgba(90,88,86,0.8)';
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.ellipse(gl.x, gl.y, gl.r, gl.r * 0.85, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
       // the stone circle
       ctx.strokeStyle = 'rgba(60,58,56,0.7)';
       ctx.lineWidth = 0.7;
@@ -153,6 +161,9 @@ export function owMapSource(g: Game): MapSource {
       for (const s of SHRINES) out.push({ x: s.x, y: s.y, kind: save.shrines.includes(s.id) ? 'shrineOn' : 'shrine' });
       for (const c of CAMPS) if (!save.camps.includes(c.id)) out.push({ x: c.x, y: c.y, kind: 'camp' });
       STELE_SPOTS.forEach(([x, y], i) => out.push({ x, y, kind: save.steles.includes(i) ? 'steleRead' : 'stele' }));
+      for (const c of CHESTS) if (!save.chests.includes(c.id)) out.push({ x: c.x, y: c.y, kind: 'chest' });
+      for (const gl of GLADES) if (!save.chests.includes(gl.chest.id)) out.push({ x: gl.x, y: gl.y, kind: 'chest' });
+      for (const is of ISLETS) if (!save.chests.includes(is.chest.id)) out.push({ x: PONDS[is.pond].x, y: PONDS[is.pond].y, kind: 'chest' });
       out.push({ x: CAVE.x, y: CAVE.y, kind: 'door' }, { x: TEMPLE.x, y: TEMPLE.y + 1, kind: 'door' });
       out.push({ x: ARENA.x, y: ARENA.y, kind: save.bosses.includes('ramking') ? 'arena' : 'boss' });
       for (const e of g.world.entities) {

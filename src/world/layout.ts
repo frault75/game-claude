@@ -183,6 +183,37 @@ export const STELE_SPOTS: V[] = [
   [14.6, 58.8], [52, 67.5], [39.5, 96], [83.5, 67.5], [100, 48], [117, 24], [152, 71], [160, 104],
 ];
 
+export interface ChestDef { id: number; x: number; y: number; rarity: 'magic' | 'rare' | 'unique'; level: number }
+
+/** Chests left in quiet corners of the world. */
+export const CHESTS: ChestDef[] = [
+  { id: 1, x: 5, y: 32, rarity: 'magic', level: 2 },
+  { id: 2, x: 40, y: 7, rarity: 'magic', level: 3 },
+  { id: 3, x: 178.5, y: 62, rarity: 'rare', level: 7 },
+  { id: 4, x: 120, y: 106, rarity: 'magic', level: 5 },
+  { id: 5, x: 63, y: 18, rarity: 'magic', level: 3 },
+  { id: 6, x: 100, y: 10, rarity: 'magic', level: 6 },
+  { id: 7, x: 4, y: 110, rarity: 'rare', level: 4 },
+  { id: 8, x: 181, y: 8, rarity: 'rare', level: 8 },
+];
+
+/** Glades closed by ink thorns (mist), bamboo thickets (whirl) or a sealed slab (gold lightning). */
+export const GLADES: { id: number; x: number; y: number; r: number; gate: 'thorn' | 'thicket' | 'seal'; gap: number; chest: { id: number; rarity: 'magic' | 'rare' | 'unique'; level: number }; stele?: number }[] = [
+  { id: 0, x: 12, y: 98, r: 4.5, gate: 'thorn', gap: 0, chest: { id: 100, rarity: 'rare', level: 6 }, stele: 8 },
+  { id: 1, x: 160, y: 20, r: 4, gate: 'thicket', gap: Math.PI, chest: { id: 101, rarity: 'rare', level: 5 } },
+  { id: 2, x: 176, y: 104, r: 4.5, gate: 'seal', gap: Math.PI, chest: { id: 102, rarity: 'unique', level: 8 }, stele: 9 },
+  { id: 3, x: 98, y: 109, r: 4, gate: 'thorn', gap: -Math.PI / 2, chest: { id: 103, rarity: 'rare', level: 7 }, stele: 10 },
+  { id: 4, x: 42, y: 30, r: 4, gate: 'thicket', gap: Math.PI / 2, chest: { id: 104, rarity: 'magic', level: 3 } },
+  { id: 5, x: 140, y: 108, r: 4, gate: 'seal', gap: -Math.PI / 2, chest: { id: 105, rarity: 'rare', level: 8 } },
+];
+
+/** Ponds with an islet and a chest, out of reach until indigo freezes the water. */
+export const ISLETS: { pond: number; chest: { id: number; rarity: 'magic' | 'rare' | 'unique'; level: number } }[] = [
+  { pond: 2, chest: { id: 200, rarity: 'rare', level: 5 } },
+  { pond: 5, chest: { id: 201, rarity: 'rare', level: 7 } },
+  { pond: 10, chest: { id: 202, rarity: 'unique', level: 8 } },
+];
+
 /** Where the villagers stand. */
 export const NPC_SPOTS = {
   willow: [20.5, 68.6] as V,
@@ -279,6 +310,8 @@ export function isClearing(x: number, y: number): boolean {
   for (const c of CAMPS) if (Math.hypot(x - c.x, y - c.y) < c.r + 2) return true;
   for (const s of SHRINES) if (Math.hypot(x - s.x, y - s.y) < 3) return true;
   for (const s of STELE_SPOTS) if (Math.hypot(x - s[0], y - s[1]) < 2) return true;
+  for (const gl of GLADES) if (Math.hypot(x - gl.x, (y - gl.y) / 0.85) < gl.r + 1.8) return true;
+  for (const c of CHESTS) if (Math.hypot(x - c.x, y - c.y) < 2.5) return true;
   for (const p of PONDS) if (((x - p.x) / (p.rx + 1.5)) ** 2 + ((y - p.y) / (p.ry + 1.5)) ** 2 < 1) return true;
   for (const p of PADDIES) if (x > p.x - 1.5 && x < p.x + p.w + 1.5 && y > p.y - 1.5 && y < p.y + p.h + 1.5) return true;
   for (const f of FIXED) if (f.kind !== 'mountains' && f.kind !== 'fence' && Math.hypot(x - f.x, y - f.y) < 3) return true;

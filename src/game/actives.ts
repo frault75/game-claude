@@ -88,7 +88,7 @@ export function useSkill(g: Game, id: SkillId): boolean {
       for (const e of foes(g)) {
         const d = Math.hypot(e.x - p.x, e.y - p.y);
         if (d > 2.6 + e.radius) continue;
-        if (e.onHit({ ...p.roll(PLAYER.strikeDmg * 2.2 * (1 + eff('edge') / 100)), fromX: p.x, fromY: p.y, kind: 'enso' })) hits++;
+        if (e.onHit({ ...p.roll(PLAYER.strikeDmg * 2.2 * (1 + eff('edge') / 100)), fromX: p.x, fromY: p.y, kind: 'whirl' })) hits++;
       }
       for (let k = 0; k < 6; k++) w.vfx.strikeArc(p.x, p.y + 0.4, (k / 6) * Math.PI * 2, k % 2);
       sfx.strike(1);
@@ -137,6 +137,7 @@ export function useSkill(g: Game, id: SkillId): boolean {
         flash(g, p.x + Math.cos(a) * 0.6, p.y + 0.3 + Math.sin(a) * 0.6, p.x + Math.cos(a) * 5.2, p.y + 0.3 + Math.sin(a) * 5.2, [0.2, 0.33, 0.58], 0.14, 0.6);
       }
       w.vfx.ripple(p.x + ax * 2, p.y + ay * 2, 1.5);
+      for (let k = 1; k <= 5; k++) for (const f of w.onFreeze) f(p.x + Math.cos(base) * k, p.y + Math.sin(base) * k, 1 + k * 0.3);
       sfx.clink();
       sfx.trait(3);
       if (hits) w.addCombo(hits);
@@ -151,6 +152,7 @@ export function useSkill(g: Game, id: SkillId): boolean {
           flash(g, x + 0.6, y + 9, x, y + 0.3, [1, 0.9, 0.5], 0.12, 0.22);
           w.flash = Math.max(w.flash, 0.22);
           sfx.thunder();
+          for (const f of w.onBolt) f(x, y, 1.7);
           for (const e of foes(g)) if (Math.hypot(e.x - x, e.y - y) < 1.7 && e.onHit({ ...p.roll(24), fromX: x, fromY: y + 1, kind: 'ink' })) w.addCombo(1);
         });
       }

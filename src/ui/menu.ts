@@ -15,7 +15,7 @@ import { portrait } from '../gfx/gen/portraits';
 import { save, resetSave, BAG_SIZE } from '../game/progression';
 import { settings, saveSettings } from '../game/settings';
 import { MAIN, STELES, MURALS, BESTIARY, REGION_LORE, JOURNAL_UI, L as LT } from '../i18n/lore';
-import { CAMPS, SHRINES, STELE_SPOTS, REGIONS } from '../world/layout';
+import { CAMPS, SHRINES, REGIONS } from '../world/layout';
 import { INK_ORDER } from '../game/inks';
 import { lang, setLang } from '../i18n';
 import { sfx } from '../audio/sfx';
@@ -343,13 +343,13 @@ export class Menu {
     // progress
     const x1 = 40;
     let yy = top;
-    const steles = STELE_SPOTS.filter((_, i) => save.steles.includes(i)).length;
+    const steles = save.steles.filter((i) => i < 100).length;
     const murals = FLOOR_IDS.filter((_, i) => save.steles.includes(100 + i)).length;
     const lines: [string, string][] = [
       [L(T.level), String(save.level)],
       [L(T.camps), `${save.camps.length} / ${CAMPS.length}`],
       [L(T.shrines), `${save.shrines.length} / ${SHRINES.length}`],
-      [L(T.steles), `${steles} / ${STELE_SPOTS.length}`],
+      [L(T.steles), `${steles} / ${STELES.length}`],
       [L(T.murals), `${murals} / ${FLOOR_IDS.length}`],
       [L(T.beasts), `${save.bestiary.length} / ${BEAST_ORDER.length}`],
       [L(T.inks), `${save.inks.length} / ${INK_ORDER.length}`],
@@ -413,7 +413,6 @@ export class Menu {
     type Note = { id: string; title: string; text: string; known: boolean };
     const notes: Note[] = [];
     STELES.forEach((st, i) => {
-      if (i >= STELE_SPOTS.length) return;
       const [title, ...rest] = LT(st).split('\n');
       notes.push({ id: 's' + i, title, text: rest.join('\n'), known: save.steles.includes(i) });
     });

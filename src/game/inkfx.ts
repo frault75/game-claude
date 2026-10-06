@@ -66,6 +66,7 @@ export class InkFx {
         }
         if (hits) { sfx.clink(); this.onLanded?.(hits); }
         w.vfx.ripple((s.ax + s.bx) / 2, (s.ay + s.by) / 2, 0.5);
+        for (const f of w.onFreeze) f((s.ax + s.bx) / 2, (s.ay + s.by) / 2, 0.7);
       });
     } else if (s.ink === 'gold') {
       this.later(0.35, () => {
@@ -84,6 +85,7 @@ export class InkFx {
           from = next;
         }
         this.flashLine(s.ax, s.ay + 0.2, s.bx, s.by + 0.2, [1, 0.93, 0.6], 0.09, 0.18);
+        for (const f of w.onBolt) f((s.ax + s.bx) / 2, (s.ay + s.by) / 2, 0.8);
         w.vfx.glowAt((s.ax + s.bx) / 2, (s.ay + s.by) / 2, 2.2, 0.12);
         if (hits) { w.hitstop = Math.max(w.hitstop, 0.03); this.onLanded?.(hits); }
         if (Math.random() < 0.35) sfx.cut();
@@ -104,6 +106,7 @@ export class InkFx {
         (f as unknown as { freeze?: (t: number) => void }).freeze?.(3.8 * this.frostMul());
       }
       for (let i = 0; i < 4; i++) w.vfx.ripple(e.cx, e.cy, 0.8 + i * 0.6);
+      for (const f of w.onFreeze) f(e.cx, e.cy, 1.5);
     } else if (e.ink === 'gold') {
       // a small storm inside the loop
       for (let k = 0; k < 4; k++) {
@@ -114,6 +117,7 @@ export class InkFx {
           this.flashLine(x + 0.6, y + 9, x, y + 0.3, [1, 0.9, 0.5], 0.12, 0.2);
           w.flash = Math.max(w.flash, 0.25);
           sfx.thunder();
+          for (const f of w.onBolt) f(x, y, 1.6);
           for (const f of foes) if (Math.hypot(f.x - x, f.y - y) < 1.6 && f.onHit({ ...this.roll(25 * em), fromX: x, fromY: y + 1, kind: 'ink' })) this.onLanded?.(1);
         });
       }
