@@ -180,6 +180,18 @@ export class Game {
     this.onRoomLoaded?.(def);
   }
 
+  /** Draw the thumb stick where the thumb is. */
+  private showStick(): void {
+    const st = this.input.stick;
+    if (!st) { this.hud.setStick(null); return; }
+    const [bx, by] = this.input.toUi(st.ox, st.oy);
+    const [kx0, ky0] = this.input.toUi(st.x, st.y);
+    const r = (this.r.uiH / window.innerHeight) * 56;
+    const dx = kx0 - bx, dy = ky0 - by, d = Math.hypot(dx, dy);
+    const k = d > r ? r / d : 1;
+    this.hud.setStick({ bx, by, kx: bx + dx * k, ky: by + dy * k, r });
+  }
+
   /** Open a dialogue; the world holds still until it closes. */
   talk(speaker: Speaker, pages: string[], onClose?: () => void): void {
     this.player.attackTarget = null;
@@ -257,6 +269,7 @@ export class Game {
     // ink pots are touch/click targets
     this.input.uiRegions = this.hud.potRegions.map((p) => ({ x: p.x, y: p.y, r: p.r, fn: () => this.player.selectInk(p.id) }));
     this.hud.setInk(INKS[save.ink].runs ? this.player.inkFrac : this.player.pigmentFrac);
+    this.showStick();
     this.hud.setCombo(w.combo, Math.max(0, w.comboT / 2.4));
     this.hud.update(dt);
     if (this.room?.exits && this.player.state !== 'dead') {

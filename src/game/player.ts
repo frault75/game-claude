@@ -169,6 +169,10 @@ export class Player extends Entity {
         const l = Math.hypot(this.moveDir[0], this.moveDir[1]);
         this.aim = [this.moveDir[0] / l, this.moveDir[1] / l];
       }
+    } else if (inp.device === 'touch') {
+      const [mx, my] = this.moveDir;
+      const l = Math.hypot(mx, my);
+      if (l > 0.2) this.aim = [mx / l, my / l];
     } else if (inp.device === 'kbm') {
       const [mx, my] = w.mouseWorld();
       const dx = mx - this.x, dy = my - (this.y + 0.45);
