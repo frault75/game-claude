@@ -40,7 +40,7 @@ export const NORTH_WALL = 113.5;
 
 export type EnemyKind = 'blot' | 'mite' | 'wisp' | 'splitter' | 'brute' | 'totem'
   | 'crow' | 'scarecrow' | 'boar' | 'fox' | 'bat' | 'grub' | 'soldier' | 'lantern'
-  | 'frog' | 'goat' | 'wraith' | 'mantis' | 'tadpole' | 'kappa' | 'tanuki';
+  | 'frog' | 'goat' | 'wraith' | 'mantis' | 'tadpole' | 'kappa' | 'tanuki' | 'monk' | 'bell';
 
 export interface CampDef {
   id: number;

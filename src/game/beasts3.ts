@@ -7,7 +7,7 @@ import { Creature, InkDrop } from './enemies';
 import type { World } from './world';
 import { HitInfo } from './entity';
 import { Sprite, Frame } from '../gfx/sprite';
-import { buildTadpoleFrames, buildKappaFrames, buildTanukiFrames } from '../gfx/gen/bestiary3';
+import { buildTadpoleFrames, buildKappaFrames, buildTanukiFrames, buildMonkFrames, buildBellFrames } from '../gfx/gen/bestiary3';
 import { sfx } from '../audio/sfx';
 import { save } from './progression';
 import { Pickup } from './pickups';
@@ -258,5 +258,144 @@ export class Tanuki extends Creature {
         break;
     }
     this.place(frame, this.mode === 'statue' ? 0 : this.mode === 'reveal' ? Math.abs(Math.sin(this.modeT * 12)) * 0.12 : 0);
+  }
+}
+
+/** Ink monk: a possessed monk with a staff; when his brothers are hurt, he prays and their wounds close. */
+export class InkMonk extends Creature {
+  private t = Math.random() * 3;
+  private mode: 'walk' | 'raise' | 'strike' | 'pray' | 'rest' = 'walk';
+  private modeT = 0;
+  private prayCd = 3 + Math.random() * 3;
+  private aimA = 0;
+  private tg: Telegraph | null = null;
+  constructor(x: number, y: number) {
+    super();
+    this.x = x; this.y = y;
+    this.radius = 0.45;
+    this.hp = 58;
+    this.xp = 12;
+    this.knockback = 0.7;
+    this.label = 'monk';
+  }
+  init(w: World): void {
+    this.body = this.addSprite(new Sprite(frames('monk', () => buildMonkFrames(3901))[0]));
+    this.initCommon(w, 0.45);
+  }
+  update(dt: number): void {
+    if (!this.baseUpdate(dt)) {
+      if (this.tg && this.frozen > 0) { this.world.tele.cancel(this.tg); this.tg = null; this.mode = 'rest'; this.modeT = 0; }
+      return;
+    }
+    const w = this.world, p = w.player, f = art.monk;
+    this.t += dt;
+    this.modeT += dt;
+    this.prayCd -= dt;
+    let frame = f[0];
+    const [sx, sy] = this.seek();
+    const d = Math.hypot(sx, sy) || 1;
+    switch (this.mode) {
+      case 'walk': {
+        if (!this.aggro) break;
+        frame = f[Math.floor(this.t * 3) % 2];
+        face(this, sx);
+        // a brother is hurt: pray
+        const hurt = this.prayCd <= 0 && w.entities.some((e) => e !== this && e.team === 'enemy' && !e.dead && (e as Creature).maxHp > 1 && e.hp < (e as Creature).maxHp * 0.7 && Math.hypot(e.x - this.x, e.y - this.y) < 6);
+        if (hurt) { this.mode = 'pray'; this.modeT = 0; sfx.telegraph('mid', 1.1); break; }
+        if (d > 1.9) this.walk((sx / d) * 2.4 * dt, (sy / d) * 2.4 * dt);
+        if (d < 2.4 && this.modeT > 0.6) {
+          this.aimA = Math.atan2(p.y - this.y, p.x - this.x);
+          this.tg = w.tele.add({ kind: 'cone', radius: 2.4 * this.scaleK, half: 0.9 }, this.x, this.y + 0.3, this.aimA, 0.5, { hold: 0.05 });
+          sfx.telegraph('mid', 0.5);
+          this.mode = 'raise';
+          this.modeT = 0;
+        }
+        break;
+      }
+      case 'raise':
+        frame = f[3];
+        if (this.modeT > 0.5) {
+          this.tg = null;
+          const da = Math.atan2(p.y - this.y, p.x - this.x) - this.aimA;
+          if (Math.hypot(p.x - this.x, p.y - this.y) < 2.6 * this.scaleK && Math.abs(Math.atan2(Math.sin(da), Math.cos(da))) < 0.95) p.hurt(this.power, this.x, this.y);
+          w.vfx.strikeArc(this.x, this.y + 0.5, this.aimA, 1);
+          sfx.cut();
+          this.mode = 'strike';
+          this.modeT = 0;
+        }
+        break;
+      case 'strike':
+        frame = f[2];
+        if (this.modeT > 0.35) { this.mode = 'rest'; this.modeT = 0; }
+        break;
+      case 'pray':
+        frame = f[3];
+        if (Math.random() < dt * 6) w.vfx.glowAt(this.x, this.y + 1.6, 1.2, 0.2);
+        if (this.modeT > 1.1) {
+          // wounds close around him
+          for (const e of w.entities) {
+            if (e.team !== 'enemy' || e.dead || Math.hypot(e.x - this.x, e.y - this.y) > 6) continue;
+            const c = e as Creature;
+            if (c.maxHp > 1) { c.hp = Math.min(c.maxHp, c.hp + c.maxHp * 0.3); w.vfx.ripple(e.x, e.y, 0.8); }
+          }
+          sfx.inkstone();
+          this.prayCd = 7;
+          this.mode = 'rest';
+          this.modeT = 0;
+        }
+        break;
+      case 'rest':
+        if (this.modeT > 0.5) { this.mode = 'walk'; this.modeT = 0; }
+        break;
+    }
+    this.place(frame);
+  }
+}
+
+/** Temple bell spirit: never moves; rings, and the sound comes out in rings. Break it. */
+export class TempleBell extends Creature {
+  private t = Math.random() * 3;
+  private cd = 1.5 + Math.random() * 1.5;
+  private swing = 0;
+  constructor(x: number, y: number) {
+    super();
+    this.x = x; this.y = y;
+    this.radius = 0.7;
+    this.hp = 90;
+    this.xp = 12;
+    this.knockback = 0;
+    this.weight = Infinity;
+    this.aggroRange = 8;
+    this.label = 'bell';
+  }
+  init(w: World): void {
+    this.body = this.addSprite(new Sprite(frames('bell', () => buildBellFrames(4001))[0]));
+    this.initCommon(w, 0.8);
+  }
+  update(dt: number): void {
+    if (!this.baseUpdate(dt)) return;
+    const w = this.world, p = w.player, f = art.bell;
+    this.t += dt;
+    this.swing = Math.max(0, this.swing - dt);
+    if (this.aggro) this.cd -= dt;
+    if (this.cd <= 0 && Math.hypot(p.x - this.x, p.y - this.y) < 12) {
+      this.cd = this.elite ? 2.4 : 3.2;
+      sfx.telegraph('low', 0.8);
+      for (let k = 0; k < 2; k++) {
+        const r0 = 1.0 + k * 2.6, r1 = r0 + 1.4;
+        w.tele.add({ kind: 'ring', r0, r1 }, this.x, this.y, 0, 0.8 + k * 0.3, {
+          hold: 0.06,
+          onFire: () => {
+            if (this.dead) return;
+            const dd = Math.hypot(p.x - this.x, p.y - this.y);
+            if (dd > r0 - 0.3 && dd < r1 + 0.3) p.hurt(this.power, this.x, this.y);
+            w.vfx.ripple(this.x, this.y, (r0 + r1) / 2);
+            if (k === 0) { sfx.inkstone(); this.swing = 0.8; }
+          },
+        });
+      }
+    }
+    this.kx = 0; this.ky = 0;
+    this.place(this.swing > 0 ? f[1 + (Math.floor(this.t * 8) % 2)] : f[0]);
   }
 }

@@ -12,7 +12,7 @@ import { puddle } from '../gfx/gen/ground';
 import type { StampSet } from './stamps';
 import { stampAt } from './stamps';
 
-export type DungeonStyle = 'cave' | 'temple' | 'cistern';
+export type DungeonStyle = 'cave' | 'temple' | 'cistern' | 'pagoda';
 
 const TILE = 16;
 
@@ -42,7 +42,7 @@ function rockCanvas(map: DungeonMap, style: DungeonStyle, seed: number): HTMLCan
   c.height = map.h * K;
   const ctx = c.getContext('2d')!;
   const nz = noise((seed % 900) + 7);
-  const pig = style === 'cave' ? mixPig(INK, PIG_B, 0.15) : style === 'cistern' ? mixPig(INK, PIG_A, 0.18) : INK;
+  const pig = style === 'cave' ? mixPig(INK, PIG_B, 0.15) : style === 'cistern' ? mixPig(INK, PIG_A, 0.18) : style === 'pagoda' ? mixPig(INK, PIG_A, 0.12) : INK;
   for (let iy = 0; iy < map.h; iy++) {
     for (let ix = 0; ix < map.w; ix++) {
       if (map.grid[iy * map.w + ix] === 1) continue;
@@ -60,8 +60,9 @@ function paintTile(g: Painter, map: DungeonMap, style: DungeonStyle, seed: numbe
   const M = 3;
   const floor = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h && grid[y * w + x] === 1;
   const cell = (ix: number, iy: number, salt: number) => new Rng(((ix * 73856093) ^ (iy * 19349663) ^ ((seed + salt) * 83492791)) >>> 0);
-  const tint: Pig = style === 'cave' ? PIG_B : PIG_A;
+  const tint: Pig = style === 'cave' || style === 'pagoda' ? PIG_B : PIG_A;
   const cistern = style === 'cistern';
+  const pagoda = style === 'pagoda';
   // 1. floor washes on a 6-cell grid
   for (let ix = Math.floor((x0 - M) / 6); ix <= Math.floor((x1 + M) / 6); ix++) {
     for (let iy = Math.floor((y0 - M) / 6); iy <= Math.floor((y1 + M) / 6); iy++) {
@@ -76,7 +77,17 @@ function paintTile(g: Painter, map: DungeonMap, style: DungeonStyle, seed: numbe
     for (let ix = x0 - 1; ix < x1 + 1; ix++) {
       if (!floor(ix, iy)) continue;
       const r = cell(ix, iy, 2);
-      if (style !== 'cave') {
+      if (pagoda) {
+        // wooden planks: two boards per cell, seams along the rows, joints staggered, a knot here and there
+        for (let b2 = 0; b2 < 2; b2++) {
+          const yy = iy + b2 * 0.5;
+          stroke(g, [[ix + 0.01, yy], [ix + 0.99, yy + r.gauss() * 0.01]], { width: 0.022, load: r.range(0.18, 0.3), dry: 0.7, seed: r.int(1, 1e6), body: 0.15, taperStart: 0.1, taperEnd: 0.1, press: 0 });
+          if (r.chance(0.35)) { const jx = ix + r.range(0.1, 0.9); stroke(g, [[jx, yy + 0.02], [jx, yy + 0.48]], { width: 0.02, load: 0.25, dry: 0.7, seed: r.int(1, 1e6), body: 0.15, press: 0 }); }
+          if (r.chance(0.4)) stroke(g, [[ix + r.range(0, 0.4), yy + 0.25], [ix + r.range(0.5, 1), yy + 0.25 + r.gauss() * 0.03]], { width: 0.015, pig: PIG_B, load: 0.3, dry: 0.8, seed: r.int(1, 1e6), press: 0 });
+        }
+        if (r.chance(0.04)) washBlob(g, ix + r.next(), iy + r.next(), 0.12, 0.08, { pig: INK, density: 0.35, soft: 0.3, seed: r.int(1, 1e6) });
+        if (r.chance(0.025)) washBlob(g, ix + 0.5, iy + 0.5, r.range(0.5, 0.9), r.range(0.3, 0.5), { pig: PIG_A, density: 0.12, soft: 0.5, seed: r.int(1, 1e6) });
+      } else if (style !== 'cave') {
         // flagstones: grout lines along rows, joints staggered from row to row
         if (floor(ix, iy - 1)) stroke(g, [[ix + 0.02, iy], [ix + 0.98, iy + r.gauss() * 0.01]], { width: 0.025, load: r.range(0.14, 0.26), dry: 0.75, seed: r.int(1, 1e6), body: 0.15, taperStart: 0.15, taperEnd: 0.15, press: 0 });
         if ((ix + (iy % 2)) % 2 === 0 && floor(ix - 1, iy)) stroke(g, [[ix, iy + 0.04], [ix + r.gauss() * 0.01, iy + 0.96]], { width: 0.025, load: r.range(0.14, 0.26), dry: 0.75, seed: r.int(1, 1e6), body: 0.15, taperStart: 0.15, taperEnd: 0.15, press: 0 });
@@ -114,7 +125,25 @@ function paintTile(g: Painter, map: DungeonMap, style: DungeonStyle, seed: numbe
       const face: [number, number][] = [[wl.ax, y], [wl.bx, y], [wl.bx, y + fh], [wl.ax, y + fh]];
       g.reserve(() => face.forEach((q, i) => (i === 0 ? g.ctx.moveTo(q[0], q[1]) : g.ctx.lineTo(q[0], q[1]))), 1);
       g.glaze();
-      washPoly(g, face, { pig: style === 'cave' ? mixPig(INK, PIG_B, 0.4) : mixPig(INK, PIG_A, cistern ? 0.45 : 0.2), density: 0.3, soft: 0.05, edge: 0.3, seed: r.int(1, 1e6) });
+      washPoly(g, face, { pig: style === 'cave' ? mixPig(INK, PIG_B, 0.4) : pagoda ? mixPig(INK, PIG_A, 0.75) : mixPig(INK, PIG_A, cistern ? 0.45 : 0.2), density: pagoda ? 0.4 : 0.3, soft: 0.05, edge: 0.3, seed: r.int(1, 1e6) });
+      if (pagoda) {
+        // lacquered posts, paper screens between them
+        for (let x = wl.ax + 0.2; x < wl.bx - 0.1; x += 1.5) {
+          stroke(g, [[x, y + 0.02], [x, y + fh - 0.05]], { width: 0.1, load: 0.95, dry: 0.3, seed: r.int(1, 1e6), press: 0 });
+          const x2 = Math.min(wl.bx - 0.15, x + 1.5);
+          if (x2 - x < 0.6) continue;
+          const sc: [number, number][] = [[x + 0.15, y + 0.25], [x2 - 0.15, y + 0.25], [x2 - 0.15, y + fh - 0.2], [x + 0.15, y + fh - 0.2]];
+          g.lift();
+          g.ctx.fillStyle = 'rgba(0,0,0,0.7)';
+          g.ctx.beginPath();
+          sc.forEach((q, i) => (i === 0 ? g.ctx.moveTo(q[0], q[1]) : g.ctx.lineTo(q[0], q[1])));
+          g.ctx.closePath();
+          g.ctx.fill();
+          g.glaze();
+          for (let lx = x + 0.45; lx < x2 - 0.2; lx += 0.3) stroke(g, [[lx, y + 0.25], [lx, y + fh - 0.2]], { width: 0.015, load: 0.5, seed: r.int(1, 1e6), press: 0 });
+          for (let ly = y + 0.45; ly < y + fh - 0.25; ly += 0.25) stroke(g, [[x + 0.15, ly], [x2 - 0.15, ly]], { width: 0.015, load: 0.5, seed: r.int(1, 1e6), press: 0 });
+        }
+      }
       if (cistern) {
         // water marks on the cistern walls, and green drips
         for (let row = 0; row < 3; row++) stroke(g, [[wl.ax + 0.05, y + 0.25 + row * 0.3], [wl.bx - 0.05, y + 0.27 + row * 0.3]], { width: 0.04, pig: mixPig(INK, PIG_A, 0.5), load: 0.35, dry: 0.7, seed: r.int(1, 1e6), body: 0.2, press: 0 });
@@ -123,7 +152,9 @@ function paintTile(g: Painter, map: DungeonMap, style: DungeonStyle, seed: numbe
           stroke(g, [[x, y + 1.1], [x + r.gauss() * 0.03, y + 1.1 - r.range(0.3, 1.0)]], { width: 0.04, pig: mixPig(INK, PIG_A, 0.6), load: 0.7, seed: r.int(1, 1e6), taperEnd: 0.95, press: 0 });
         }
       }
-      if (style !== 'cave') {
+      if (pagoda) {
+        // the lacquer is done above
+      } else if (style !== 'cave') {
         for (let row = 0; row < 3; row++) {
           const yy = y + 0.12 + row * 0.36;
           stroke(g, [[wl.ax + 0.05, yy], [wl.bx - 0.05, yy]], { width: 0.03, load: 0.5, dry: 0.6, seed: r.int(1, 1e6), body: 0.2, press: 0 });

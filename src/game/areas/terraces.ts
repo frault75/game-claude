@@ -19,7 +19,7 @@ import { stroke } from '../../gfx/brush';
 import { SPRITE_PPU } from '../../gfx/gen/flora';
 import { lang } from '../../i18n';
 import { L, LL } from '../../i18n/lore';
-import { NAMES2, HERON, YU, IDLE2, REGION_LORE2, ACT2_TITLE, SLUICE_UI, BASIN_UI, QUEEN_UI, LAMP_UI, LOTUS_UI, GONG_PRAYER, PAGODA_UI } from '../../i18n/lore2';
+import { NAMES2, HERON, YU, IDLE2, REGION_LORE2, ACT2_TITLE, SLUICE_UI, BASIN_UI, QUEEN_UI, LAMP_UI, LOTUS_UI, GONG_PRAYER, PAGODA_UI, ACT2_END } from '../../i18n/lore2';
 import { InkHeron } from '../bosses/inkHeron';
 import { buildLotusFrames } from '../../gfx/gen/bestiary3';
 import { MantisQueen } from '../bosses/mantisQueen';
@@ -34,7 +34,7 @@ import { giveXp, onKill, discover } from '../rewards';
 import { makeEnemy, sharedArt, sharedStamps, GROUND_DETAIL_PPU, Shrine } from './overworld';
 import { runCamps } from '../camps';
 import { Events } from '../events';
-import { act2Shots } from '../../ui/cinematic';
+import { act2Shots, act2EndShots } from '../../ui/cinematic';
 import type { Choice } from '../../ui/dialog';
 import { t } from '../../i18n';
 
@@ -384,6 +384,50 @@ function cutBand(pts: [number, number][], a: [number, number], b: [number, numbe
   return out;
 }
 
+let doorArt: { shut: Frame; open: Frame } | null = null;
+/** The doors of the Sky Pagoda: sealed with a red strip until the prayer, then a stair into the dark. */
+class PagodaDoor extends Entity {
+  private s!: Sprite;
+  private isOpen = false;
+  constructor(x: number, y: number, private openNow: () => boolean) {
+    super();
+    this.x = x; this.y = y;
+    this.label = 'pagodaDoor';
+  }
+  init(): void {
+    if (!doorArt) {
+      const mk = (open: boolean) => {
+        const p = new Painter(3.4, 3.2, SPRITE_PPU / 2, -1.7, -0.1);
+        p.glaze();
+        if (open) {
+          washPoly(p, [[-1.25, 0], [1.25, 0], [1.25, 2.7], [-1.25, 2.7]], { pig: INK, density: 0.92, soft: 0.05, edge: 0.6, seed: 3201 });
+          for (let k = 0; k < 4; k++) stroke(p, [[-0.9 + k * 0.1, 0.2 + k * 0.4], [0.9 - k * 0.1, 0.2 + k * 0.4]], { width: 0.05, pig: mixPig(INK, PIG_B, 0.5), load: 0.5, seed: 3202 + k });
+        } else {
+          for (const sx of [-1, 1]) {
+            washPoly(p, [[0, 0], [sx * 1.25, 0], [sx * 1.25, 2.7], [0, 2.7]], { pig: mixPig(INK, PIG_A, 0.6), density: 0.55, soft: 0.05, edge: 0.8, seed: 3210 + sx });
+            for (let k = 0; k < 3; k++) stroke(p, [[sx * 0.15, 0.5 + k * 0.8], [sx * 1.1, 0.5 + k * 0.8]], { width: 0.04, load: 0.7, seed: 3220 + k + sx });
+            p.circle(sx * 0.25, 1.35, 0.08, INK, 0.9);
+          }
+          stroke(p, [[-1.25, 1.5], [1.25, 1.45]], { width: 0.28, pig: mixPig(INK, PIG_A, 0.9), load: 0.8, dry: 0.4, seed: 3230 });
+        }
+        return frameFrom(p);
+      };
+      doorArt = { shut: mk(false), open: mk(true) };
+    }
+    this.isOpen = this.openNow();
+    this.s = this.addSprite(new Sprite(this.isOpen ? doorArt.open : doorArt.shut));
+    this.s.setPos(this.x, this.y);
+    this.s.mesh.renderOrder = ySort(this.y) - 1;
+  }
+  update(): void {
+    if (!this.isOpen && this.openNow()) {
+      this.isOpen = true;
+      this.s.setTexture(doorArt!.open.tex);
+      this.world.vfx.dust(this.x, this.y + 1, 14);
+    }
+  }
+}
+
 export const terraces: RoomDef = {
   id: 'terraces',
   area: 'terraces',
@@ -397,6 +441,7 @@ export const terraces: RoomDef = {
   exits: [
     { x: 0, y: 64, w: 1.4, h: 12, to: 'overworld', spawn: [WORLD.w - 4, 62] },
     { x: T2_BASIN.x - 1.2, y: T2_BASIN.y - 1.0, w: 2.4, h: 1.6, to: 'basin1', open: () => save.main >= STEP.toad },
+    { x: T2_PAGODA.x - 1.2, y: T2_PAGODA.y + 0.2, w: 2.4, h: 1.0, to: 'pagoda1', open: () => !!save.perks.pagodaOpen },
   ],
   map: (g) => t2MapSource(g),
   build(b) {
@@ -500,6 +545,14 @@ export const terraces: RoomDef = {
       else if (m === STEP.toad || m === STEP.basinDeep) speak(heron, LL(HERON.toad));
       else if (m === STEP.toadBack) speak(heron, LL(HERON.toadBack), () => { if (save.main === STEP.toadBack) { giveXp(g, 150); setMain(g, STEP.hermit); } });
       else if (m === STEP.hermit) speak(heron, LL(HERON.hermit));
+      else if (m === STEP.jadeBack) {
+        speak(heron, LL(HERON.jade), () => {
+          if (save.main !== STEP.jadeBack) return;
+          giveXp(g, 400);
+          g.washTarget = 0;
+          g.cine.play(act2EndShots({ lines: LL(ACT2_END.lines), end: L(ACT2_END.end), next: L(ACT2_END.next), nextName: L(ACT2_END.nextName) }), () => setMain(g, STEP.act3));
+        });
+      } else if (m >= STEP.act3) speak(heron, LL(HERON.after));
       else speak(heron, LL(IDLE2.heron));
     };
     gong.onTalk = () => {
@@ -529,7 +582,7 @@ export const terraces: RoomDef = {
       { label: lang === 'fr' ? 'Rien, merci' : 'Nothing, thanks', act: () => {} },
     ]);
     const mainBusiness: Record<string, () => boolean> = {
-      heron: () => (save.main <= STEP.meetHeron && save.main >= STEP.end) || save.main === STEP.toadBack,
+      heron: () => (save.main <= STEP.meetHeron && save.main >= STEP.end) || save.main === STEP.toadBack || save.main === STEP.jadeBack,
       yu: () => save.main === STEP.hermit || save.main === STEP.yuBack,
       gong: () => save.main === STEP.prayer,
     };
@@ -760,12 +813,13 @@ export const terraces: RoomDef = {
     });
 
     // ---------- the pagoda doors ----------
+    b.add(new PagodaDoor(T2_PAGODA.x, T2_PAGODA.y + 0.35, () => !!save.perks.pagodaOpen));
     let doorHintT = 0;
     w.scripts.push((dt) => {
       doorHintT -= dt;
       const p = w.player;
-      if (doorHintT > 0 || Math.hypot(p.x - T2_PAGODA.x, p.y - (T2_PAGODA.y - 1.5)) > 3) return;
-      g.hud.showHint(L(save.perks.pagodaOpen ? PAGODA_UI.soon : PAGODA_UI.shut), 4);
+      if (save.perks.pagodaOpen || doorHintT > 0 || Math.hypot(p.x - T2_PAGODA.x, p.y - (T2_PAGODA.y - 1.5)) > 3) return;
+      g.hud.showHint(L(PAGODA_UI.shut), 4);
       doorHintT = 10;
     });
 
@@ -809,7 +863,8 @@ export const terraces: RoomDef = {
       else if (m === STEP.lotus) target = [jetty.x, jetty.y];
       else if (m === STEP.heronBoss) target = [T2_ISLAND.x, T2_ISLAND.y];
       else if (m === STEP.prayer) target = save.bosses.includes('inkheron') && w.entities.some((e) => e.label === 'scroll') ? [T2_ISLAND.x + 1.2, T2_ISLAND.y + 0.8] : [gong.x, gong.y];
-      else if (m === STEP.pagoda) target = [T2_PAGODA.x, T2_PAGODA.y - 1.5];
+      else if (m === STEP.pagoda) target = [T2_PAGODA.x, T2_PAGODA.y + 0.6];
+      else if (m === STEP.jadeBack) target = [heron.x, heron.y];
       g.objective = target;
       const vh = r.viewH / r.zoom, vw = vh * (r.pxW / r.pxH);
       g.hud.arrowTarget = target ? [((target[0] - w.camX) / vw) * r.uiW, ((target[1] - w.camY) / vh) * r.uiH] : null;

@@ -7,6 +7,8 @@ import { Ribbon } from '../gfx/ribbon';
 import { INKS } from './inks';
 import { LAYER } from '../gfx/sprite';
 import { sfx } from '../audio/sfx';
+import { BambooShoot } from './jade';
+import { PIG_A } from '../gfx/paint';
 
 interface Pending { t: number; fn: () => void }
 interface Flash { r: Ribbon; t: number; life: number }
@@ -68,6 +70,25 @@ export class InkFx {
         w.vfx.ripple((s.ax + s.bx) / 2, (s.ay + s.by) / 2, 0.5);
         for (const f of w.onFreeze) f((s.ax + s.bx) / 2, (s.ay + s.by) / 2, 0.7);
       });
+    } else if (s.ink === 'jade') {
+      // bamboo sprouts along the stroke: a hedge that stops foes and their ink
+      this.later(0.15, () => {
+        const p = w.player;
+        const len = Math.hypot(s.bx - s.ax, s.by - s.ay);
+        const n = Math.max(1, Math.round(len / 0.75));
+        for (let k = 0; k < n; k++) {
+          const t = (k + 0.5) / n;
+          const x = s.ax + (s.bx - s.ax) * t, y = s.ay + (s.by - s.ay) * t;
+          if (Math.hypot(p.x - x, p.y - y) < 0.9) continue;
+          if (w.nav && w.lineBlocked(x, y, x + 0.01, y + 0.01)) continue;
+          if (w.entities.some((e) => e.label === 'bamboo' && !e.dead && Math.hypot(e.x - x, e.y - y) < 0.5)) continue;
+          w.add(new BambooShoot(x, y, 6 * this.frostMul()));
+          w.vfx.dust(x, y, 2, PIG_A);
+        }
+        let hits = 0;
+        for (const e of this.foesNearSeg(s, 0.6)) if (e.onHit({ ...this.roll(8), fromX: (s.ax + s.bx) / 2, fromY: (s.ay + s.by) / 2, kind: 'ink' })) hits++;
+        if (hits) this.onLanded?.(hits);
+      });
     } else if (s.ink === 'gold') {
       this.later(0.35, () => {
         let hits = 0;
@@ -121,6 +142,21 @@ export class InkFx {
           for (const f of foes) if (Math.hypot(f.x - x, f.y - y) < 1.6 && f.onHit({ ...this.roll(25 * em), fromX: x, fromY: y + 1, kind: 'ink' })) this.onLanded?.(1);
         });
       }
+    } else if (e.ink === 'jade') {
+      // the loop heals the child inside it, and roots every foe it holds
+      const p = w.player;
+      if (pointInPoly(p.x, p.y, e.poly)) {
+        const n = Math.max(2, Math.round(p.maxHp * 0.3 * em));
+        p.heal(n);
+        w.numbers?.pop(p.x, p.y + 1.6, `+${n}`, { size: 0.5 });
+      } else p.heal(1);
+      for (const f of this.foesIn(e.poly)) {
+        if (f.onHit({ ...this.roll(12 * em), fromX: e.cx, fromY: e.cy, kind: 'ink' })) hits++;
+        (f as unknown as { freeze?: (t: number) => void }).freeze?.(1.6 * this.frostMul());
+      }
+      for (let i = 0; i < 3; i++) w.vfx.ripple(e.cx, e.cy, 0.6 + i * 0.7);
+      for (let i = 0; i < 10; i++) w.vfx.dust(e.cx + (Math.random() - 0.5) * 2, e.cy + (Math.random() - 0.5) * 1.5, 1, PIG_A);
+      sfx.inkstone();
     }
     // projectiles inside are wiped out
     for (const en of w.entities) if (en.label === 'inkdrop' && pointInPoly(en.x, en.y, e.poly)) en.destroy();

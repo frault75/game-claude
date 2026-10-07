@@ -4,7 +4,7 @@
  */
 import type { Renderer } from '../core/renderer';
 import type { Input } from '../core/input';
-import { Painter, INK, PIG_B, VERMILION, mixPig, pigStyle } from '../gfx/paint';
+import { Painter, INK, PIG_A, PIG_B, VERMILION, mixPig, pigStyle } from '../gfx/paint';
 import { Sprite, Frame, frameFrom, LAYER } from '../gfx/sprite';
 import { washPoly, washBlob, noisyOutline, roughen } from '../gfx/wash';
 import { stroke, V2 } from '../gfx/brush';
@@ -521,8 +521,8 @@ export function inkShots(id: InkId): Shot[] {
 }
 
 /** The opening sheet of an act: a painted vista, the act's number and name. */
-export function act2Shots(title: { act: string; name: string; line: string }): Shot[] {
-  const vista = painted('act2vista', () => {
+function act2Vista(): Frame {
+  return painted('act2vista', () => {
     const p = new Painter(1500, 700, 0.6, -750, -380);
     p.glaze();
     // far mountains in the mist
@@ -545,6 +545,10 @@ export function act2Shots(title: { act: string; name: string; line: string }): S
     stroke(p, [[470, 238], [500, 232]], { width: 4, load: 1, seed: 263, taperEnd: 0.4 });
     return p;
   });
+}
+
+export function act2Shots(title: { act: string; name: string; line: string }): Shot[] {
+  const vista = act2Vista();
   return [{
     dur: 7.5,
     lines: [{ text: title.line, at: 2.6 }],
@@ -555,4 +559,80 @@ export function act2Shots(title: { act: string; name: string; line: string }): S
     },
     tick(t, kit) { if (t > 1.4 && kit.once('gong')) music.motif(false, 'bell', 0); },
   }];
+}
+
+/** The end of Act II: the jade spreads over the terraces, the herons come back, and far to the north, white peaks. */
+export function act2EndShots(t: { lines: string[]; end: string; next: string; nextName: string }): Shot[] {
+  const jade = painted('act2jade', () => {
+    const p = new Painter(1500, 700, 0.5, -750, -380);
+    p.over();
+    // the green comes back to the paddies, band after band
+    for (let k = 0; k < 9; k++) {
+      const r = 120 + k * 52;
+      const pts: V2[] = [];
+      for (let i = 0; i <= 30; i++) { const a = Math.PI * (0.08 + 0.84 * (i / 30)); pts.push([-120 + Math.cos(a) * r * 1.6, -380 + Math.sin(a) * r * 0.9]); }
+      p.ctx.strokeStyle = `rgba(${90 + k * 6},${150 + k * 4},${100 + k * 3},0.55)`;
+      p.ctx.lineWidth = 16;
+      p.ctx.beginPath();
+      pts.forEach(([x, y], i) => (i === 0 ? p.ctx.moveTo(x, y) : p.ctx.lineTo(x, y)));
+      p.ctx.stroke();
+    }
+    return p;
+  });
+  const herons = painted('act2herons', () => {
+    const p = new Painter(1500, 800, 0.6, -750, -400);
+    p.glaze();
+    const bird = (x: number, y: number, s: number, seed: number) => {
+      stroke(p, [[x, y], [x + 50 * s, y + 20 * s], [x + 90 * s, y + 8 * s]], { width: 10 * s, load: 1, seed, taperEnd: 0.6 });
+      stroke(p, [[x + 40 * s, y + 18 * s], [x + 20 * s, y + 60 * s], [x - 20 * s, y + 70 * s]], { width: 6 * s, load: 0.8, seed: seed + 1, taperEnd: 0.9 });
+      stroke(p, [[x + 50 * s, y + 16 * s], [x + 80 * s, y + 66 * s], [x + 120 * s, y + 76 * s]], { width: 6 * s, load: 0.8, seed: seed + 2, taperEnd: 0.9 });
+    };
+    bird(-380, 120, 1.2, 301); bird(-120, 220, 0.9, 311); bird(150, 80, 1.0, 321); bird(380, 250, 0.7, 331); bird(-560, -40, 0.8, 341);
+    // rice shoots in the foreground
+    for (let k = 0; k < 60; k++) {
+      const x = -720 + k * 24 + Math.sin(k * 7.1) * 8, h = 60 + (k % 5) * 18;
+      stroke(p, [[x, -400], [x + 6, -400 + h * 0.6], [x + 14 + Math.sin(k) * 6, -400 + h]], { width: 4, pig: mixPig(INK, PIG_A, 0.6), load: 0.8, seed: 400 + k, taperEnd: 0.95 });
+    }
+    return p;
+  });
+  const peaks = painted('act3peaks', () => {
+    const p = new Painter(1500, 700, 0.6, -750, -380);
+    p.glaze();
+    // white peaks: the paper is the snow, the ink only the shadows
+    for (let k = 0; k < 3; k++) {
+      const pts = ridge(30 + k * 7, -200 + k * 60, 260 - k * 70, 1500);
+      washPoly(p, roughen(pts, 5, 500 + k, 16), { pig: mixPig(INK, PIG_B, 0.3), density: 0.06 + k * 0.05, soft: 0.6, seed: 510 + k });
+      stroke(p, pts.slice(1, -1), { width: 5 - k, load: 0.7, dry: 0.6, seed: 520 + k, taperStart: 0.05, taperEnd: 0.05 });
+    }
+    return p;
+  });
+  return [
+    {
+      dur: 7,
+      lines: [{ text: t.lines[0], at: 1.2 }],
+      build(kit) {
+        kit.add(act2Vista(), 'pig', { y: -40, at: 0.1, dur: 1.2, drift: [-4, 0] });
+        kit.add(jade, 'acc', { y: -40, at: 1.4, dur: 3.5, mode: 'reveal', drift: [-4, 0] });
+      },
+      tick(tt, kit) { if (tt > 1.4 && kit.once('bloom')) { sfx.uiConfirm(); music.motif(false, 'bell', 1); } },
+    },
+    {
+      dur: 7,
+      lines: [{ text: t.lines[1], at: 0.8 }, { text: t.lines[2], at: 3.8 }],
+      build(kit) {
+        kit.add(herons, 'pig', { at: 0.2, dur: 2.6, drift: [10, 3] });
+      },
+    },
+    {
+      dur: 8.5,
+      lines: [{ text: t.lines[3], at: 3.4 }],
+      build(kit) {
+        kit.add(text(t.end, 70, { bold: true }), 'pig', { y: 120, at: 0.4, dur: 1.2 });
+        kit.add(peaks, 'pig', { y: -150, at: 2.2, dur: 3, drift: [-5, 0] });
+        kit.add(text(t.next, 44, { italic: true }), 'pig', { y: -20, at: 4.6, dur: 0.9 });
+        kit.add(text(t.nextName, 64, { bold: true }), 'pig', { y: -100, at: 5.3, dur: 1.2 });
+      },
+      tick(tt, kit) { if (tt > 0.4 && kit.once('gong')) music.motif(true, 'bell', 0); },
+    },
+  ];
 }
