@@ -329,7 +329,8 @@ export const MAIN: QuestStep[] = [
   { title: { fr: 'La page tendue', en: 'The Taut Page' }, goal: { fr: 'Retourne voir Mère Neige', en: 'Return to Mother Snow' } },
   { title: { fr: 'Le sceau brisé', en: 'The Broken Seal' }, goal: { fr: 'Reprends les moitiés du sceau : forêt et glacier', en: 'Win back the seal’s halves: forest and glacier' } },
   { title: { fr: 'Le sceau brisé', en: 'The Broken Seal' }, goal: { fr: 'Rapporte le sceau à Mère Neige', en: 'Bring the seal to Mother Snow' } },
-  { title: { fr: 'Le sommet du maître', en: 'The Master’s Summit' }, goal: { fr: 'Monte au sommet, au nord de la vallée effacée (Acte III, la suite arrive)', en: 'Climb to the summit, north of the erased valley (Act III continues soon)' } },
+  { title: { fr: 'Le sommet du maître', en: 'The Master’s Summit' }, goal: { fr: 'Monte au sommet, au nord de la vallée effacée', en: 'Climb to the summit, north of the erased valley' } },
+  { title: { fr: 'Épilogue', en: 'Epilogue' }, goal: { fr: 'Le monde est à toi', en: 'The world is yours' } },
 ];
 
 export const UI = {
@@ -635,6 +636,13 @@ export const BESTIARY: Record<string, BeastLore> = {
     text: {
       fr: 'Les moines pliaient mille grues pour un vœu. Un hiver, ils en ont plié dix mille, pour que le maître redescende. Le vœu s’est plié sur lui-même et il est devenu un dragon. Il vole hors d’atteinte, plonge, puis se replie sur la glace : c’est là qu’on le frappe. L’or le foudroie et le jette au sol. Blessé, sa queue se déplie en grues.',
       en: 'The monks folded a thousand cranes for a wish. One winter they folded ten thousand, so that the master would come down. The wish folded in on itself and became a dragon. It flies out of reach, dives, then folds itself again on the ice: that is when you strike it. Gold strikes it and throws it down. Wounded, its tail unfolds into cranes.',
+    },
+  },
+  hand: {
+    name: { fr: 'La Main du maître', en: 'The Master’s Hand' }, where: { fr: 'Le sommet', en: 'The summit' },
+    text: {
+      fr: 'Ce qui restait du maître : sa main, qui voulait effacer la tache de son dernier tableau, et qui effaçait le monde avec. Elle ne savait plus s’arrêter. Une encre fraîche porte au-dessus de ce qu’elle efface. À la fin, elle a douté — et elle a lâché le pinceau.',
+      en: 'What was left of the master: his hand, which wanted to wipe the blot off his last painting, and wiped the world along with it. It no longer knew how to stop. Fresh ink carries you over what it wipes away. In the end it doubted — and let go of the brush.',
     },
   },
   queen: {

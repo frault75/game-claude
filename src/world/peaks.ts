@@ -30,6 +30,24 @@ export const P3_ISLE = { x: 172, y: 100, r: 3.2, ring: 6 };
 /** The Snow King's hollow, deep in the Frost Forest, and the Paper Dragon's nest on the Glacier. */
 export const P3_KING = { x: 38, y: 134, r: 8.5 };
 export const P3_DRAGON = { x: 168, y: 136, r: 9.5 };
+/** The summit is ringed by a wall of cloud; one sealed gate faces the valley. The hand waits before the hut. */
+export const P3_RING = 11.5;
+export const P3_GATE = { x: 100, y: 146 - 11.5 };
+export const P3_HAND = { x: 100, y: 141.5, r: 8 };
+/** The cloud wall's arc, from the north edge down round the south and back up (the gate's gap at the bottom). */
+export function p3RingArc(gap = true): [number, number][][] {
+  const out: [number, number][][] = [];
+  const run = (a0: number, a1: number) => {
+    const pts: [number, number][] = [];
+    const n = Math.ceil(Math.abs(a1 - a0) * 8);
+    for (let k = 0; k <= n; k++) { const a = a0 + ((a1 - a0) * k) / n; pts.push([100 + Math.cos(a) * P3_RING, 146 + Math.sin(a) * P3_RING]); }
+    out.push(pts);
+  };
+  const g = gap ? 0.14 : 0;
+  run(0.55, -Math.PI / 2 + g);
+  run(-Math.PI / 2 - g, -Math.PI - 0.55);
+  return out;
+}
 
 export const P3_ROADS: { pts: V[]; w: number }[] = [
   { pts: [[100, 0], [88, 10], [110, 18], [90, 27], [104, 36], [100, 46]], w: 2.4 },
@@ -40,6 +58,8 @@ export const P3_ROADS: { pts: V[]; w: number }[] = [
   // on through the forest to the Snow King's hollow; across the glacier to the dragon's nest
   { pts: [[40, 100], [34, 112], [40, 122], [38, 126]], w: 1.5 },
   { pts: [[160, 90], [148, 100], [144, 114], [154, 126], [162, 130]], w: 1.5 },
+  // across the erased valley to the summit gate
+  { pts: [[100, 118], [101, 126], [100, 134]], w: 1.5 },
 ];
 
 export const P3_PONDS: PondDef[] = [{ ...P3_LAKE, seed: 3301 }];
@@ -203,6 +223,7 @@ function isClearing(x: number, y: number): boolean {
   if (Math.hypot(x - P3_ISLE.x, y - P3_ISLE.y) < P3_ISLE.ring + 2) return true;
   // the guardians' grounds, wide to the south: pines in front would hide the fight
   for (const a of [P3_KING, P3_DRAGON]) { const dy = y - a.y; if (Math.hypot(x - a.x, dy < 0 ? dy / 1.9 : dy * 1.1) < a.r + 1.5) return true; }
+  if (Math.hypot(x - P3_SUMMIT.x, y - P3_SUMMIT.y) < P3_RING + 3) return true;
   for (const p of P3_PONDS) if (((x - p.x) / (p.rx + 1.5)) ** 2 + ((y - p.y) / (p.ry + 1.5)) ** 2 < 1) return true;
   for (const c of P3_CREVASSES) if (inPoly(x, y, c)) return true;
   for (const t of P3_TEARS) if (inPoly(x, y, t)) return true;
@@ -326,6 +347,26 @@ export const PEAKS: Land = {
         stroke(g, [...sheet, sheet[0]], { width: 0.02, pig: mixPig(INK, PIG_B, 0.5), load: 0.4, dry: 0.5, seed: rd.int(1, 1e6), press: 0 });
         if (rd.chance(0.5)) stroke(g, [sheet[0], sheet[2]], { width: 0.02, pig: mixPig(INK, PIG_A, 0.4), load: 0.5, seed: rd.int(1, 1e6), press: 0 });
       }
+    }
+    // the cloud wall round the summit: soft grey banks and curling cloud strokes, a gap at the gate
+    if (near(P3_SUMMIT.x, P3_SUMMIT.y, P3_RING + 3)) {
+      const rc = new Rng(3541);
+      for (const arc of p3RingArc()) {
+        for (let i = 0; i < arc.length; i++) {
+          const [x, y] = arc[i];
+          washBlob(g, x, y + 0.3, rc.range(1.4, 2.2), rc.range(0.8, 1.2), { pig: mixPig(INK, PIG_B, 0.4), density: 0.09, soft: 0.8, seed: rc.int(1, 1e6) });
+          if (i % 2 === 0) {
+            // a cloud curl: a spiral ending in a tail
+            const pts: V[] = [];
+            const s = rc.range(0.5, 0.8), dir = rc.chance(0.5) ? 1 : -1;
+            for (let k = 0; k <= 14; k++) { const a = (k / 14) * Math.PI * 1.7 * dir, rr = s * (1 - k / 18); pts.push([x + Math.cos(a) * rr, y + 0.4 + Math.sin(a) * rr * 0.7]); }
+            pts.push([x + dir * s * 1.8, y + 0.2]);
+            stroke(g, pts, { width: 0.05, pig: mixPig(INK, PIG_B, 0.4), load: 0.7, dry: 0.4, seed: rc.int(1, 1e6), press: 0, taperEnd: 0.8 });
+          }
+        }
+      }
+      // the summit itself: a little untouched paper, swept
+      washBlob(g, P3_SUMMIT.x, P3_SUMMIT.y - 3, 7, 5, { pig: PIG_B, density: 0.04, soft: 0.9, seed: 3542 });
     }
     // the bells' plinths
     for (const [bx, by] of P3_BELLS) {

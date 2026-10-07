@@ -658,3 +658,218 @@ export function act3Shots(title: { act: string; name: string; line: string }): S
     tick(t, kit) { if (t > 1.4 && kit.once('gong')) music.motif(false, 'bell', 1); },
   }];
 }
+
+// ---------- the end of the scroll ----------
+
+/** The master's brush, far too big for a child. */
+function bigBrush(): Frame {
+  return painted('bigBrush', () => {
+    const p = new Painter(260, 700, 0.7, -130, -350);
+    p.glaze();
+    stroke(p, [[-60, 330], [40, -180]], { width: 16, pig: mixPig(INK, PIG_B, 0.25), load: 1, seed: 901, taperStart: 0.02, taperEnd: 0.02 });
+    stroke(p, [[-64, 336], [-50, 300]], { width: 22, load: 1, seed: 902 });
+    washPoly(p, roughen([[30, -170], [56, -175], [80, -300], [52, -340], [34, -300]], 3, 903, 10), { pig: INK, density: 0.92, soft: 0.05, edge: 0.6, seed: 903 });
+    return p;
+  });
+}
+
+/** A child, painted big in a shot (pigment and vermilion layers together). */
+function childAt(kit: Kit, x: number, y: number, height: number, o: { at?: number; dur?: number; facing?: 'down' | 'side'; fn?: (el: El, t: number) => void } = {}): void {
+  const ch = kit.child;
+  if (!ch) return;
+  const f = ch.pig[o.facing ?? 'down'].idle[0], fr = ch.red[o.facing ?? 'down'].idle[0];
+  const sc = height / f.h;
+  const place = (el: El, t: number) => {
+    el.s.setPos((x - (f.ox + f.w / 2) * sc) * kit.k, (y - (f.oy + f.h / 2) * sc) * kit.k);
+    o.fn?.(el, t);
+  };
+  kit.add(f, 'pig', { at: o.at ?? 0.3, dur: o.dur ?? 1.2, mode: 'fade', scale: sc, fn: place });
+  kit.add(fr, 'red', { at: o.at ?? 0.3, dur: o.dur ?? 1.2, mode: 'fade', scale: sc, fn: place });
+}
+
+/** What really happened, told when the hand lets go. */
+export function revealShots(l: string[]): Shot[] {
+  return [
+    {
+      dur: 9,
+      lines: [{ text: l[0], at: 0.4 }, { text: l[1], at: 3.8 }],
+      build(kit) {
+        kit.add(act3Peaks(), 'pig', { y: -60, at: 0.1, dur: 2, drift: [-4, 0] });
+        kit.add(master(), 'pig', { x: 430, y: 60, at: 1.2, dur: 1.6, mode: 'fade' });
+        const L = landscape();
+        kit.add(L.far, 'pig', { x: -260, y: 90, at: 4.4, dur: 2, scale: 0.5 });
+        kit.add(L.willow, 'pig', { x: -470, y: 40, at: 5.6, dur: 1.2, scale: 0.5 });
+        kit.add(L.roofs, 'pig', { x: -120, y: -40, at: 6.4, dur: 1.2, scale: 0.5 });
+      },
+    },
+    {
+      dur: 9,
+      lines: [{ text: l[2], at: 0.4 }, { text: l[3], at: 5 }],
+      build(kit) {
+        kit.add(master(), 'pig', { x: -330, y: 60, mode: 'fade', dur: 0.8 });
+        kit.add(drop(), 'pig', { x: -110, y: 230, at: 2.2, dur: 1.1, mode: 'none', fn: (el, t) => {
+          const u = Math.min(1, t / 1.0);
+          el.s.setPos(-110 * kit.k, (230 - 300 * u * u) * kit.k);
+          el.s.opacity = u < 1 ? 1 : Math.max(0, 1 - (t - 1) * 4);
+          if (u >= 1 && kit.once('splash')) sfx.splash();
+        } });
+        kit.add(blot(), 'pig', { x: -60, y: -60, at: 3.2, dur: 5, mode: 'none', fn: (el, t) => {
+          const u = Math.min(1, t / 5);
+          const s = kit.k * (0.05 + 2.2 * u * u);
+          el.s.mesh.scale.set(s, s * 0.85, 1);
+          el.s.opacity = 1;
+        } });
+        kit.add(rain(), 'pig', { at: 4.8, dur: 1.2, mode: 'fade', drift: [-20, -60] });
+      },
+      tick(t, kit) { for (const at of [4.9, 6.2]) if (t > at && kit.once('bolt' + at)) { kit.flash(0.8); sfx.thunder(); } },
+    },
+    {
+      dur: 8,
+      lines: [{ text: l[4], at: 0.4 }],
+      build(kit) {
+        const L = landscape();
+        const wipe = (start: number) => (el: El, t: number) => { el.s.dissolve = Math.max(0, Math.min(1, (t - start) / 2.6)); };
+        kit.add(L.far, 'pig', { y: 120, mode: 'none', fn: wipe(1.8) });
+        kit.add(L.near, 'pig', { y: 40, mode: 'none', fn: wipe(2.6) });
+        kit.add(L.river, 'pig', { x: 40, y: 40, mode: 'none', fn: wipe(3.4) });
+        kit.add(L.willow, 'pig', { x: -480, y: 20, mode: 'none', fn: wipe(2.2) });
+        kit.add(L.roofs, 'pig', { x: 400, y: -250, mode: 'none', fn: wipe(3.0) });
+      },
+      tick(t, kit) { if (t > 1.8 && kit.once('wipe')) sfx.dodge(); },
+    },
+    {
+      dur: 8,
+      lines: [{ text: l[5], at: 0.4 }],
+      build(kit) {
+        const L = landscape();
+        kit.add(L.far, 'pig', { y: 120, mode: 'fade', dur: 0.6 });
+        kit.add(L.near, 'pig', { y: 40, mode: 'fade', dur: 0.6 });
+        kit.add(L.seal, 'red', { x: 600, y: -250, at: 1.6, dur: 0.5, mode: 'pop' });
+        kit.add(redStroke(), 'red', { x: 500, y: -240, at: 2.4, dur: 0.6, mode: 'fade', fn: (el, t) => {
+          // it slips off the scroll
+          const u = Math.max(0, Math.min(1, (t - 3.2) / 1.6));
+          el.s.setPos((500 - 140 * u) * kit.k, (-240 - 380 * u * u) * kit.k);
+          el.s.mesh.rotation.z = u * 0.9;
+        } });
+      },
+      tick(t, kit) { if (t > 1.6 && kit.once('seal')) sfx.impact(false); },
+    },
+    {
+      dur: 8,
+      lines: [{ text: l[6], at: 0.4 }],
+      build(kit) {
+        kit.add(redStroke(), 'red', { x: -120, y: -40, mode: 'none', out: 2.4, fn: (el) => { el.s.mesh.rotation.z = 1.4; } });
+        childAt(kit, -60, 20, 230, { at: 2.4, dur: 1.4, facing: 'side', fn: (el, t) => {
+          // and walks away across the page
+          const dx = Math.max(0, t - 1.6) * 60 * kit.k;
+          el.s.mesh.position.x += dx;
+        } });
+      },
+    },
+    {
+      dur: 7.5,
+      lines: [{ text: l[7], at: 1 }],
+      build(kit) {
+        const L = landscape();
+        kit.add(L.seal, 'red', { y: 40, at: 0.2, dur: 0.6, mode: 'pop', scale: 3.2, out: 0.9 });
+        childAt(kit, 0, 30, 260, { at: 0.8, dur: 1.6 });
+      },
+      tick(t, kit) { if (t > 1 && kit.once('you')) music.motif(true, 'bell', 1); },
+    },
+  ];
+}
+
+/** The two endings: the stroke signs the scroll, or it takes the brush. */
+export function endingShots(kind: 'sign' | 'brush', t: { title: string; lines: string[]; end: string; thanks: string }): Shot[] {
+  const L = landscape();
+  const last: Shot = {
+    dur: 10,
+    build(kit) {
+      kit.add(text(t.title, 84, { bold: true }), 'pig', { y: 160, at: 0.4, dur: 1.4 });
+      kit.add(L.seal, 'red', { x: 330, y: 160, at: 1.8, dur: 0.5, mode: 'pop', scale: 0.8 });
+      kit.add(text(t.end, 64, { italic: true }), 'pig', { y: 10, at: 3, dur: 1.2 });
+      kit.add(text(t.thanks, 40, { italic: true }), 'pig', { y: -110, at: 5, dur: 1.4 });
+    },
+    tick(tt, kit) {
+      if (tt > 1.8 && kit.once('seal')) sfx.impact(false);
+      if (tt > 3 && kit.once('end')) music.motif(false, 'bell', 0);
+    },
+  };
+  if (kind === 'sign') {
+    return [
+      {
+        dur: 8,
+        lines: [{ text: t.lines[0], at: 0.4 }],
+        build(kit) {
+          kit.add(L.far, 'pig', { y: 120, mode: 'fade', dur: 0.8 });
+          kit.add(L.near, 'pig', { y: 40, mode: 'fade', dur: 0.8 });
+          kit.add(L.willow, 'pig', { x: -480, y: 20, mode: 'fade', dur: 0.8 });
+          kit.add(redStroke(), 'red', { x: 0, y: 60, at: 1, dur: 0.6, mode: 'fade', out: 4.6, fn: (el, tt) => {
+            const u = Math.max(0, Math.min(1, (tt - 1) / 2.6)), e = 1 - (1 - u) * (1 - u);
+            el.s.setPos(600 * e * kit.k, (60 - 310 * e) * kit.k);
+            el.s.mesh.rotation.z = -0.3 * e;
+          } });
+          kit.add(L.seal, 'red', { x: 600, y: -250, at: 4.4, dur: 0.5, mode: 'pop' });
+        },
+        tick(tt, kit) { if (tt > 4.4 && kit.once('sign')) { sfx.impact(true); kit.flash(0.3); } },
+      },
+      {
+        dur: 8.5,
+        lines: [{ text: t.lines[1], at: 0.4 }],
+        build(kit) {
+          kit.add(L.far, 'pig', { y: 120, mode: 'none' });
+          kit.add(L.near, 'pig', { y: 40, mode: 'none' });
+          kit.add(L.river, 'pig', { x: 40, y: 40, at: 0.4, dur: 1.4 });
+          kit.add(L.roofs, 'pig', { x: 400, y: -250, at: 1, dur: 1.4 });
+          kit.add(L.seal, 'red', { x: 600, y: -250, mode: 'none' });
+          INK_ORDER.forEach((id, i) => kit.add(pot(id), 'acc', { x: -450 + i * 300, y: 300, at: 2 + i * 0.6, dur: 0.5, mode: 'pop', scale: 0.55 }));
+        },
+        tick(tt, kit) { for (let i = 0; i < 4; i++) if (tt > 2 + i * 0.6 && kit.once('pot' + i)) sfx.charge(i + 1); },
+      },
+      {
+        dur: 8,
+        lines: [{ text: t.lines[2], at: 0.4 }],
+        build(kit) {
+          kit.add(L.willow, 'pig', { x: -300, y: 20, mode: 'fade', dur: 0.8 });
+          kit.add(L.roofs, 'pig', { x: 200, y: -150, mode: 'fade', dur: 0.8 });
+          // the seal at the bottom of the sky, winking
+          kit.add(L.seal, 'red', { x: 560, y: -230, at: 0.8, dur: 0.6, mode: 'fade', fn: (el, tt) => {
+            const w = tt > 4.2 && tt < 4.5 ? 0.15 : 1;
+            el.s.mesh.scale.set(kit.k, kit.k * w, 1);
+          } });
+        },
+      },
+      last,
+    ];
+  }
+  return [
+    {
+      dur: 8,
+      lines: [{ text: t.lines[0], at: 0.4 }],
+      build(kit) {
+        kit.add(bigBrush(), 'pig', { x: 90, y: 40, at: 0.4, dur: 1.6, mode: 'fade' });
+        childAt(kit, -40, -40, 220, { at: 1.2, dur: 1.2 });
+      },
+    },
+    {
+      dur: 9,
+      lines: [{ text: t.lines[1], at: 0.4 }],
+      build(kit) {
+        // new strokes, one after another: a bridge, a tree, a friend
+        kit.add(L.river, 'pig', { x: -300, y: 40, at: 1.4, dur: 1.4, scale: 0.7 });
+        kit.add(L.willow, 'pig', { x: 0, y: 40, at: 3, dur: 1.4, scale: 0.7 });
+        childAt(kit, 330, 20, 150, { at: 4.6, dur: 1.2 });
+      },
+      tick(tt, kit) { for (const at of [1.4, 3, 4.6]) if (tt > at && kit.once('s' + at)) sfx.trait(2); },
+    },
+    {
+      dur: 8,
+      lines: [{ text: t.lines[2], at: 0.4 }],
+      build(kit) {
+        kit.add(act3Peaks(), 'pig', { y: -60, mode: 'fade', dur: 1 });
+        kit.add(master(), 'pig', { x: 0, y: 60, at: 0.6, dur: 1.4, mode: 'fade', fn: (el, tt) => { el.s.dissolve = Math.max(0, Math.min(1, (tt - 3) / 3)); } });
+      },
+    },
+    last,
+  ];
+}

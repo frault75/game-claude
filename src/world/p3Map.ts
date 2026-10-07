@@ -4,7 +4,7 @@ import type { Npc } from '../game/npc';
 import { save } from '../game/progression';
 import { lang } from '../i18n';
 import { MapSource, Mark, blob, polyline } from '../ui/mapArt';
-import { P3, P3_NORTH, P3_ROADS, P3_PONDS, P3_FIXED, P3_CAMPS, P3_SHRINES, P3_REGIONS, P3_MONASTERY, P3_SUMMIT, P3_BELLS, P3_CREVASSES, P3_TEARS, P3_KING, P3_DRAGON, PEAKS, p3RegionAt } from './peaks';
+import { P3, P3_NORTH, P3_ROADS, P3_PONDS, P3_FIXED, P3_CAMPS, P3_SHRINES, P3_REGIONS, P3_MONASTERY, P3_SUMMIT, P3_BELLS, P3_CREVASSES, P3_TEARS, P3_KING, P3_DRAGON, P3_GATE, P3_HAND, PEAKS, p3RingArc, p3RegionAt } from './peaks';
 
 export function p3MapSource(g: Game): MapSource {
   return {
@@ -37,6 +37,9 @@ export function p3MapSource(g: Game): MapSource {
       }
       ctx.fillStyle = 'rgba(30,34,44,0.85)';
       for (const c of [...P3_CREVASSES, ...P3_TEARS]) { polyline(ctx, c); ctx.closePath(); ctx.fill(); }
+      ctx.strokeStyle = 'rgba(120,120,130,0.6)';
+      ctx.lineWidth = 1.6;
+      for (const arc of p3RingArc()) { polyline(ctx, arc); ctx.stroke(); }
       ctx.strokeStyle = 'rgba(146,116,80,0.55)';
       for (const r of P3_ROADS) { ctx.lineWidth = r.w * 0.5; polyline(ctx, r.pts); ctx.stroke(); }
       for (const f of P3_FIXED) {
@@ -58,6 +61,8 @@ export function p3MapSource(g: Game): MapSource {
       for (const c of P3_CAMPS) if (!save.camps.includes(c.id)) out.push({ x: c.x, y: c.y, kind: 'camp' });
       P3_BELLS.forEach(([x, y], i) => out.push({ x, y, kind: save.perks['bell' + i] ? 'shrineOn' : 'relic' }));
       out.push({ x: P3.w / 2, y: 1, kind: 'door' });
+      if (save.main >= 33 && !save.perks.summitOpen) out.push({ x: P3_GATE.x, y: P3_GATE.y, kind: 'door' });
+      if (save.main === 33 && !save.bosses.includes('hand')) out.push({ x: P3_HAND.x, y: P3_HAND.y, kind: 'boss' });
       if (save.main >= 31) {
         if (!save.bosses.includes('snowking')) out.push({ x: P3_KING.x, y: P3_KING.y, kind: 'boss' });
         if (!save.bosses.includes('dragon')) out.push({ x: P3_DRAGON.x, y: P3_DRAGON.y, kind: 'boss' });
