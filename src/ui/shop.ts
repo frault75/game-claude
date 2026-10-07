@@ -8,8 +8,9 @@ import { Painter, INK } from '../gfx/paint';
 import { Sprite, Frame, frameFrom, LAYER } from '../gfx/sprite';
 import { roughen, washPoly } from '../gfx/wash';
 import { stroke } from '../gfx/brush';
-import { brushText } from '../gfx/text';
+import { brushText, textWidth } from '../gfx/text';
 import { maskSprite } from './mask';
+import { sheetSize } from './menu';
 import { save, writeSave, gearChanged } from '../game/progression';
 import { Item, makeItem, itemName, itemLines, RARITY_RGB, Rarity } from '../game/items';
 import { Rng } from '../gfx/rng';
@@ -17,6 +18,14 @@ import { lang } from '../i18n';
 import { sfx } from '../audio/sfx';
 
 const tr = (fr: string, en: string) => (lang === 'fr' ? fr : en);
+
+/** A name cut short (…) to fit `w` units at `size`. */
+function fit(str: string, size: number, w: number): string {
+  if (textWidth(str, size) <= w) return str;
+  let n = str.length;
+  while (n > 4 && textWidth(str.slice(0, n) + '…', size) > w) n--;
+  return str.slice(0, n).trimEnd() + '…';
+}
 
 interface Good { key: string; name: string; text: string; price: number; item?: Item; can: () => boolean; buy: () => void }
 
@@ -46,6 +55,9 @@ export class Shop {
   private buttons: { x: number; y: number; w: number; h: number; act: () => void }[] = [];
   private pw = 0;
   private ph = 0;
+  /** An upright phone: one list at a time (goods or the bag), the chosen line under it. */
+  private tall = false;
+  private side: 'buy' | 'sell' = 'buy';
   private sel: { side: 'buy' | 'sell'; i: number } | null = null;
   private btnFrame: Frame | null = null;
   private goods: Good[] = [];
@@ -74,6 +86,7 @@ export class Shop {
     this.active = true;
     this.merchant = merchant;
     this.sel = null;
+    this.side = 'buy';
     this.build();
     this.input.swallow();
     sfx.ui();
@@ -92,9 +105,10 @@ export class Shop {
 
   private build(): void {
     const r = this.r;
-    const pw = Math.min(1560, r.uiW - 40), ph = Math.min(860, r.uiH - 40);
+    const { pw, ph, tall } = sheetSize(r);
     this.pw = pw;
     this.ph = ph;
+    this.tall = tall;
     const p = new Painter(pw + 40, ph + 40, 0.5, -(pw + 40) / 2, -(ph + 40) / 2);
     const edge = roughen([[-pw / 2, -ph / 2], [pw / 2, -ph / 2], [pw / 2, ph / 2], [-pw / 2, ph / 2]], 8, 271, 20);
     p.reserve(() => edge.forEach((q, i) => (i === 0 ? p.ctx.moveTo(q[0], q[1]) : p.ctx.lineTo(q[0], q[1]))), 0.97);
@@ -102,12 +116,12 @@ export class Shop {
     washPoly(p, edge, { pig: INK, density: 0.03, soft: 0.6, seed: 272 });
     stroke(p, [[-pw / 2 + 20, ph / 2 - 8], [pw / 2 - 20, ph / 2 - 12]], { width: 8, load: 0.85, dry: 0.5, seed: 273, taperStart: 0.03, taperEnd: 0.12 });
     stroke(p, [[-pw / 2 + 30, ph / 2 - 92], [pw / 2 - 30, ph / 2 - 95]], { width: 3, load: 0.35, dry: 0.7, seed: 274 });
-    stroke(p, [[-30, ph / 2 - 110], [-34, -ph / 2 + 200]], { width: 3, load: 0.3, dry: 0.7, seed: 275 });
+    if (!tall) stroke(p, [[-30, ph / 2 - 110], [-34, -ph / 2 + 200]], { width: 3, load: 0.3, dry: 0.7, seed: 275 });
     stroke(p, [[-pw / 2 + 30, -ph / 2 + 8], [pw / 2 - 30, -ph / 2 + 6]], { width: 5, load: 0.5, dry: 0.7, seed: 276 });
     this.sprites.push(this.add(new Sprite(frameFrom(p)), 'pig', LAYER.ui + 30));
     const m = maskSprite(r, pw + 160, ph + 160);
     m.mesh.renderOrder = LAYER.ui + 30;
-    this.sprites.push(m, maskSprite(r, pw + 30, ph + 30, 'cover'));
+    this.sprites.push(m, maskSprite(r, tall ? r.uiW + 240 : pw + 30, ph + 30, 'cover'));
     const x = new Painter(80, 80, 1, -40, -40);
     x.glaze();
     stroke(x, [[-22, -22], [22, 22]], { width: 7, load: 1, dry: 0.4, seed: 56 });
@@ -139,46 +153,61 @@ export class Shop {
     for (const s of this.dyn) s.dispose();
     this.dyn = [];
     this.buttons = [];
-    const pw = this.pw, ph = this.ph;
+    const pw = this.pw, ph = this.ph, tall = this.tall;
     this.goods = this.makeGoods();
-    this.put(this.merchant, -pw / 2 + 56, ph / 2 - 28, 36, { bold: true });
-    this.put(`◎ ${save.coins}`, pw / 2 - 300, ph / 2 - 30, 34, { bold: true, color: [0.69, 0.48, 0.2] });
+    this.put(this.merchant, -pw / 2 + (tall ? 40 : 56), ph / 2 - 28, 36, { bold: true });
+    this.put(`◎ ${save.coins}`, pw / 2 - (tall ? 240 : 300), ph / 2 - 30, 34, { bold: true, color: [0.69, 0.48, 0.2] });
     // goods
-    const x0 = -pw / 2 + 60, rowH = Math.min(46, (ph - 330) / 9);
+    const x0 = -pw / 2 + (tall ? 40 : 60), rowH = tall ? 46 : Math.min(46, (ph - 330) / 9);
+    const head = (label: string, x: number, y: number, side: 'buy' | 'sell') => {
+      if (!tall) return this.put(label, x, y, 26, { italic: true });
+      // on an upright phone the two headings are tabs
+      const on = this.side === side;
+      const t = this.put(label, x, y, 27, { italic: true, bold: on, color: on ? [0.76, 0.23, 0.17] : undefined });
+      this.buttons.push({ x: x + t.w / 2, y: y - t.h / 2, w: t.w + 20, h: 60, act: () => { if (this.side !== side) { this.side = side; this.sel = null; sfx.ui(); this.refresh(); } } });
+      return t;
+    };
     let y = ph / 2 - 120;
-    this.put(tr('Marchandises', 'Goods'), x0, y, 26, { italic: true });
+    const gh = head(tr('Marchandises', 'Goods'), x0, y, 'buy');
     y -= 44;
-    this.goods.forEach((gd, i) => {
+    if (!tall || this.side === 'buy') this.goods.forEach((gd, i) => {
       const on = this.sel?.side === 'buy' && this.sel.i === i;
       const col = gd.item ? RARITY_RGB[gd.item.rarity] : on ? [0.76, 0.23, 0.17] as [number, number, number] : undefined;
-      const t = this.put(gd.name, x0, y, 25, { bold: on, color: col, maxWidth: pw / 2 - 260 });
-      this.put(String(gd.price), -100, y, 25, { bold: true });
+      const gs = rowH < 42 ? 23 : 25;
+      const t = this.put(gd.name, x0, y, gs, { bold: on, color: col, maxWidth: tall ? pw - 210 : pw / 2 - 260 });
+      this.put(String(gd.price), tall ? pw / 2 - 120 : -100, y, gs, { bold: true });
       if (!gd.can() || gd.price > save.coins) for (const s of this.dyn.slice(-2)) s.opacity = 0.45;
-      this.buttons.push({ x: (x0 - 60) / 2, y: y - t.h / 2, w: pw / 2 - 40, h: rowH, act: () => { this.sel = { side: 'buy', i }; sfx.ui(); this.refresh(); } });
+      this.buttons.push({ x: tall ? 0 : (x0 - 60) / 2, y: y - t.h / 2, w: tall ? pw - 60 : pw / 2 - 40, h: rowH, act: () => { this.sel = { side: 'buy', i }; sfx.ui(); this.refresh(); } });
       y -= rowH;
     });
-    // the bag, to sell
-    const x1 = 10;
+    // the bag, to sell (beside the goods, or in the other tab)
+    const x1 = tall ? x0 + gh.w + 50 : 10;
     let yy = ph / 2 - 120;
-    this.put(tr('Ton sac (vendre)', 'Your bag (sell)'), x1, yy, 26, { italic: true });
+    head(tr('Ton sac (vendre)', 'Your bag (sell)'), x1, yy, 'sell');
     yy -= 44;
-    const bagH = Math.min(36, (ph - 330) / 16);
-    save.bag.forEach((it, i) => {
-      const on = this.sel?.side === 'sell' && this.sel.i === i;
-      const t = this.put(`${itemName(it)}${on ? '  ◂' : ''}`, x1, yy, 22, { color: RARITY_RGB[it.rarity], maxWidth: pw / 2 - 240 });
-      this.put(String(sellPrice(it)), pw / 2 - 160, yy, 22, { bold: true });
-      this.buttons.push({ x: pw / 4, y: yy - t.h / 2, w: pw / 2 - 40, h: bagH, act: () => { this.sel = { side: 'sell', i }; sfx.ui(); this.refresh(); } });
-      yy -= bagH;
-    });
-    if (!save.bag.length) this.put(tr('Rien à vendre.', 'Nothing to sell.'), x1, yy, 22, { italic: true });
-    // the chosen line, at the bottom
-    const by = -ph / 2 + 110;
+    if (!tall || this.side === 'sell') {
+      // one column, or two when a full bag would run into the chosen line
+      const bagH = tall ? 42 : 34;
+      const lx = tall ? x0 : x1, lw = tall ? pw - 80 : pw / 2 - 50;
+      const cols = !tall && save.bag.length * bagH > yy - (-ph / 2 + 190) ? 2 : 1;
+      const rows = Math.ceil(save.bag.length / cols), cw = lw / cols;
+      save.bag.forEach((it, i) => {
+        const on = this.sel?.side === 'sell' && this.sel.i === i;
+        const cx = lx + Math.floor(i / rows) * cw, cy = yy - (i % rows) * bagH;
+        const t = this.put(fit(`${itemName(it)}${on ? '  ◂' : ''}`, 22, cw - 90), cx, cy, 22, { color: RARITY_RGB[it.rarity] });
+        this.put(String(sellPrice(it)), cx + cw - 64, cy, 22, { bold: true });
+        this.buttons.push({ x: cx + cw / 2 - 10, y: cy - t.h / 2, w: cw - 20, h: bagH, act: () => { this.sel = { side: 'sell', i }; sfx.ui(); this.refresh(); } });
+      });
+      if (!save.bag.length) this.put(tr('Rien à vendre.', 'Nothing to sell.'), lx, yy, 22, { italic: true });
+    }
+    // an upright phone: the words above a centred button
+    const by = -ph / 2 + (tall ? 80 : 110), tx = -pw / 2 + (tall ? 40 : 60), ty = by + (tall ? 180 : 60), tw = tall ? pw - 80 : pw - 520, bx = tall ? 0 : pw / 2 - 210;
     if (this.sel?.side === 'buy') {
       const gd = this.goods[this.sel.i];
       if (gd) {
-        this.put(gd.text, -pw / 2 + 60, by + 60, 22, { italic: true, maxWidth: pw - 520 });
+        this.put(gd.text, tx, ty, 22, { italic: true, maxWidth: tw });
         const ok = gd.can() && gd.price <= save.coins;
-        this.button(ok ? tr(`Acheter · ${gd.price}`, `Buy · ${gd.price}`) : gd.price > save.coins ? tr('Pas assez de pièces', 'Not enough coins') : tr('Inutile', 'No need'), pw / 2 - 210, by, () => {
+        this.button(ok ? tr(`Acheter · ${gd.price}`, `Buy · ${gd.price}`) : gd.price > save.coins ? tr('Pas assez de pièces', 'Not enough coins') : tr('Inutile', 'No need'), bx, by, () => {
           if (!ok) { sfx.empty(); return; }
           save.coins -= gd.price;
           gd.buy();
@@ -192,8 +221,8 @@ export class Shop {
     } else if (this.sel?.side === 'sell') {
       const it = save.bag[this.sel.i];
       if (it) {
-        this.put(itemLines(it).join('   ·   '), -pw / 2 + 60, by + 60, 22, { italic: true, maxWidth: pw - 520 });
-        this.button(tr(`Vendre · ${sellPrice(it)}`, `Sell · ${sellPrice(it)}`), pw / 2 - 210, by, () => {
+        this.put(`${itemName(it)} — ${itemLines(it).join('   ·   ')}`, tx, ty, 22, { italic: true, maxWidth: tw });
+        this.button(tr(`Vendre · ${sellPrice(it)}`, `Sell · ${sellPrice(it)}`), bx, by, () => {
           save.coins += sellPrice(it);
           save.bag.splice(this.sel!.i, 1);
           writeSave();
@@ -203,7 +232,7 @@ export class Shop {
         }, 330);
       }
     } else {
-      this.put(tr('Touche une ligne pour la regarder. Les marchandises changent chaque fois que tu te reposes à un sanctuaire.', 'Tap a line to look at it. The goods change each time you rest at a shrine.'), -pw / 2 + 60, by + 40, 22, { italic: true, maxWidth: pw - 140 });
+      this.put(tr('Touche une ligne pour la regarder. Les marchandises changent chaque fois que tu te reposes à un sanctuaire.', 'Tap a line to look at it. The goods change each time you rest at a shrine.'), tx, by + (tall ? 120 : 40), 22, { italic: true, maxWidth: pw - (tall ? 80 : 140) });
     }
   }
 

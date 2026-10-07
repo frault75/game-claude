@@ -3,7 +3,7 @@
  * and a card for the chosen item with what it would change. Tap or click; I or Esc to close.
  */
 import type { Renderer } from '../core/renderer';
-import { tabStrip, MenuTab } from './menu';
+import { tabStrip, sheetSize, MenuTab } from './menu';
 import type { Input } from '../core/input';
 import { Painter, INK, VERMILION } from '../gfx/paint';
 import { Sprite, Frame, frameFrom, LAYER } from '../gfx/sprite';
@@ -52,7 +52,12 @@ export class Inventory {
   /** Another tab of the menu was chosen. */
   onTab?: (id: MenuTab) => void;
   private ph = 0;
+  /** An upright phone: what is worn on a row at the top, the bag under it, the card at the bottom. */
+  private tall = false;
   private c = 100;
+  /** Where the bag grid starts (top row) and where the card goes. */
+  private bagTop = 0;
+  private cardTop = 0;
   private buttons: { x: number; y: number; w: number; h: number; act: () => void; sprites: Sprite[] }[] = [];
   private sureT = 0;
   private cellFrame: Frame | null = null;
@@ -125,10 +130,11 @@ export class Inventory {
 
   private build(): void {
     const r = this.r;
-    const pw = Math.min(1560, r.uiW - 40), ph = Math.min(860, r.uiH - 40);
+    const { pw, ph, tall } = sheetSize(r);
     this.pw = pw;
     this.ph = ph;
-    const c = Math.min(110, (ph - 200) / 4.9);
+    this.tall = tall;
+    const c = tall ? Math.min(105, (pw - 120) / 4.6) : Math.min(110, (ph - 200) / 4.9);
     this.c = c;
     // the sheet
     const p = new Painter(pw + 40, ph + 40, 0.5, -(pw + 40) / 2, -(ph + 40) / 2);
@@ -138,12 +144,18 @@ export class Inventory {
     washPoly(p, edge, { pig: INK, density: 0.03, soft: 0.6, seed: 52 });
     stroke(p, [[-pw / 2 + 20, ph / 2 - 8], [pw / 2 - 20, ph / 2 - 12]], { width: 8, load: 0.85, dry: 0.5, seed: 53, taperStart: 0.03, taperEnd: 0.12 });
     stroke(p, [[-pw / 2 + 30, -ph / 2 + 8], [pw / 2 - 30, -ph / 2 + 6]], { width: 5, load: 0.5, dry: 0.7, seed: 54, taperStart: 0.1, taperEnd: 0.2 });
-    const dx = -pw / 2 + 300 + c * 4.4 + 40;
-    stroke(p, [[dx - 20, ph / 2 - 90], [dx - 24, -ph / 2 + 40]], { width: 3, load: 0.35, dry: 0.7, seed: 55, taperStart: 0.1, taperEnd: 0.2 });
+    const top = tall ? ph / 2 - 160 : ph / 2 - 150;
+    this.bagTop = tall ? top - c - 64 : top;
+    this.cardTop = tall ? this.bagTop - c * 3.3 - c * 0.55 - 124 : ph / 2 - 60;
+    if (tall) stroke(p, [[-pw / 2 + 40, this.cardTop + 26], [pw / 2 - 40, this.cardTop + 22]], { width: 3, load: 0.35, dry: 0.7, seed: 55, taperStart: 0.1, taperEnd: 0.2 });
+    else {
+      const dx = -pw / 2 + 300 + c * 4.4 + 40;
+      stroke(p, [[dx - 20, ph / 2 - 90], [dx - 24, -ph / 2 + 40]], { width: 3, load: 0.35, dry: 0.7, seed: 55, taperStart: 0.1, taperEnd: 0.2 });
+    }
     this.sprites.push(this.add(new Sprite(frameFrom(p)), 'pig', LAYER.ui + 30));
     const m = maskSprite(r, pw + 160, ph + 160);
     m.mesh.renderOrder = LAYER.ui + 30;
-    this.sprites.push(m, maskSprite(r, pw + 30, ph + 30, 'cover'));
+    this.sprites.push(m, maskSprite(r, tall ? r.uiW + 240 : pw + 30, ph + 30, 'cover'));
     // the menu's tabs (this sheet is the bag) and the close mark
     this.tabs = tabStrip(r, pw, ph, 'bag', (sp) => this.sprites.push(sp));
     const x = new Painter(80, 80, 1, -40, -40);
@@ -162,9 +174,8 @@ export class Inventory {
       this.cellFrame = frameFrom(f);
     }
     // worn items
-    const top = ph / 2 - 150;
     SLOTS.forEach((slot, i) => {
-      const cx = -pw / 2 + 120, cy = top - i * (c + 30);
+      const cx = tall ? (i - 1.5) * c * 1.3 : -pw / 2 + 120, cy = tall ? top : top - i * (c + 30);
       this.equipCells.push(this.makeCell(cx, cy));
       const lab = this.text(L(SLOT_NAMES[slot]), 19, { italic: true, align: 'center' });
       lab.s.setPos(cx, cy - c / 2 - 12);
@@ -172,7 +183,7 @@ export class Inventory {
     });
     // the bag
     for (let k = 0; k < BAG_SIZE; k++) {
-      const cx = -pw / 2 + 300 + c * 0.55 + (k % 4) * c * 1.1, cy = top - Math.floor(k / 4) * c * 1.1;
+      const cx = (tall ? -c * 1.65 : -pw / 2 + 300 + c * 0.55) + (k % 4) * c * 1.1, cy = this.bagTop - Math.floor(k / 4) * c * 1.1;
       this.cells.push(this.makeCell(cx, cy));
     }
     this.refresh();
@@ -243,9 +254,9 @@ export class Inventory {
       `${fr ? 'Parade' : 'Parry'} ${gr.guard} %`,
       `${fr ? 'Vitesse' : 'Speed'} +${gr.speed} %`,
     ];
-    const t = this.text(parts.join('  ·  '), 20, { italic: true, maxWidth: this.c * 4.4 + 40 });
-    const top = this.ph / 2 - 150;
-    t.s.setPos(-this.pw / 2 + 300 + t.w / 2, top - this.c * 3.3 - this.c * 0.55 - 14 - t.h / 2);
+    const t = this.text(parts.join('  ·  '), 20, { italic: true, maxWidth: this.tall ? this.pw - 80 : this.c * 4.4 + 40, align: this.tall ? 'center' : 'left' });
+    const y = this.bagTop - this.c * 3.3 - this.c * 0.55 - 14 - t.h / 2;
+    t.s.setPos(this.tall ? 0 : -this.pw / 2 + 300 + t.w / 2, y);
     this.stat = t.s;
   }
 
@@ -270,9 +281,9 @@ export class Inventory {
     for (const b of this.buttons) for (const s of b.sprites) s.dispose();
     this.buttons = [];
     const it = this.selected();
-    const x0 = -this.pw / 2 + 300 + this.c * 4.4 + 50;
+    const x0 = this.tall ? -this.pw / 2 + 40 : -this.pw / 2 + 300 + this.c * 4.4 + 50;
     const w = this.pw / 2 - 40 - x0;
-    let y = this.ph / 2 - 60;
+    let y = this.cardTop;
     const put = (str: string, size: number, o: Parameters<Inventory['text']>[2] = {}) => {
       const t = this.text(str, size, { maxWidth: w, ...o });
       t.s.setPos(x0 + t.w / 2, y - t.h / 2);
@@ -317,9 +328,10 @@ export class Inventory {
     }
     if (this.sureT > 0) { y -= 10; put(L(T.sureHint), 24, { italic: true, color: [0.76, 0.23, 0.17] }); }
     const by = -this.ph / 2 + 70;
-    if (s?.where === 'bag') this.button(L(T.equip), x0 + 130, by, () => this.equipSel());
-    else if (s?.where === 'equip') this.button(L(T.remove), x0 + 130, by, () => this.unequipSel());
-    this.button(this.sureT > 0 ? L(T.sure) : L(T.grind), x0 + 410, by, () => this.grindSel());
+    const [bx1, bx2] = this.tall ? [-140, 140] : [x0 + 130, x0 + 410];
+    if (s?.where === 'bag') this.button(L(T.equip), bx1, by, () => this.equipSel());
+    else if (s?.where === 'equip') this.button(L(T.remove), bx1, by, () => this.unequipSel());
+    this.button(this.sureT > 0 ? L(T.sure) : L(T.grind), bx2, by, () => this.grindSel());
     void STATS;
   }
 
