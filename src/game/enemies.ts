@@ -48,8 +48,8 @@ function getIce(): Frame {
   return iceFrame;
 }
 
-/** Health by tier: Act I's valley (1–3), Act II's terraces and depths (3–4), Act III's peaks (5). */
-export const TIER_HP = [1, 1.1, 1.8, 2.9, 4.0, 5.3];
+/** Health by tier: Act I's valley (1–3), Act II's terraces and depths (3–4), Act III's peaks (5), the heart of the mountain (6). */
+export const TIER_HP = [1, 1.1, 1.8, 2.9, 4.0, 5.3, 6.6];
 
 /** Base for creatures: hit flash, knockback, freeze, camp leash, death by dissolving into a stain. */
 export class Creature extends Entity {

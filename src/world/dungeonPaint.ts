@@ -12,7 +12,7 @@ import { puddle } from '../gfx/gen/ground';
 import type { StampSet } from './stamps';
 import { stampAt } from './stamps';
 
-export type DungeonStyle = 'cave' | 'temple' | 'cistern' | 'pagoda';
+export type DungeonStyle = 'cave' | 'temple' | 'cistern' | 'pagoda' | 'ice' | 'atelier';
 
 const TILE = 16;
 
@@ -42,7 +42,8 @@ function rockCanvas(map: DungeonMap, style: DungeonStyle, seed: number): HTMLCan
   c.height = map.h * K;
   const ctx = c.getContext('2d')!;
   const nz = noise((seed % 900) + 7);
-  const pig = style === 'cave' ? mixPig(INK, PIG_B, 0.15) : style === 'cistern' ? mixPig(INK, PIG_A, 0.18) : style === 'pagoda' ? mixPig(INK, PIG_A, 0.12) : INK;
+  const pig = style === 'cave' ? mixPig(INK, PIG_B, 0.15) : style === 'cistern' ? mixPig(INK, PIG_A, 0.18) : style === 'pagoda' ? mixPig(INK, PIG_A, 0.12)
+    : style === 'ice' ? mixPig(INK, PIG_A, 0.32) : style === 'atelier' ? mixPig(INK, PIG_B, 0.2) : INK;
   for (let iy = 0; iy < map.h; iy++) {
     for (let ix = 0; ix < map.w; ix++) {
       if (map.grid[iy * map.w + ix] === 1) continue;
@@ -60,16 +61,19 @@ function paintTile(g: Painter, map: DungeonMap, style: DungeonStyle, seed: numbe
   const M = 3;
   const floor = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h && grid[y * w + x] === 1;
   const cell = (ix: number, iy: number, salt: number) => new Rng(((ix * 73856093) ^ (iy * 19349663) ^ ((seed + salt) * 83492791)) >>> 0);
-  const tint: Pig = style === 'cave' || style === 'pagoda' ? PIG_B : PIG_A;
+  const tint: Pig = style === 'cave' || style === 'pagoda' || style === 'atelier' ? PIG_B : PIG_A;
   const cistern = style === 'cistern';
   const pagoda = style === 'pagoda';
+  const ice = style === 'ice';
+  const atelier = style === 'atelier';
+  const nearRock = (ix: number, iy: number) => !floor(ix - 1, iy) || !floor(ix + 1, iy) || !floor(ix, iy - 1) || !floor(ix, iy + 1);
   // 1. floor washes on a 6-cell grid
   for (let ix = Math.floor((x0 - M) / 6); ix <= Math.floor((x1 + M) / 6); ix++) {
     for (let iy = Math.floor((y0 - M) / 6); iy <= Math.floor((y1 + M) / 6); iy++) {
       const r = cell(ix, iy, 1);
       const x = ix * 6 + r.range(0, 6), y = iy * 6 + r.range(0, 6);
       const s = r.range(2.5, 5);
-      washBlob(g, x, y, s, s * r.range(0.4, 0.7), { pig: r.chance(0.6) ? tint : INK, density: style === 'temple' ? r.range(0.05, 0.12) : r.range(0.08, 0.18), soft: 0.9, seed: r.int(1, 1e6), rough: 0.35 });
+      washBlob(g, x, y, s, s * r.range(0.4, 0.7), { pig: r.chance(0.6) ? tint : INK, density: style === 'temple' || ice ? r.range(0.05, 0.12) : r.range(0.08, 0.18), soft: 0.9, seed: r.int(1, 1e6), rough: 0.35 });
     }
   }
   // 2. flagstones (temple) or pebbles, moss and puddles (cave)
@@ -77,7 +81,69 @@ function paintTile(g: Painter, map: DungeonMap, style: DungeonStyle, seed: numbe
     for (let ix = x0 - 1; ix < x1 + 1; ix++) {
       if (!floor(ix, iy)) continue;
       const r = cell(ix, iy, 2);
-      if (pagoda) {
+      if (ice) {
+        // clear ice: long hairline cracks, frost, snow blown in against the walls
+        if (r.chance(0.06)) {
+          const a = r.range(0, Math.PI), l = r.range(0.6, 1.5);
+          const x = ix + r.next(), y = iy + r.next();
+          const mx = x + Math.cos(a) * l * 0.5 + r.gauss() * 0.08, my = y + Math.sin(a) * l * 0.5 + r.gauss() * 0.08;
+          stroke(g, [[x, y], [mx, my], [x + Math.cos(a) * l, y + Math.sin(a) * l]], { width: 0.018, load: r.range(0.3, 0.5), dry: 0.6, seed: r.int(1, 1e6), taperStart: 0.3, taperEnd: 0.5, press: 0 });
+          if (r.chance(0.5)) stroke(g, [[mx, my], [mx + Math.cos(a + 1) * l * 0.35, my + Math.sin(a + 1) * l * 0.35]], { width: 0.014, load: 0.35, dry: 0.6, seed: r.int(1, 1e6), taperEnd: 0.6, press: 0 });
+        }
+        if (r.chance(0.035)) washBlob(g, ix + r.next(), iy + r.next(), r.range(0.4, 0.9), r.range(0.25, 0.5), { pig: PIG_A, density: r.range(0.06, 0.12), soft: 0.7, seed: r.int(1, 1e6) });
+        if (nearRock(ix, iy) && r.chance(0.35)) {
+          g.lift();
+          g.ctx.fillStyle = `rgba(0,0,0,${r.range(0.35, 0.6)})`;
+          const o = noisyOutline(ix + 0.5, iy + 0.5, r.range(0.4, 0.7), r.range(0.25, 0.4), 0.3, r.int(1, 1e6));
+          g.ctx.beginPath();
+          o.forEach((q, i) => (i === 0 ? g.ctx.moveTo(q[0], q[1]) : g.ctx.lineTo(q[0], q[1])));
+          g.ctx.closePath();
+          g.ctx.fill();
+          g.glaze();
+        } else if (r.chance(0.025)) stampAt(g, st.pebbles[r.int(0, st.pebbles.length - 1)], ix + r.next(), iy + r.next(), r.chance(0.5), 0.6);
+      } else if (atelier) {
+        // tatami: bands of mats laid across, then bands laid along, each mat its own straw tone,
+        // fine weave along its length, dark cloth borders on its long sides only
+        const mat = (x: number, y: number, mw: number, mh: number) => {
+          const mr = cell(x, y, 9);
+          const across = mw > mh;
+          washPoly(g, [[x + 0.04, y + 0.05], [x + mw - 0.04, y + 0.05], [x + mw - 0.04, y + mh - 0.05], [x + 0.04, y + mh - 0.05]], { pig: PIG_B, density: mr.range(0.07, 0.15), soft: 0.2, edge: 0.15, seed: mr.int(1, 1e6) });
+          for (let k = 1; k < 6; k++) {
+            const t = k / 6;
+            if (across) stroke(g, [[x + 0.08, y + t * mh], [x + mw - 0.08, y + t * mh + mr.gauss() * 0.008]], { width: 0.007, pig: PIG_B, load: 0.16, dry: 0.9, seed: mr.int(1, 1e6), press: 0 });
+            else stroke(g, [[x + t * mw, y + 0.08], [x + t * mw + mr.gauss() * 0.008, y + mh - 0.08]], { width: 0.007, pig: PIG_B, load: 0.16, dry: 0.9, seed: mr.int(1, 1e6), press: 0 });
+          }
+          const hb = { width: 0.058, pig: INK, load: 0.46, dry: 0.4, body: 0.8, taperStart: 0.01, taperEnd: 0.01, press: 0 };
+          const seam = { width: 0.03, load: 0.5, dry: 0.5, press: 0 };
+          if (across) {
+            for (const by of [y + 0.05, y + mh - 0.05]) stroke(g, [[x + 0.1, by], [x + mw - 0.1, by]], { ...hb, seed: mr.int(1, 1e6) });
+            for (const ex of [x + 0.03, x + mw - 0.03]) stroke(g, [[ex, y + 0.04], [ex, y + mh - 0.04]], { ...seam, seed: mr.int(1, 1e6) });
+          } else {
+            for (const bx of [x + 0.05, x + mw - 0.05]) stroke(g, [[bx, y + 0.1], [bx, y + mh - 0.1]], { ...hb, seed: mr.int(1, 1e6) });
+            for (const ey of [y + 0.03, y + mh - 0.03]) stroke(g, [[x + 0.04, ey], [x + mw - 0.04, ey]], { ...seam, seed: mr.int(1, 1e6) });
+          }
+        };
+        if (Math.floor(iy / 2) % 2 === 0) { if ((ix + (iy % 2)) % 2 === 0) mat(ix, iy, 2, 1); }
+        else if (iy % 2 === 0) mat(ix, iy, 1, 2);
+        if (r.chance(0.012)) {
+          // a dropped sheet with a few strokes on it
+          const x = ix + r.next(), y = iy + r.next(), a = r.range(-0.5, 0.5);
+          const sq: [number, number][] = [[-0.3, -0.22], [0.3, -0.22], [0.3, 0.22], [-0.3, 0.22]].map(([px, py]) => [x + px * Math.cos(a) - py * Math.sin(a), y + px * Math.sin(a) + py * Math.cos(a)]);
+          g.lift();
+          g.ctx.fillStyle = 'rgba(0,0,0,0.75)';
+          g.ctx.beginPath();
+          sq.forEach((q, i) => (i === 0 ? g.ctx.moveTo(q[0], q[1]) : g.ctx.lineTo(q[0], q[1])));
+          g.ctx.closePath();
+          g.ctx.fill();
+          g.glaze();
+          stroke(g, [...sq, sq[0]], { width: 0.012, load: 0.4, seed: r.int(1, 1e6), press: 0 });
+          stroke(g, [[x - 0.15, y - 0.05], [x, y + 0.08], [x + 0.14, y - 0.04]], { width: 0.03, load: 0.8, dry: 0.4, seed: r.int(1, 1e6) });
+        } else if (r.chance(0.02)) {
+          const x = ix + r.next(), y = iy + r.next();
+          washBlob(g, x, y, r.range(0.15, 0.35), r.range(0.1, 0.22), { pig: INK, density: 0.45, soft: 0.2, seed: r.int(1, 1e6) });
+          for (let k = 0; k < 4; k++) dot(g, x + r.gauss() * 0.4, y + r.gauss() * 0.3, r.range(0.02, 0.05), INK, 0.8, r.int(1, 1e6));
+        }
+      } else if (pagoda) {
         // wooden planks: two boards per cell, seams along the rows, joints staggered, a knot here and there
         for (let b2 = 0; b2 < 2; b2++) {
           const yy = iy + b2 * 0.5;
@@ -125,7 +191,51 @@ function paintTile(g: Painter, map: DungeonMap, style: DungeonStyle, seed: numbe
       const face: [number, number][] = [[wl.ax, y], [wl.bx, y], [wl.bx, y + fh], [wl.ax, y + fh]];
       g.reserve(() => face.forEach((q, i) => (i === 0 ? g.ctx.moveTo(q[0], q[1]) : g.ctx.lineTo(q[0], q[1]))), 1);
       g.glaze();
-      washPoly(g, face, { pig: style === 'cave' ? mixPig(INK, PIG_B, 0.4) : pagoda ? mixPig(INK, PIG_A, 0.75) : mixPig(INK, PIG_A, cistern ? 0.45 : 0.2), density: pagoda ? 0.4 : 0.3, soft: 0.05, edge: 0.3, seed: r.int(1, 1e6) });
+      washPoly(g, face, { pig: style === 'cave' ? mixPig(INK, PIG_B, 0.4) : pagoda ? mixPig(INK, PIG_A, 0.75) : ice ? mixPig(INK, PIG_A, 0.6) : atelier ? mixPig(INK, PIG_B, 0.55) : mixPig(INK, PIG_A, cistern ? 0.45 : 0.2), density: pagoda || atelier ? 0.4 : ice ? 0.26 : 0.3, soft: 0.05, edge: 0.3, seed: r.int(1, 1e6) });
+      if (ice) {
+        // a wall of ice: pale streaks running down, icicles hanging from the lip
+        for (let k = 0; k < len * 1.2; k++) {
+          const x = r.range(wl.ax + 0.1, wl.bx - 0.1);
+          g.lift();
+          g.ctx.fillStyle = `rgba(0,0,0,${r.range(0.25, 0.5)})`;
+          g.ctx.fillRect(x, y + r.range(0.05, 0.3), r.range(0.04, 0.1), r.range(0.4, 0.8));
+          g.glaze();
+        }
+        for (let x = wl.ax + r.range(0.1, 0.4); x < wl.bx - 0.1; x += r.range(0.25, 0.6)) {
+          const l = r.range(0.2, 0.65);
+          stroke(g, [[x - 0.04, y + fh], [x, y + fh - l]], { width: r.range(0.05, 0.09), pig: mixPig(INK, PIG_A, 0.5), load: 0.7, seed: r.int(1, 1e6), taperStart: 0, taperEnd: 1, press: 0 });
+        }
+      }
+      if (atelier) {
+        // lacquered posts; between them, scrolls hung on the paper walls — sketches, half done
+        for (let x = wl.ax + 0.2; x < wl.bx - 0.1; x += 1.8) {
+          stroke(g, [[x, y + 0.02], [x, y + fh - 0.05]], { width: 0.1, load: 0.95, dry: 0.3, seed: r.int(1, 1e6), press: 0 });
+          const x2 = Math.min(wl.bx - 0.15, x + 1.8);
+          if (x2 - x < 0.9) continue;
+          const cx = (x + x2) / 2;
+          const sc: [number, number][] = [[cx - 0.32, y + 0.12], [cx + 0.32, y + 0.12], [cx + 0.32, y + fh - 0.12], [cx - 0.32, y + fh - 0.12]];
+          g.lift();
+          g.ctx.fillStyle = 'rgba(0,0,0,0.8)';
+          g.ctx.beginPath();
+          sc.forEach((q, i) => (i === 0 ? g.ctx.moveTo(q[0], q[1]) : g.ctx.lineTo(q[0], q[1])));
+          g.ctx.closePath();
+          g.ctx.fill();
+          g.glaze();
+          stroke(g, [[cx - 0.38, y + fh - 0.1], [cx + 0.38, y + fh - 0.1]], { width: 0.05, load: 0.9, seed: r.int(1, 1e6), press: 0 });
+          stroke(g, [[cx - 0.36, y + 0.1], [cx + 0.36, y + 0.1]], { width: 0.04, load: 0.8, seed: r.int(1, 1e6), press: 0 });
+          const kind = r.int(0, 3);
+          if (kind === 0) stroke(g, [[cx - 0.22, y + 0.3], [cx - 0.05, y + 0.72], [cx + 0.06, y + 0.5], [cx + 0.2, y + 0.82]], { width: 0.03, load: 0.75, dry: 0.5, seed: r.int(1, 1e6), taperEnd: 0.3 });
+          else if (kind === 1) {
+            const pts: [number, number][] = [];
+            for (let k = 0; k <= 14; k++) { const a = 0.6 + (k / 14) * Math.PI * 1.5; pts.push([cx + Math.cos(a) * 0.18, y + 0.55 + Math.sin(a) * 0.2]); }
+            stroke(g, pts, { width: 0.035, load: 0.8, dry: 0.4, seed: r.int(1, 1e6), taperStart: 0.1, taperEnd: 0.5 });
+          } else if (kind === 2) {
+            stroke(g, [[cx, y + 0.85], [cx + 0.02, y + 0.3]], { width: 0.04, load: 0.8, seed: r.int(1, 1e6), taperEnd: 0.4 });
+            stroke(g, [[cx, y + 0.65], [cx - 0.16, y + 0.75]], { width: 0.025, load: 0.7, seed: r.int(1, 1e6), taperEnd: 0.6 });
+            stroke(g, [[cx, y + 0.5], [cx + 0.15, y + 0.6]], { width: 0.025, load: 0.7, seed: r.int(1, 1e6), taperEnd: 0.6 });
+          } else for (let j = 0; j < 3; j++) stroke(g, [[cx + 0.12 - j * 0.12, y + 0.85], [cx + 0.12 - j * 0.12, y + 0.4 + r.range(0, 0.2)]], { width: 0.02, load: 0.6, seed: r.int(1, 1e6), body: 0.3 });
+        }
+      }
       if (pagoda) {
         // lacquered posts, paper screens between them
         for (let x = wl.ax + 0.2; x < wl.bx - 0.1; x += 1.5) {
@@ -152,8 +262,8 @@ function paintTile(g: Painter, map: DungeonMap, style: DungeonStyle, seed: numbe
           stroke(g, [[x, y + 1.1], [x + r.gauss() * 0.03, y + 1.1 - r.range(0.3, 1.0)]], { width: 0.04, pig: mixPig(INK, PIG_A, 0.6), load: 0.7, seed: r.int(1, 1e6), taperEnd: 0.95, press: 0 });
         }
       }
-      if (pagoda) {
-        // the lacquer is done above
+      if (pagoda || ice || atelier) {
+        // their faces are done above
       } else if (style !== 'cave') {
         for (let row = 0; row < 3; row++) {
           const yy = y + 0.12 + row * 0.36;

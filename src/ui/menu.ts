@@ -65,6 +65,7 @@ const T = {
   temple: { fr: 'Temple', en: 'Temple' },
   basin: { fr: 'Grand Bassin', en: 'Great Basin' },
   pagoda: { fr: 'Pagode céleste', en: 'Sky Pagoda' },
+  heart: { fr: 'Cœur de la montagne', en: 'Heart of the Mountain' },
   legend: { fr: 'sanctuaire · camp · quête · stèle · gardien', en: 'shrine · camp · quest · stele · guardian' },
 };
 const L = (x: { fr: string; en: string }) => x[lang];
@@ -75,12 +76,12 @@ const BEAST_ORDER = (() => {
   const order = [
     'blot', 'mite', 'wisp', 'crow', 'scarecrow', 'splitter', 'totem', 'moth', 'boar', 'fox', 'brute', 'eel', 'crab', 'stag', 'bat', 'grub', 'soldier', 'lantern', 'mother', 'ram king', 'warden',
     'frog', 'goat', 'wraith', 'mantis', 'tadpole', 'kappa', 'tanuki', 'monk', 'bell', 'toad', 'queen', 'inkheron', 'faceless',
-    'yeti', 'snowfox', 'crane', 'eraser', 'snowking', 'dragon', 'hand',
+    'yeti', 'snowfox', 'crane', 'eraser', 'snowking', 'dragon', 'sketch', 'hand',
   ].filter((k) => BESTIARY[k]);
   return [...order, ...Object.keys(BESTIARY).filter((k) => !order.includes(k))];
 })();
 /** Dungeon floors with a mural, in the order the dungeons save them (save.steles holds 100 + index). */
-const FLOOR_IDS = ['cave1', 'cave2', 'temple1', 'temple2', 'basin1', 'basin2', 'pagoda1', 'pagoda2', 'pagoda3'];
+const FLOOR_IDS = ['cave1', 'cave2', 'temple1', 'temple2', 'basin1', 'basin2', 'pagoda1', 'pagoda2', 'pagoda3', 'heart1', 'heart2', 'heart3'];
 const RED: [number, number, number] = [0.76, 0.23, 0.17];
 
 export const MENU_TABS: MenuTab[] = ['map', 'journal', 'bag', 'tree', 'settings'];
@@ -483,7 +484,7 @@ export class Menu {
       notes.push({ id: 's' + i, label: title, text: rest.join('\n'), known: save.steles.includes(i) });
     });
     FLOOR_IDS.forEach((id, i) => {
-      const kind = id.replace(/\d+$/, '') as 'cave' | 'temple' | 'basin' | 'pagoda';
+      const kind = id.replace(/\d+$/, '') as 'cave' | 'temple' | 'basin' | 'pagoda' | 'heart';
       notes.push({ id: 'm' + i, label: `${L(T.mural)} · ${L(T[kind])} ${id.slice(-1)}`, text: MURALS[id] ? LT(MURALS[id]) : '', known: save.steles.includes(100 + i) });
     });
     for (const reg of Object.keys(REGION_LORE)) notes.push({ id: 'r' + reg, label: REGIONS[reg]?.name[lang] ?? reg, text: LT(REGION_LORE[reg]), known: save.regions.includes(reg) });

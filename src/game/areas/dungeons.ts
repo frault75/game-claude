@@ -15,6 +15,12 @@ import { MotherOfBlots } from '../bosses/mother';
 import { DrownedWarden } from '../bosses/warden';
 import { ToadKing, ToadPool } from '../bosses/toadKing';
 import { FacelessMonk, JadeJar } from '../bosses/facelessMonk';
+import { Sketch } from '../bosses/sketch';
+import { heartFloor, heartMarks, HeartKind, HeartCtx } from './heart';
+import { HEART_UI } from '../../i18n/heart';
+import { P3_HEART_STAIR } from '../../world/peaks';
+import { questItem } from '../items';
+import { ItemDrop, takeItem } from '../loot';
 import { T2_BASIN_SPAWN, T2_PAGODA } from '../../world/terraces';
 import { BASIN_UI, SUMMIT_UI } from '../../i18n/lore2';
 import { INKS } from '../inks';
@@ -40,7 +46,7 @@ import { MapSource, Mark } from '../../ui/mapArt';
 
 interface FloorDef {
   id: string;
-  area: 'cave' | 'temple' | 'basin' | 'pagoda';
+  area: 'cave' | 'temple' | 'basin' | 'pagoda' | 'heart';
   style: DungeonStyle;
   floor: number;
   spec: DungeonSpec;
@@ -50,9 +56,11 @@ interface FloorDef {
   up: { to: string; spawn: () => V };
   /** The floor below, if any. */
   down?: string;
-  boss?: 'mother' | 'warden' | 'toad' | 'faceless';
+  boss?: 'mother' | 'warden' | 'toad' | 'faceless' | 'sketch';
   mural: string;
   well?: boolean;
+  /** The Heart of the Mountain's own puzzles on this floor. */
+  heart?: HeartKind;
 }
 
 const FLOORS: FloorDef[] = [
@@ -111,6 +119,25 @@ const FLOORS: FloorDef[] = [
     spec: { seed: 9907, w: 68, h: 56, rooms: 6, minRoom: 8, maxRoom: 12, corridor: 3, boss: { w: 20, h: 16 } },
     enemies: ['monk', 'bell', 'wraith', 'monk', 'brute', 'lantern'],
     up: { to: 'pagoda2', spawn: () => mapOf('pagoda2').downSpawn }, boss: 'faceless', mural: 'pagoda3', well: true,
+  },
+  // Act III: the Heart of the Mountain, under the summit — down to the master's studio
+  {
+    id: 'heart1', area: 'heart', style: 'ice', floor: 1, tier: 6, heart: 'ice',
+    spec: { seed: 10301, w: 72, h: 56, rooms: 8, minRoom: 7, maxRoom: 12, corridor: 3 },
+    enemies: ['yeti', 'snowfox', 'crane', 'wraith', 'yeti', 'snowfox', 'eraser'],
+    up: { to: 'peaks', spawn: () => [P3_HEART_STAIR[0], P3_HEART_STAIR[1] - 1.8] }, down: 'heart2', mural: 'heart1', well: true,
+  },
+  {
+    id: 'heart2', area: 'heart', style: 'atelier', floor: 2, tier: 6, heart: 'gallery',
+    spec: { seed: 11407, w: 72, h: 58, rooms: 8, minRoom: 7, maxRoom: 12, corridor: 3, boss: { w: 18, h: 14 } },
+    enemies: ['monk', 'eraser', 'crane', 'wraith', 'monk', 'splitter', 'snowfox'],
+    up: { to: 'heart1', spawn: () => mapOf('heart1').downSpawn }, down: 'heart3', boss: 'sketch', mural: 'heart2', well: true,
+  },
+  {
+    id: 'heart3', area: 'heart', style: 'atelier', floor: 3, tier: 6, heart: 'studio',
+    spec: { seed: 12503, w: 64, h: 52, rooms: 5, minRoom: 7, maxRoom: 11, corridor: 3, boss: { w: 22, h: 15 } },
+    enemies: ['monk', 'eraser', 'yeti', 'crane', 'wraith'],
+    up: { to: 'heart2', spawn: () => mapOf('heart2').downSpawn }, mural: 'heart3', well: true,
   },
 ];
 
@@ -362,7 +389,7 @@ function buildFloor(def: FloorDef, room: RoomDef, b: Parameters<RoomDef['build']
   const map = mapOf(def.id);
   const caveArea = def.area === 'cave';
   w.activeRadius = 24;
-  g.lampRadius = caveArea ? 6.2 : 6.8;
+  g.lampRadius = caveArea ? 6.2 : def.area === 'heart' ? 7.2 : 6.8;
   w.onKill = (e) => onKill(g, e);
   // the floor, in tiles
   const ppu = IS_MOBILE ? 16 : 22;
@@ -378,7 +405,7 @@ function buildFloor(def: FloorDef, room: RoomDef, b: Parameters<RoomDef['build']
   w.nav = { w: map.w, h: map.h, grid: map.grid, dist: new Int16Array(map.w * map.h), t: 0 };
   // torches
   for (const [x, y] of map.torches) b.add(new Prop(A.torch, x, y, 0.25, true));
-  if (def.boss) {
+  if (def.boss || def.heart === 'studio') {
     const e = map.end;
     for (const [x, y] of [[e.x + 1.5, e.y + 1.5], [e.x + e.w - 1.5, e.y + 1.5]]) b.add(new Prop(A.torch, x, y, 0.25, true));
   }
@@ -393,7 +420,7 @@ function buildFloor(def: FloorDef, room: RoomDef, b: Parameters<RoomDef['build']
   const deepest = Math.max(1, ...map.rooms.map((o) => o.depth));
   const camps: { room: DRoom; members: Creature[] }[] = [];
   map.rooms.forEach((o, i) => {
-    if (o === map.start || (def.boss && o === map.end)) return;
+    if (o === map.start || ((def.boss || def.heart === 'studio') && o === map.end)) return;
     const n = Math.max(2, Math.min(7, Math.round((o.w * o.h) / 22)));
     const members: Creature[] = [];
     const deep = o.depth / deepest;
@@ -435,11 +462,12 @@ function buildFloor(def: FloorDef, room: RoomDef, b: Parameters<RoomDef['build']
   if (def.id === 'cave1' && save.main === STEP.findCave) setMain(g, STEP.caveDeep);
   if (def.id === 'temple1' && save.main === STEP.findTemple) setMain(g, STEP.templeDeep);
   if (def.id === 'basin1' && save.main === STEP.toad) setMain(g, STEP.basinDeep);
-  const name = caveArea ? L(UI.enterCave) : def.area === 'basin' ? L(BASIN_UI.name) : def.area === 'pagoda' ? L(SUMMIT_UI.name) : L(UI.enterTemple);
-  g.after(0.4, () => void g.story.show([name, `${L(UI.floor)} ${def.floor}`], { size: 44, y: r.uiH / 2 - 200, hold: 1.6, italic: false, stagger: 0.4 }));
+  const name = caveArea ? L(UI.enterCave) : def.area === 'basin' ? L(BASIN_UI.name) : def.area === 'pagoda' ? L(SUMMIT_UI.name) : def.area === 'heart' ? L(HEART_UI.name) : L(UI.enterTemple);
+  const sub = def.area === 'heart' ? L(HEART_UI.floors[def.floor - 1]) : `${L(UI.floor)} ${def.floor}`;
+  g.after(0.4, () => void g.story.show([name, sub], { size: 44, y: r.uiH / 2 - 200, hold: 1.6, italic: false, stagger: 0.4 }));
 
   // ---------- the guardian ----------
-  let bossE: MotherOfBlots | DrownedWarden | ToadKing | FacelessMonk | null = null;
+  let bossE: MotherOfBlots | DrownedWarden | ToadKing | FacelessMonk | Sketch | null = null;
   const e = map.end;
   const bossId = def.boss ?? 'warden';
   const ink: InkId | null = def.boss === 'mother' ? 'indigo' : def.boss === 'warden' ? 'gold' : def.boss === 'faceless' ? 'jade' : null;
@@ -453,7 +481,7 @@ function buildFloor(def: FloorDef, room: RoomDef, b: Parameters<RoomDef['build']
     for (const [px, py] of [[e.x + e.w * 0.2, e.y + e.h * 0.32], [e.x + e.w * 0.8, e.y + e.h * 0.32], [e.cx, e.y + e.h * 0.76]]) pools.push(b.add(new ToadPool(px, py, 2.0)));
   }
   const doors: [number, number, number, number][] = [];
-  if (def.boss) {
+  if (def.boss || def.heart === 'studio') {
     // corridor mouths into the guardian's room, closed during the fight
     const floor = (x: number, y: number) => x >= 0 && y >= 0 && x < map.w && y < map.h && map.grid[y * map.w + x] === 1;
     const scan = (horizontal: boolean, fixed: number, from: number, to: number, outside: number) => {
@@ -503,13 +531,19 @@ function buildFloor(def: FloorDef, room: RoomDef, b: Parameters<RoomDef['build']
   };
   if (def.boss && save.bosses.includes(bossId)) {
     spawnRelic();
-    spawnRift();
+    if (def.area !== 'heart') spawnRift();
   }
   const startBoss = () => {
     closeDoors();
     if (def.boss === 'mother') {
       bossE = b.add(new MotherOfBlots(e.cx, e.cy + 1, e));
       g.hud.showBoss(L(UI.bossMother));
+    } else if (def.boss === 'sketch') {
+      const sk = b.add(new Sketch(e.cx, e.cy + 1, e));
+      sk.onEvent = (what) => { if (what === 'enso') g.hintOnce('sketchEnso', L(HEART_UI.enso), 5); else g.hud.showHint(L(HEART_UI.learnt), 3); };
+      bossE = sk;
+      g.hud.showBoss(L(HEART_UI.boss));
+      void g.story.show([L(HEART_UI.meet)], { size: 34, y: r.uiH / 2 - 200, hold: 3 });
     } else if (def.boss === 'faceless') {
       const fm = b.add(new FacelessMonk(e.cx, e.cy - 1, e, jar!));
       fm.onErase = () => g.hud.showHint(L(SUMMIT_UI.erased), 3);
@@ -542,15 +576,25 @@ function buildFloor(def: FloorDef, room: RoomDef, b: Parameters<RoomDef['build']
       save.bosses.push(bossId);
       writeSave();
       discover(g, bossId);
-      giveXp(g, def.boss === 'mother' ? 220 : def.boss === 'toad' ? 560 : def.boss === 'faceless' ? 900 : 380);
+      giveXp(g, def.boss === 'mother' ? 220 : def.boss === 'toad' ? 560 : def.boss === 'faceless' ? 900 : def.boss === 'sketch' ? 1400 : 380);
       for (let i = 0; i < 4; i++) b.add(new Pickup(boss.x, boss.y, i % 2 ? 'ink' : 'life', i % 2 ? 10 : 2));
       if (def.boss === 'toad') for (let i = 0; i < 5; i++) b.add(new Pickup(boss.x + (i - 2) * 0.5, boss.y, 'coin', 12));
-      dropLoot(g, boss.x, boss.y, 'boss', def.boss === 'mother' ? 4 : def.boss === 'toad' ? 11 : def.boss === 'faceless' ? 14 : 8);
+      dropLoot(g, boss.x, boss.y, 'boss', def.boss === 'mother' ? 4 : def.boss === 'toad' ? 11 : def.boss === 'faceless' || def.boss === 'sketch' ? 14 : 8);
+      if (def.boss === 'sketch') {
+        // its own brush, which never touched red
+        const it = questItem('sketchBrush', 10);
+        if (it) { const d = b.add(new ItemDrop(boss.x, boss.y, it)); d.onTake = (item) => takeItem(g, item); }
+      }
       jar?.open();
       for (const pl of pools) pl.drain();
       for (const en of w.entities) if (en.team === 'enemy' && en !== boss && en.label !== 'urn') (en as Creature).onHit?.({ dmg: 999, fromX: boss.x, fromY: boss.y, kind: 'enso' });
       g.after(1.6, () => {
         openDoors();
+        if (def.boss === 'sketch') {
+          void g.story.show([L(HEART_UI.down), L(HEART_UI.brush)], { size: 34, y: r.uiH / 2 - 200, hold: 3.5, stagger: 3.6 });
+          g.after(8, () => g.hud.showHint(L(HEART_UI.stairDown), 4));
+          return;
+        }
         void g.story.show([L(def.boss === 'mother' ? UI.motherDown : def.boss === 'toad' ? BASIN_UI.toadDown : def.boss === 'faceless' ? SUMMIT_UI.down : UI.wardenDown)], { size: 38, y: r.uiH / 2 - 200, hold: def.boss === 'faceless' ? 4.5 : 3 });
         if (def.boss === 'toad') { save.sluices = [0, 1, 2]; if (save.main < STEP.toadBack) setMain(g, STEP.toadBack); }
         spawnRelic();
@@ -558,6 +602,9 @@ function buildFloor(def: FloorDef, room: RoomDef, b: Parameters<RoomDef['build']
       });
     };
   };
+  // the Heart of the Mountain's own puzzles
+  const hctx: HeartCtx | null = def.heart ? { g, w, map, add: (en) => b.add(en), doors, closeDoors, openDoors } : null;
+  if (hctx) heartFloor(def.heart!, hctx);
   w.scripts.push(() => {
     const p = w.player;
     if (bossE) {
@@ -583,14 +630,17 @@ function buildFloor(def: FloorDef, room: RoomDef, b: Parameters<RoomDef['build']
       bossE = null;
       openDoors();
       g.hud.hideBoss();
-      for (const en of w.entities) if ((en.label === 'blotlet' || en.label === 'wisp' || en.label === 'urn' || en.label === 'tadpole' || en.label === 'inkdrop' || en.label === 'shadowmonk') && !(en as Creature).home) en.destroy();
+      for (const en of w.entities) if ((en.label === 'blotlet' || en.label === 'wisp' || en.label === 'urn' || en.label === 'tadpole' || en.label === 'inkdrop' || en.label === 'shadowmonk' || en.label === 'blot' || en.label === 'splitter' || en.label === 'inkline' || en.label === 'inkring') && !(en as Creature).home) en.destroy();
       for (const pl of pools) pl.frozen = 0;
     }
+    hctx?.onRespawn?.();
   };
   // where to go: the stairs down, the guardian, or the way out
   w.scripts.push(() => {
     let target: V | null = null;
-    if (def.down) target = map.down;
+    const own = hctx?.objective?.();
+    if (own !== undefined) target = own;
+    else if (def.down) target = map.down;
     else if (!save.bosses.includes(bossId)) target = [e.cx, e.cy];
     else if (ink && !save.inks.includes(ink)) target = [e.cx, jar ? jar.y - 1.6 : e.cy + 1.5];
     else target = [e.cx, e.y + e.h - 2.6];
@@ -614,7 +664,8 @@ function floorMap(def: FloorDef, map: DungeonMap): MapSource {
     sight: 7.5,
     view: 14,
     paint(ctx) {
-      ctx.fillStyle = def.area === 'cave' ? 'rgba(96,88,80,0.34)' : def.area === 'basin' ? 'rgba(78,108,100,0.34)' : def.area === 'pagoda' ? 'rgba(150,84,64,0.34)' : 'rgba(120,104,72,0.34)';
+      ctx.fillStyle = def.area === 'cave' ? 'rgba(96,88,80,0.34)' : def.area === 'basin' ? 'rgba(78,108,100,0.34)' : def.area === 'pagoda' ? 'rgba(150,84,64,0.34)'
+        : def.style === 'ice' ? 'rgba(96,128,150,0.34)' : def.style === 'atelier' ? 'rgba(140,100,70,0.34)' : 'rgba(120,104,72,0.34)';
       for (let y = 0; y < map.h; y++) for (let x = 0; x < map.w; x++) if (map.grid[y * map.w + x] === 1) ctx.fillRect(x - 0.02, y - 0.02, 1.04, 1.04);
       ctx.strokeStyle = 'rgba(36,32,30,0.85)';
       ctx.lineWidth = 0.32;
@@ -628,6 +679,7 @@ function floorMap(def: FloorDef, map: DungeonMap): MapSource {
       if (def.well) out.push({ x: map.start.cx + 2.5, y: map.start.cy - 0.5, kind: 'basin' });
       const bossId = def.boss ?? 'warden';
       if (def.boss && !save.bosses.includes(bossId)) out.push({ x: map.end.cx, y: map.end.cy, kind: 'boss' });
+      if (def.heart) out.push(...heartMarks(def.heart, map));
       return out;
     },
   };
@@ -639,7 +691,8 @@ export function dungeonRooms(): RoomDef[] {
     const exits: RoomDef['exits'] = [
       { x: map.up[0] - 1.0, y: map.up[1] - 0.2, w: 2.0, h: 1.2, to: def.up.to, spawn: def.up.spawn() },
     ];
-    if (def.down) exits.push({ x: map.down[0] - 0.9, y: map.down[1] - 0.7, w: 1.8, h: 1.3, to: def.down });
+    // a floor with both a guardian and a stair: the stair waits behind the guardian
+    if (def.down) exits.push({ x: map.down[0] - 0.9, y: map.down[1] - 0.7, w: 1.8, h: 1.3, to: def.down, open: def.boss ? () => save.bosses.includes(def.boss!) : undefined });
     const room: RoomDef = {
       id: def.id,
       area: def.area,
@@ -649,7 +702,7 @@ export function dungeonRooms(): RoomDef[] {
       spawn: map.upSpawn,
       goal: [0, 1],
       music: def.style,
-      post: { washed: 0, night: 0, fog: 0.05, fogScale: 0.2, gloom: def.area === 'cave' ? 0.84 : 0.78, vignette: 1.3 },
+      post: { washed: 0, night: 0, fog: 0.05, fogScale: 0.2, gloom: def.area === 'cave' ? 0.84 : def.style === 'ice' ? 0.7 : 0.78, vignette: 1.3 },
       exits,
       map: () => floorMap(def, map),
       build: (b) => buildFloor(def, room, b),

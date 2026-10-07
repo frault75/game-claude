@@ -1,6 +1,7 @@
 /** The main quest: one step at a time, saved, shown top right. */
 import { save, writeSave } from './progression';
 import { MAIN, L, UI, BESTIARY } from '../i18n/lore';
+import { HEART_UI } from '../i18n/heart';
 import { lang } from '../i18n';
 import { ORCHARD_CAMPS, CAMPS } from '../world/layout';
 import { sfx } from '../audio/sfx';
@@ -57,6 +58,7 @@ export function questLine(): [string, string] {
   if (save.main === STEP.sluices) goal += ` (${save.sluices.length}/3)`;
   if (save.main === STEP.bells) goal += ` (${[0, 1, 2].filter((i) => save.perks['bell' + i]).length}/3)`;
   if (save.main === STEP.kings) goal += ` (${['sealA', 'sealB'].filter((k) => save.perks[k]).length}/2)`;
+  if (save.main === STEP.summit && save.perks.summitOpen && !save.perks.hollowDone && !save.bosses.includes('hand')) goal = L(HEART_UI.goal);
   if (save.main >= MAIN.length) {
     const beasts = Object.keys(BESTIARY).length;
     goal = lang === 'fr'
