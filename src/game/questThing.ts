@@ -6,7 +6,7 @@ import { washPoly, noisyOutline, roughen } from '../gfx/wash';
 import { stroke } from '../gfx/brush';
 import { SPRITE_PPU } from '../gfx/gen/flora';
 
-export type ThingId = 'kite' | 'root' | 'gall' | 'spring' | 'helmet' | 'doll' | 'oil' | 'tea' | 'net' | 'jadeToad';
+export type ThingId = 'kite' | 'root' | 'gall' | 'spring' | 'helmet' | 'doll' | 'oil' | 'tea' | 'net' | 'jadeToad' | 'page';
 
 const art = new Map<ThingId, { pig: Frame; red: Frame }>();
 
@@ -76,6 +76,12 @@ function paint(id: ThingId): { pig: Frame; red: Frame } {
       stroke(p, [[0, 0.1], [0, -0.02]], { width: 0.06, load: 0.9, seed: 53 });
       p.circle(0, 0.38, 0.08, INK, 0.9);
       stroke(r, [[-0.06, 0.38], [0.06, 0.38]], { width: 0.04, pig: VERMILION, load: 0.9, seed: 54 });
+      break;
+    case 'page':
+      // a torn sutra page, half its lines gone
+      washPoly(p, roughen([[-0.35, 0.1], [0.32, 0.14], [0.36, 0.95], [-0.05, 1.0], [-0.12, 0.8], [-0.34, 0.85]], 0.01, 60, 0.04), { pig: mixPig(INK, PIG_B, 0.2), density: 0.1, soft: 0.05, edge: 0.95, seed: 60 });
+      for (let k = 0; k < 4; k++) stroke(p, [[0.2 - k * 0.15, 0.85], [0.2 - k * 0.15, 0.25 + k * 0.08]], { width: 0.035, load: 0.8, dry: 0.5, seed: 61 + k });
+      stroke(r, [[0.18, 0.2], [0.26, 0.28]], { width: 0.06, pig: VERMILION, load: 0.9, seed: 66 });
       break;
   }
   const f = { pig: frameFrom(p), red: frameFrom(r) };

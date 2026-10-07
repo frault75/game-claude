@@ -7,7 +7,9 @@ import type { Game } from '../game';
 import { Entity } from '../entity';
 import { Creature } from '../enemies';
 import { Chunks } from '../../world/chunks';
-import { TERRACES, T2, T2_ENTRY, T2_PONDS, T2_STREAM, T2_STREAM_HALF, T2_BRIDGE, T2_NORTH, T2_CAMPS, T2_SHRINES, T2_SLUICES, T2_REGIONS, T2_VILLAGE, T2_PAGODA, T2_BASIN, T2_HERMIT, T2_QUEEN, T2_STAIR_LAMPS, T2_JETTY, T2_ISLAND, T2_LOTUS, T2_LAKE, t2RegionAt } from '../../world/terraces';
+import { TERRACES, T2, T2_ENTRY, T2_PONDS, T2_STREAM, T2_STREAM_HALF, T2_BRIDGE, T2_NORTH, T2_CAMPS, T2_SHRINES, T2_SLUICES, T2_REGIONS, T2_VILLAGE, T2_PAGODA, T2_BASIN, T2_HERMIT, T2_QUEEN, T2_STAIR_LAMPS, T2_JETTY, T2_ISLAND, T2_LOTUS, T2_LAKE, T2_STAIR, t2RegionAt } from '../../world/terraces';
+import { P3_ENTRY } from '../../world/peaks';
+import { BELL3_UI } from '../../i18n/lore3';
 import { t2MapSource } from '../../world/t2Map';
 import { WORLD } from '../../world/layout';
 import type { EnemyKind } from '../../world/layout';
@@ -442,6 +444,7 @@ export const terraces: RoomDef = {
     { x: 0, y: 64, w: 1.4, h: 12, to: 'overworld', spawn: [WORLD.w - 4, 62] },
     { x: T2_BASIN.x - 1.2, y: T2_BASIN.y - 1.0, w: 2.4, h: 1.6, to: 'basin1', open: () => save.main >= STEP.toad },
     { x: T2_PAGODA.x - 1.2, y: T2_PAGODA.y + 0.2, w: 2.4, h: 1.0, to: 'pagoda1', open: () => !!save.perks.pagodaOpen },
+    { x: T2_STAIR[0] - 3, y: T2_STAIR[1] - 0.6, w: 6, h: 2.6, to: 'peaks', spawn: P3_ENTRY, open: () => save.main >= STEP.act3 },
   ],
   map: (g) => t2MapSource(g),
   build(b) {
@@ -813,6 +816,16 @@ export const terraces: RoomDef = {
       if (((p.x - I.x) / I.rx) ** 2 + ((p.y - I.y) / I.ry) ** 2 < 0.55) startHeron();
     });
 
+    // ---------- the Cloud Stair (Act III) ----------
+    let stairHintT = 0;
+    w.scripts.push((dt) => {
+      stairHintT -= dt;
+      const p = w.player;
+      if (save.main >= STEP.act3 || stairHintT > 0 || Math.hypot(p.x - T2_STAIR[0], p.y - T2_STAIR[1]) > 4) return;
+      g.hud.showHint(L(BELL3_UI.stair), 3);
+      stairHintT = 10;
+    });
+
     // ---------- the pagoda doors ----------
     b.add(new PagodaDoor(T2_PAGODA.x, T2_PAGODA.y + 0.35, () => !!save.perks.pagodaOpen));
     let doorHintT = 0;
@@ -866,6 +879,7 @@ export const terraces: RoomDef = {
       else if (m === STEP.prayer) target = save.bosses.includes('inkheron') && w.entities.some((e) => e.label === 'scroll') ? [T2_ISLAND.x + 1.2, T2_ISLAND.y + 0.8] : [gong.x, gong.y];
       else if (m === STEP.pagoda) target = [T2_PAGODA.x, T2_PAGODA.y + 0.6];
       else if (m === STEP.jadeBack) target = [heron.x, heron.y];
+      else if (m === STEP.act3) target = [T2_STAIR[0], T2_STAIR[1] + 0.6];
       g.objective = target;
       const vh = r.viewH / r.zoom, vw = vh * (r.pxW / r.pxH);
       g.hud.arrowTarget = target ? [((target[0] - w.camX) / vw) * r.uiW, ((target[1] - w.camY) / vh) * r.uiH] : null;

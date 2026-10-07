@@ -39,6 +39,25 @@ export interface ArtCache {
   bigWillow: PropArt;
   torch: PropArt;
   brambles: PropArt;
+  /** Act III: pines and rocks under snow (the paper left bare on top). */
+  snowPine: PropArt[];
+  snowRock: PropArt[];
+}
+
+/** Snow on a painted tree or rock: lift the ink off the tops, leaving bare paper. */
+function snowOn(p: Painter, seed: number, cx: number, cy: number, rx: number, ry: number, n: number): void {
+  let s = seed;
+  const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+  p.lift();
+  for (let k = 0; k < n; k++) {
+    const x = cx + (rnd() - 0.5) * rx * 2, y = cy + (rnd() - 0.3) * ry * 1.6;
+    const w = rx * (0.25 + rnd() * 0.35), h = 0.08 + rnd() * 0.1;
+    p.ctx.fillStyle = `rgba(0,0,0,${(0.75 + rnd() * 0.25).toFixed(2)})`;
+    p.ctx.beginPath();
+    p.ctx.ellipse(x, y, w, h, (rnd() - 0.5) * 0.3, Math.PI, Math.PI * 2);
+    p.ctx.fill();
+  }
+  p.glaze();
 }
 
 function art(a: { pig: Painter; red?: Painter }, radius = 0): PropArt {
@@ -54,7 +73,7 @@ function tree(seed: number, sp: TreeSpecies, scale = 1): PropArt {
 
 export async function buildArtCache(mobile: boolean, progress: (t: number) => void): Promise<ArtCache> {
   const n = mobile ? 0.6 : 1;
-  const c = { plum: [], willow: [], pine: [], bamboo: [], rock: [], bigRock: [], lamp: [], hut: [], post: [], house: [], broken: [], ruinWall: [], mountains: [], stall: {} } as unknown as ArtCache;
+  const c = { plum: [], willow: [], pine: [], bamboo: [], rock: [], bigRock: [], lamp: [], hut: [], post: [], house: [], broken: [], ruinWall: [], mountains: [], stall: {}, snowPine: [], snowRock: [] } as unknown as ArtCache;
   const jobs: (() => void)[] = [];
   for (let i = 0; i < Math.round(6 * n); i++) jobs.push(() => c.plum.push(tree(7100 + i, 'plum', 0.9 + (i % 3) * 0.12)));
   for (let i = 0; i < Math.round(3 * n); i++) jobs.push(() => c.willow.push(tree(7200 + i, 'willow')));
@@ -104,6 +123,18 @@ export async function buildArtCache(mobile: boolean, progress: (t: number) => vo
     c.bigWillow = { pig: frameFrom(t.painter), radius: t.trunkRadius, crown: t.crown };
     c.torch = art(drawTorch(8061), 0.25);
     c.brambles = art(drawBrambles(8062));
+  });
+  for (let i = 0; i < Math.round(4 * n); i++) jobs.push(() => {
+    const t = drawTree(8100 + i, 'pine', 1 + (i % 2) * 0.2);
+    const cr = t.crown ?? { x: 0, y: 3.5, rx: 2, ry: 2 };
+    snowOn(t.painter, 8110 + i, cr.x, cr.y, cr.rx, cr.ry, 26);
+    c.snowPine.push({ pig: frameFrom(t.painter), radius: t.trunkRadius, crown: t.crown });
+  });
+  for (let i = 0; i < 3; i++) jobs.push(() => {
+    const size = 0.9 + i * 0.35;
+    const p = drawRock(8120 + i, size, 0);
+    snowOn(p, 8130 + i, 0, 0.75 * size, 0.85 * size, 0.35 * size, 5);
+    c.snowRock.push({ pig: frameFrom(p), radius: 0.7 + i * 0.25 });
   });
   for (let i = 0; i < jobs.length; i++) {
     jobs[i]();

@@ -4,6 +4,7 @@
  */
 import { Tadpole, Kappa, Tanuki, InkMonk, TempleBell } from '../beasts3';
 import { Moth, Eel, Crab, Stag } from '../beasts1b';
+import { Yeti, SnowFox, PaperCrane, Eraser } from '../beasts4';
 import type { RoomDef } from '../room';
 import { T2_ENTRY } from '../../world/terraces';
 import { Frog, MistGoat, MistWraith, JadeMantis } from '../beasts2';
@@ -95,6 +96,10 @@ export function makeEnemy(kind: EnemyKind, x: number, y: number): Creature {
     case 'eel': return new Eel(x, y);
     case 'crab': return new Crab(x, y);
     case 'stag': return new Stag(x, y);
+    case 'yeti': return new Yeti(x, y);
+    case 'snowfox': return new SnowFox(x, y);
+    case 'crane': return new PaperCrane(x, y);
+    case 'eraser': return new Eraser(x, y);
   }
 }
 
