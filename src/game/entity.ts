@@ -43,6 +43,8 @@ export class Entity {
   airborne = false;
   /** A guardian: while it fights near the child, the camera leans towards it. */
   camFocus = false;
+  /** Told about every loop the child closes (its outline, world units). */
+  onLoop?: (poly: [number, number][]) => void;
   sprites: Sprite[] = [];
   /** Shown in the debug overlay. */
   label = 'entity';

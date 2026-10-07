@@ -219,6 +219,7 @@ export class Game {
     this.r.scenePig.add(s.mesh);
     this.words.push({ s, t: 0 });
     this.onEnso?.(e, hits);
+    for (const ent of w.entities) if (!ent.dead) ent.onLoop?.(e.poly);
     if (hits >= 4) this.quests.event('enso4');
   }
 
