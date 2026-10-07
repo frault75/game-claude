@@ -81,6 +81,10 @@ export class Hud {
   /** Active skill buttons (bottom right, above the ink pots). */
   private skillBtns: { id: string; ring: Sprite; art: Sprite[]; key: Sprite | null; paper: Sprite; mask: Sprite; x: number; y: number }[] = [];
   skillRegions: { slot: number; x: number; y: number; r: number }[] = [];
+  /** On a touch screen: the big Attack button and its neighbours, Stroke and Ensō (UI units). */
+  touchButtons = false;
+  actionRegions: { id: 'attack' | 'stroke' | 'enso'; x: number; y: number; r: number }[] = [];
+  private actionBtns: { id: 'attack' | 'stroke' | 'enso'; r: number; ring: Sprite; glyph: Sprite; red: Sprite; paper: Sprite }[] = [];
   private skillKey = '';
   private stickRing: Sprite;
   private stickKnob: Sprite;
@@ -457,6 +461,54 @@ export class Hud {
     this.skillCool = this.skillSlot.map((k) => cool[k] ?? 0);
   }
 
+  /** The three action buttons, painted once. */
+  private ensureActionButtons(): void {
+    if (this.actionBtns.length) return;
+    const defs: { id: 'attack' | 'stroke' | 'enso'; r: number }[] = [{ id: 'attack', r: 84 }, { id: 'stroke', r: 60 }, { id: 'enso', r: 60 }];
+    for (const d of defs) {
+      const p = new Painter(140, 140, 1, -70, -70);
+      const q = new Painter(140, 140, 1, -70, -70);
+      p.glaze(); q.glaze();
+      if (d.id === 'attack') {
+        // the brush itself, slashing
+        stroke(p, [[-34, -30], [-8, -4], [30, 34]], { width: 15, load: 1, dry: 0.3, seed: 811, taperStart: 0.15, taperEnd: 0.6 });
+        stroke(p, [[-40, -36], [-30, -26]], { width: 9, load: 1, seed: 812 });
+        stroke(q, [[22, 26], [34, 38]], { width: 9, pig: VERMILION, load: 1, seed: 813, taperEnd: 0.8 });
+      } else if (d.id === 'stroke') {
+        // a dash: one long stroke and the wind behind it
+        stroke(p, [[-34, -6], [0, 2], [36, 6]], { width: 11, load: 1, dry: 0.3, seed: 821, taperStart: 0.4, taperEnd: 0.1 });
+        stroke(p, [[-38, 12], [-10, 15]], { width: 4, load: 0.7, dry: 0.6, seed: 822 });
+        stroke(p, [[-30, -20], [-6, -18]], { width: 4, load: 0.7, dry: 0.6, seed: 823 });
+        stroke(q, [[30, 5], [38, 6]], { width: 8, pig: VERMILION, load: 1, seed: 824 });
+      } else {
+        // an ensō, not quite closed
+        const pts: V2[] = [];
+        for (let k = 0; k <= 30; k++) { const a = 1.9 - (k / 30) * Math.PI * 1.8; pts.push([Math.cos(a) * 32, Math.sin(a) * 32]); }
+        stroke(p, pts, { width: 10, load: 1, dry: 0.35, seed: 831, taperStart: 0.05, taperEnd: 0.5 });
+        stroke(q, [[pts[30][0], pts[30][1]], [pts[30][0] + 6, pts[30][1] + 4]], { width: 8, pig: VERMILION, load: 1, seed: 832 });
+      }
+      const ring = new Sprite(this.potRing);
+      ring.mesh.renderOrder = LAYER.ui + 1;
+      this.r.uiPig.add(ring.mesh);
+      const glyph = new Sprite(frameFrom(p));
+      glyph.mesh.renderOrder = LAYER.ui + 2;
+      this.r.uiPig.add(glyph.mesh);
+      const red = new Sprite(frameFrom(q));
+      red.mesh.renderOrder = LAYER.ui + 2;
+      this.r.uiRed.add(red.mesh);
+      const paper = maskSprite(this.r, d.r * 2.6, d.r * 2.6, 'paper');
+      paper.mesh.renderOrder = LAYER.ui;
+      this.actionBtns.push({ id: d.id, r: d.r, ring, glyph, red, paper });
+    }
+  }
+
+  /** Where the touch cluster sits: the Attack button in the corner, the others in rings around it. */
+  private touchLayout(): { c: [number, number]; at: (ringR: number, deg: number) => [number, number] } {
+    const r = this.r;
+    const c: [number, number] = [r.uiW / 2 - 140, -r.uiH / 2 + 150];
+    return { c, at: (ringR, deg) => [c[0] + Math.cos((deg * Math.PI) / 180) * ringR, c[1] + Math.sin((deg * Math.PI) / 180) * ringR] };
+  }
+
   /** The thumb stick, in UI units (null when no thumb is down). */
   setStick(s: { bx: number; by: number; kx: number; ky: number; r: number } | null): void {
     if (s) this.stickPos = s;
@@ -637,8 +689,16 @@ export class Hud {
     this.potRegions = [];
     for (let i = 0; i < n; i++) {
       const p = this.pots[i];
-      p.x = r.uiW / 2 - 90 - (n - 1 - i) * 110;
-      p.y = -r.uiH / 2 + 90;
+      if (this.touchButtons) {
+        // beside the buttons: along the bottom when the phone lies down, above them when it stands
+        const tall = r.uiH > r.uiW * 1.2;
+        const { c } = this.touchLayout();
+        p.x = tall ? r.uiW / 2 - 80 - (n - 1 - i) * 100 : c[0] - 420 - (n - 1 - i) * 100;
+        p.y = tall ? c[1] + 370 : -r.uiH / 2 + 80;
+      } else {
+        p.x = r.uiW / 2 - 90 - (n - 1 - i) * 110;
+        p.y = -r.uiH / 2 + 90;
+      }
       const sel = p.id === this.currentInk;
       const sc = sel ? 1.15 : 0.8;
       p.fill.setPos(p.x, p.y);
@@ -713,8 +773,11 @@ export class Hud {
     const nPots = this.pots.length;
     for (let i = 0; i < this.skillBtns.length; i++) {
       const b = this.skillBtns[i];
-      b.x = r.uiW / 2 - 90 - (this.skillBtns.length - 1 - i) * 118;
-      b.y = -r.uiH / 2 + (nPots > 1 ? 220 : 110);
+      if (this.touchButtons) [b.x, b.y] = this.touchLayout().at(300, 175 - i * 30);
+      else {
+        b.x = r.uiW / 2 - 90 - (this.skillBtns.length - 1 - i) * 118;
+        b.y = -r.uiH / 2 + (nPots > 1 ? 220 : 110);
+      }
       b.ring.setPos(b.x, b.y);
       b.paper.setPos(b.x, b.y);
       b.mask.setPos(b.x, b.y);
@@ -735,8 +798,9 @@ export class Hud {
     // the gourd, left of the skills (or of the pots)
     {
       const nPotsG = this.pots.length;
-      const gx = r.uiW / 2 - 90 - this.skillBtns.length * 118 - (this.skillBtns.length ? 0 : 0);
-      const gy = -r.uiH / 2 + (nPotsG > 1 ? 220 : 110);
+      let gx = r.uiW / 2 - 90 - this.skillBtns.length * 118 - (this.skillBtns.length ? 0 : 0);
+      let gy = -r.uiH / 2 + (nPotsG > 1 ? 220 : 110);
+      if (this.touchButtons) [gx, gy] = this.touchLayout().at(178, 72);
       const vis = this.visible && !this.panelOpen;
       this.gourdS.setPos(gx, gy);
       this.gourdS.opacity = vis ? 1 : 0;
@@ -745,6 +809,26 @@ export class Hud {
       this.gourdKey?.setPos(gx - 34, gy - 40);
       if (this.gourdKey) this.gourdKey.opacity = vis ? 0.8 : 0;
       this.gourdRegion = vis ? { x: gx, y: gy, r: 56 } : { x: 0, y: 0, r: 0 };
+    }
+    // the touch buttons: Attack, Stroke, Ensō
+    this.actionRegions = [];
+    if (this.touchButtons) this.ensureActionButtons();
+    {
+      const L = this.touchLayout();
+      const vis = this.touchButtons && this.visible && !this.panelOpen;
+      for (const b of this.actionBtns) {
+        const [x, y] = b.id === 'attack' ? L.c : b.id === 'stroke' ? L.at(178, 182) : L.at(178, 128);
+        const k = b.r / 46;
+        b.ring.setPos(x, y);
+        b.ring.mesh.scale.set(k, k, 1);
+        b.paper.setPos(x, y);
+        for (const g of [b.glyph, b.red]) { g.setPos(x, y); g.mesh.scale.set(b.r / 60, b.r / 60, 1); }
+        b.ring.opacity = vis ? 0.95 : 0;
+        b.paper.opacity = vis ? 0.9 : 0;
+        b.glyph.opacity = vis ? 1 : 0;
+        b.red.opacity = vis ? 1 : 0;
+        if (vis) this.actionRegions.push({ id: b.id, x, y, r: b.r + 10 });
+      }
     }
     // the thumb stick
     const sp = this.stickPos;

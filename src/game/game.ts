@@ -546,6 +546,9 @@ export class Game {
     this.hud.setGourd(save.gourd, save.gourdMax, this.input.device !== 'touch');
     const gr = this.hud.gourdRegion;
     if (gr.r > 0) this.input.uiRegions.push({ x: gr.x, y: gr.y, r: gr.r, fn: () => this.player.drink() });
+    // the touch buttons: held while the finger stays (Attack keeps striking)
+    this.hud.touchButtons = this.input.device === 'touch';
+    for (const b of this.hud.actionRegions) this.input.uiRegions.push({ x: b.x, y: b.y, r: b.r, fn: () => {}, hold: b.id === 'attack' ? 'attack' : b.id === 'stroke' ? 'dodge' : 'enso' });
     this.showStick();
     this.hud.setCombo(w.combo, Math.max(0, w.comboT / 2.4));
     this.hud.update(dt);

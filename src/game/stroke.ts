@@ -27,6 +27,8 @@ export interface Seg {
   ribbon: Ribbon;
   seed: number;
   live: boolean; // still being drawn (dash in progress)
+  /** Part of an ensō painted by the button: only the loop acts, not each piece. */
+  quiet?: boolean;
 }
 
 export interface Enso {
@@ -144,7 +146,7 @@ export class Strokes {
       this.remove(seg);
       return null;
     }
-    this.onSegment?.(seg);
+    if (!seg.quiet) this.onSegment?.(seg);
     const n = this.segs.indexOf(seg);
     const A: V = [seg.ax, seg.ay], B: V = [seg.bx, seg.by];
     // newest-first: the loop the player just drew (only strokes of the same ink close it)

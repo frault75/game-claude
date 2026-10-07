@@ -26,19 +26,24 @@ Pushing to `main` builds and deploys to GitHub Pages (Settings → Pages → Sou
 
 ## Controls
 
-| Action | Desktop | Mobile |
-|---|---|---|
-| Walk | Left click (hold to follow the cursor), or WASD / ZQSD | Left thumb: a stick appears where you press (or tap the ground on the right) |
-| Attack a foe | Left click on it | Tap on it |
-| **Draw with ink** | Right-button drag (right click = straight stroke), or Space | Swipe on the right half of the screen |
-| Change ink | Keys 1-4, `Q`, mouse wheel | Ink pots (bottom right) |
-| Talk / read a stele | Click on them, or `E` nearby | Tap on them |
-| Read on in a dialogue | Click, `Enter`, `Space` or `E` | Tap anywhere |
-| Bag (equipment) | `I`, or the bundle under the experience line | Tap the bundle (top left) |
-| Tree of Strokes (skills) | `C`, or the little tree next to the bag | Tap the tree (top left) |
-| Active skills | `R`, `T`, `G` | Round buttons above the ink pots |
-| Menu (map, journal, bag, tree, settings) | `Esc`; `M` map, `J` journal | The scroll button (top left); tap the minimap for the map |
-| Drink from the gourd (heal) | `H` | The gourd button, left of the skills |
+Two play styles, chosen in **Settings → Play style**:
+
+- **Action** (the default; any device): move, and three buttons. **Attack** lunges at the nearest foe in front and strikes a three-blow combo (hold it to keep striking); next to someone with nothing to fight, it talks. **Stroke** is a dash that lays the current ink behind the child (a dodge, a bridge over the void, a hedge of jade, a line of lightning…). **Ensō** paints a loop of the current ink round the child (everything inside bursts, freezes, is struck or healed; stand by a stone, a bell or a page and press it).
+- **Brush**: the drawn controls of the first versions: click or tap to walk and strike, draw strokes and loops freely with the right mouse button or a finger on the right half of the screen. The buttons work too.
+
+| Action | Keyboard & mouse | Phone | Gamepad |
+|---|---|---|---|
+| Walk | WASD / ZQSD | Left thumb: a stick appears where you press | Left stick |
+| Attack (hold: combo) | Left click (towards the mouse) | The big brush button | X |
+| Stroke (dash laying ink) | Right click or Space | The dash button | A or the triggers |
+| Ensō (loop round the child) | `F` or middle click | The circle button | Y |
+| Change ink | Keys 1-4, `Q`, mouse wheel | Ink pots | LB / RB |
+| Talk / read a stele | `E` nearby, or Attack with nothing to fight | Tap on them, or the Attack button | Y nearby, or X |
+| Read on in a dialogue | Click, `Enter`, `Space` or `E` | Tap anywhere | A |
+| Bag · Tree of Strokes | `I` · `C` | The bundle · the little tree (top left) | Start → menu |
+| Active skills | `R`, `T`, `G` | Round buttons around the Attack button | D-pad up, right, left |
+| Menu (map, journal, bag, tree, settings) | `Esc`; `M` map, `J` journal | The scroll button (top left); tap the minimap | Start · B back |
+| Drink from the gourd (heal) | `H` | The gourd button | D-pad down |
 
 Inks: vermilion (run along the stroke and cut; loops burst), indigo (freezes; loops hold everything still), gold (lightning along the stroke; loops become a storm).
 

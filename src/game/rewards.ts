@@ -1,4 +1,5 @@
 /** Experience, levels, loot and new inks: shared by the open world and the dungeons. */
+import { loopHint, inkHint } from './controls';
 import type { Game } from './game';
 import type { Entity } from './entity';
 import type { Creature } from './enemies';
@@ -73,7 +74,7 @@ export function onKill(g: Game, e: Entity): void {
   if (gr.pigKill > 0 && hasColour()) p.pigment = Math.min(p.pigmentMax, p.pigment + gr.pigKill);
   if (!g.flags.has('drawHint')) {
     g.flags.add('drawHint');
-    g.after(1.5, () => g.hud.showHint(g.input.device === 'touch' ? t('owHintDraw') : t('hintEnso'), 6));
+    g.after(1.5, () => g.hud.showHint(loopHint(g), 6));
   }
 }
 
@@ -90,7 +91,7 @@ export function unlockInk(g: Game, id: InkId): void {
   g.player.pigment = g.player.pigmentMax;
   // a sheet of its own: the colour blooms, its name, what it does
   g.cine.play(inkShots(id), () => {
-    g.after(0.6, () => g.hud.showHint(g.input.device === 'touch' ? t('inkSwitchTouch') : t('inkSwitchKbm'), 6));
+    g.after(0.6, () => g.hud.showHint(inkHint(g), 6));
   });
   void r; void def;
   g.player.selectInk(id);

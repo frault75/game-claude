@@ -193,7 +193,7 @@ export const BELL3_UI = {
   ] as Tr[],
   rings: { fr: 'sonne. La page se tend.', en: 'rings. The page grows taut.' },
   fake: { fr: 'Une illusion ! Elle n’avait pas d’ombre…', en: 'An illusion! It had no shadow…' },
-  erased: { fr: 'La cloche est effacée : il n’en reste qu’un contour. Repeins-la : trace une boucle autour.', en: 'The bell has been erased: only an outline is left. Paint it again: draw a loop around it.' },
+  erased: { fr: 'La cloche est effacée : il n’en reste qu’un contour. Repeins-la : un Ensō autour d’elle (ou une boucle tracée).', en: 'The bell has been erased: only an outline is left. Paint it again: an Ensō round it (or a drawn loop).' },
   repainted: { fr: 'La cloche revient sous l’encre.', en: 'The bell comes back under the ink.' },
   silent: { fr: 'Une cloche muette, couverte de givre.', en: 'A silent bell, covered in frost.' },
   stair: { fr: 'L’escalier se perd dans les nuages. Pas encore.', en: 'The stair vanishes into the clouds. Not yet.' },

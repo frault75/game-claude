@@ -2,6 +2,7 @@
  * The open world: Willow Hamlet and its people, the orchard, the river and the old bridge,
  * the Plum Plain with its camps and shrines, the Ram King's stone circle, the ways down into the cave and the temple.
  */
+import { moveHint } from '../controls';
 import { Tadpole, Kappa, Tanuki, InkMonk, TempleBell } from '../beasts3';
 import { Moth, Eel, Crab, Stag } from '../beasts1b';
 import { Yeti, SnowFox, PaperCrane, Eraser } from '../beasts4';
@@ -641,8 +642,8 @@ export const overworld: RoomDef = {
       g.flags.add('owIntro');
       if (save.main === STEP.meetWillow) {
         g.after(0.5, () => void g.story.show([t('owTitle'), t('owSub')], { size: 46, y: r.uiH / 2 - 230, hold: 2, italic: false, stagger: 0.6 }));
-        g.after(1.5, () => g.hud.showHint(g.input.device === 'touch' ? t('owHintMove') : t('owHintMoveKbm'), 7));
-        if (g.input.device === 'touch') g.after(10, () => g.hud.showHint(t('owHintHold'), 5));
+        g.after(1.5, () => g.hud.showHint(moveHint(g), 7));
+        if (g.input.device === 'touch' && !g.input.actionStyle) g.after(10, () => g.hud.showHint(t('owHintHold'), 5));
       }
     }
   },
