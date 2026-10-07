@@ -1,6 +1,6 @@
 /** Sound effects. Every wind-up has a rising sound; every impact a dry brush crack. */
 import { audio } from './engine';
-import { pluck, bell, woodblock, drum, mtof } from './instruments';
+import { pluck, bell, woodblock, drum, flute, mtof } from './instruments';
 
 function drumHit(t: number, f: number, vel: number): void {
   drum(f, t, { vel, dest: audio.sfx });
@@ -149,6 +149,13 @@ export const sfx = {
     const t = now();
     for (let i = 0; i < 10; i++) noiseBurst(t + i * 0.04 + Math.random() * 0.03, 0.04, { f0: 2500 + Math.random() * 3000, q: 3, vol: 0.08 });
     noiseBurst(t, 0.5, { type: 'lowpass', f0: 600, vol: 0.12, attack: 0.1 });
+  },
+  /** The reed flute: the first prayer, a slow song the lotus remember. */
+  song(): void {
+    const t = now();
+    const notes = [74, 76, 79, 81, 79, 76, 74, 71, 74, 79];
+    notes.forEach((n, i) => flute(mtof(n), t + i * 0.42, i === notes.length - 1 ? 1.6 : 0.55, { vel: 0.5, dest: audio.sfx, scoop: i % 3 === 0 }));
+    bell(mtof(62), t + notes.length * 0.42, { vel: 0.5, decay: 4, dest: audio.sfx });
   },
   /** The dash-stroke: a fast brush swish whose length follows the stroke. */
   trait(dist = 3): void {

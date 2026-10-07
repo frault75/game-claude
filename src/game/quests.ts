@@ -30,6 +30,9 @@ export const STEP = {
   queen: 19,
   yuBack: 20,
   lotus: 21,
+  heronBoss: 22,
+  prayer: 23,
+  pagoda: 24,
 } as const;
 
 /** Title and goal of the current step (with progress where it counts). */

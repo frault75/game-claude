@@ -245,3 +245,95 @@ export function buildQueenFrames(seed: number): Layered {
   }
   return { pig, red };
 }
+
+/**
+ * The Ink Heron, faces +x: [stand, stab, wings, fly, gaze, hurt]; red layer: her eye (it burns
+ * when she stares) and the tip of her crest.
+ */
+export function buildHeronFrames(seed: number): Layered {
+  const pig: Frame[] = [], red: Frame[] = [];
+  const plume = mixPig(INK, PIG_B, 0.25);
+  for (let i = 0; i < 6; i++) {
+    const p = new Painter(8, 8, SPRITE_PPU / 1.6, -4, -0.6);
+    const q = new Painter(8, 8, SPRITE_PPU / 2.4, -4, -0.6);
+    q.glaze();
+    const r = new Rng(seed + i * 13);
+    p.glaze();
+    const fly = i === 3;
+    const legTop = fly ? 2.2 : 2.3;
+    // long legs (trailing behind in flight)
+    if (fly) {
+      stroke(p, [[-0.3, legTop], [-1.4, legTop - 0.6], [-2.4, legTop - 0.9]], { width: 0.07, load: 1, seed: r.int(1, 1e6), taperEnd: 0.4 });
+      stroke(p, [[-0.1, legTop], [-1.2, legTop - 0.8], [-2.2, legTop - 1.2]], { width: 0.07, load: 1, seed: r.int(1, 1e6), taperEnd: 0.4 });
+    } else {
+      stroke(p, [[-0.15, legTop], [-0.25, 1.2], [-0.2, 0]], { width: 0.08, load: 1, seed: r.int(1, 1e6), taperEnd: 0.2 });
+      stroke(p, [[0.15, legTop], [0.3, 1.2], [0.25, 0]], { width: 0.08, load: 1, seed: r.int(1, 1e6), taperEnd: 0.2 });
+      for (const fx of [-0.2, 0.25]) stroke(p, [[fx - 0.3, 0.02], [fx + 0.35, 0.0]], { width: 0.05, load: 0.9, seed: r.int(1, 1e6) });
+    }
+    // the body: a long teardrop of grey wash
+    const by = fly ? 2.9 : 3.0;
+    const bodyPts: V2[] = [];
+    for (let k = 0; k < 28; k++) {
+      const a = (k / 28) * Math.PI * 2;
+      const back = Math.cos(a) < 0 ? 1.45 : 1.0;
+      bodyPts.push([-0.2 + Math.cos(a) * back, by + Math.sin(a) * 0.5 * (Math.cos(a) < 0 ? 0.85 : 1) - (Math.cos(a) < -0.5 ? 0.12 : 0)]);
+    }
+    washPoly(p, roughen(bodyPts, 0.02, seed + i, 0.04), { pig: plume, density: 0.55, soft: 0.1, edge: 0.9, seed: seed + i, blooms: 1 });
+    stroke(p, bodyPts.slice(2, 15), { width: 0.06, load: 0.7, dry: 0.5, seed: seed + 90 + i, taperStart: 0.2, taperEnd: 0.3 });
+    // trailing plumes of the tail
+    for (let k = 0; k < 4; k++) stroke(p, [[-1.2, by + 0.05 - k * 0.1], [-2.0 - k * 0.15, by - 0.3 - k * 0.18]], { width: 0.06, pig: plume, load: 0.7, dry: 0.5, seed: r.int(1, 1e6), taperEnd: 0.95 });
+    // wings
+    if (i === 2 || fly) {
+      for (const s of [1, -1]) {
+        const up = fly ? 1 : 0.4;
+        const wing: V2[] = [[-0.3, by + 0.2], [-1.2, by + 1.3 * up + (s > 0 ? 0.6 : 0)], [-2.8, by + 1.9 * up + (s > 0 ? 0.9 : 0.2)], [-3.4, by + 1.1 * up], [-1.6, by + 0.3]];
+        washPoly(p, roughen(wing, 0.03, seed + 40 + s + i, 0.08), { pig: s > 0 ? plume : mixPig(INK, PIG_B, 0.5), density: s > 0 ? 0.45 : 0.3, soft: 0.2, edge: 0.8, seed: seed + 40 + s });
+        for (let k = 0; k < 5; k++) stroke(p, [[-1.4 - k * 0.38, by + (1.0 + k * 0.18) * up], [-1.7 - k * 0.42, by + (0.5 + k * 0.1) * up]], { width: 0.05, load: 0.8, dry: 0.5, seed: r.int(1, 1e6), taperEnd: 0.9 });
+      }
+    } else {
+      stroke(p, [[-0.9, by + 0.35], [0.0, by + 0.15], [0.6, by + 0.3]], { width: 0.05, load: 0.7, dry: 0.5, seed: r.int(1, 1e6) });
+    }
+    // the neck and head
+    let neck: V2[], head: [number, number], beak = 0.9, beakA = 0;
+    if (i === 1) { neck = [[0.7, by + 0.2], [1.6, by + 0.5], [2.6, by + 0.4]]; head = [2.75, by + 0.4]; beak = 1.3; beakA = -0.15; }
+    else if (i === 4) { neck = [[0.7, by + 0.3], [0.85, by + 1.3], [0.55, by + 2.1], [0.85, by + 2.7]]; head = [0.95, by + 2.75]; beakA = 0.2; }
+    else if (i === 5) { neck = [[0.7, by + 0.2], [1.1, by + 0.6], [1.3, by + 0.2], [1.4, by - 0.3]]; head = [1.45, by - 0.35]; beakA = -1.1; }
+    else if (fly) { neck = [[0.7, by + 0.2], [1.3, by + 0.45], [1.8, by + 0.5]]; head = [1.9, by + 0.5]; }
+    else { neck = [[0.7, by + 0.3], [1.1, by + 1.0], [0.7, by + 1.6], [1.0, by + 2.2]]; head = [1.1, by + 2.25]; }
+    stroke(p, neck, { width: 0.2, pig: plume, load: 0.85, seed: r.int(1, 1e6), taperStart: 0.1, taperEnd: 0.1 });
+    p.circle(head[0], head[1], 0.2, plume, 0.85);
+    const bx = Math.cos(beakA), byy = Math.sin(beakA);
+    washPoly(p, [[head[0] + 0.12, head[1] + 0.07], [head[0] + 0.12 + bx * beak, head[1] + byy * beak], [head[0] + 0.12, head[1] - 0.07]], { pig: INK, density: 0.95, soft: 0.05, seed: seed + 60 + i });
+    // the crest: two long black plumes
+    for (let k = 0; k < 2; k++) stroke(p, [[head[0] - 0.05, head[1] + 0.12], [head[0] - 0.6 - k * 0.2, head[1] + 0.35 + k * 0.1], [head[0] - 1.1 - k * 0.3, head[1] + 0.3 + k * 0.15]], { width: 0.05, load: 1, seed: r.int(1, 1e6), taperEnd: 0.95 });
+    stroke(q, [[head[0] - 0.9, head[1] + 0.32], [head[0] - 1.15, head[1] + 0.32]], { width: 0.06, pig: VERMILION, load: 0.9, seed: r.int(1, 1e6), taperEnd: 0.8 });
+    // the eye: it burns when she stares
+    eyes(p, [[head[0] + 0.05, head[1] + 0.04, 0.05, 0.05]]);
+    q.circle(head[0] + 0.05, head[1] + 0.04, i === 4 ? 0.16 : 0.07, VERMILION, 1);
+    if (i === 4) q.dab(head[0] + 0.05, head[1] + 0.04, 0.45, VERMILION, 0.5, 0.2);
+    pig.push(frameFrom(p));
+    red.push(frameFrom(q));
+  }
+  return { pig, red };
+}
+
+/** A lotus pad floating on the lake, with or without its flower. */
+export function buildLotusFrames(seed: number): Frame[] {
+  const out: Frame[] = [];
+  for (let i = 0; i < 3; i++) {
+    const p = new Painter(2.2, 1.6, SPRITE_PPU / 2, -1.1, -0.8);
+    const r = new Rng(seed + i);
+    p.glaze();
+    const pad: V2[] = [];
+    const notch = r.range(0, Math.PI * 2);
+    for (let k = 0; k <= 26; k++) {
+      const a = notch + 0.25 + (k / 26) * (Math.PI * 2 - 0.5);
+      pad.push([Math.cos(a) * 0.85, Math.sin(a) * 0.5]);
+    }
+    pad.push([0, 0]);
+    washPoly(p, roughen(pad, 0.01, seed + i, 0.03), { pig: mixPig(INK, PIG_A, 0.75), density: 0.42, soft: 0.1, edge: 0.9, seed: seed + i });
+    for (let k = 0; k < 6; k++) { const a = (k / 6) * Math.PI * 2; stroke(p, [[0, 0], [Math.cos(a) * 0.7, Math.sin(a) * 0.4]], { width: 0.025, load: 0.45, dry: 0.6, seed: r.int(1, 1e6) }); }
+    out.push(frameFrom(p));
+  }
+  return out;
+}

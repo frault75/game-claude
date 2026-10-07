@@ -196,3 +196,37 @@ export const LAMP_UI = {
   lit: { fr: 'La lanterne s’allume.', en: 'The lantern lights up.' },
   cold: { fr: 'Une lanterne de pierre, froide. Il faudrait la foudre pour l’allumer.', en: 'A stone lantern, cold. It would take lightning to light it.' },
 };
+
+export const LOTUS_UI = {
+  jetty: { fr: 'Un vieux ponton. Sous l’eau noire, quelque chose de vert attend.', en: 'An old jetty. Under the black water, something green is waiting.' },
+  play: { fr: 'Jouer de la flûte', en: 'Play the flute' },
+  open: { fr: 'Les lotus se souviennent du chant. Un chemin de feuilles s’ouvre jusqu’à l’île.', en: 'The lotus remember the song. A path of leaves opens to the island.' },
+  boss: { fr: 'Le Héron d’encre', en: 'The Ink Heron' },
+  gazeHint: { fr: 'Son regard brûle ! Trace un trait entre elle et toi pour l’arrêter.', en: 'Her gaze burns! Draw a stroke between her and you to stop it.' },
+  dazzled: { fr: 'Elle a fixé ton encre trop longtemps : éblouie !', en: 'She stared into your ink too long: dazzled!' },
+  down: { fr: 'Le Héron d’encre s’effondre dans les roseaux. Dans son nid, un rouleau scellé de rouge.', en: 'The Ink Heron collapses into the reeds. In her nest, a scroll sealed in red.' },
+  scroll: { fr: 'La prière du lac', en: 'The Prayer of the Lake' },
+  scrollText: {
+    fr: 'Le rouleau est vide. Seulement, quand on le tient, on a envie de respirer lentement — inspirer comme l’eau qui monte, expirer comme l’eau qui se retire. C’est peut-être ça, la prière.',
+    en: 'The scroll is blank. Only, holding it, you want to breathe slowly — in like water rising, out like water receding. Perhaps that is the prayer.',
+  },
+};
+
+export const GONG_PRAYER: TrList = {
+  fr: [
+    'La prière du lac… Le rouleau est vide, bien sûr. Maître Yu avait raison : ce ne sont pas des mots.',
+    'Respire avec moi. Inspire comme l’eau qui monte… expire comme l’eau qui se retire.',
+    'Écoute. Les verrous. Trente ans que je n’avais pas entendu ce bruit.',
+  ],
+  en: [
+    'The prayer of the lake… The scroll is blank, of course. Master Yu was right: they are not words.',
+    'Breathe with me. In like water rising… out like water receding.',
+    'Listen. The bolts. Thirty years since I heard that sound.',
+  ],
+};
+
+export const PAGODA_UI = {
+  opened: { fr: 'Les portes de la Pagode du Ciel s’ouvrent dans un souffle de poussière et d’encens.', en: 'The doors of the Sky Pagoda open in a breath of dust and incense.' },
+  soon: { fr: 'Les portes sont ouvertes. Un escalier monte dans l’ombre… (l’ascension arrive bientôt)', en: 'The doors stand open. A stair climbs into the dark… (the climb is coming soon)' },
+  shut: { fr: 'Les portes de la pagode sont scellées de l’intérieur.', en: 'The pagoda doors are sealed from within.' },
+};

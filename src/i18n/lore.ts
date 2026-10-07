@@ -304,7 +304,10 @@ export const MAIN: QuestStep[] = [
   { title: { fr: 'L’ermite des bambous', en: 'The Hermit of the Bamboo' }, goal: { fr: 'Trouve Maître Yu, au fond de la Bambouseraie (est)', en: 'Find Master Yu, deep in the Bamboo Grove (east)' } },
   { title: { fr: 'La Reine des mantes', en: 'The Mantis Queen' }, goal: { fr: 'Abats la Reine des mantes, au cœur de la Bambouseraie', en: 'Slay the Mantis Queen, in the heart of the Bamboo Grove' } },
   { title: { fr: 'La Reine des mantes', en: 'The Mantis Queen' }, goal: { fr: 'Retourne voir Maître Yu', en: 'Return to Master Yu' } },
-  { title: { fr: 'La flûte de roseau', en: 'The Reed Flute' }, goal: { fr: 'Joue de la flûte sur le ponton du lac (Acte II, suite à venir)', en: 'Play the flute on the lake jetty (Act II continues soon)' } },
+  { title: { fr: 'La flûte de roseau', en: 'The Reed Flute' }, goal: { fr: 'Joue de la flûte sur le ponton, à l’ouest du lac', en: 'Play the flute on the jetty, west of the lake' } },
+  { title: { fr: 'Le Héron d’encre', en: 'The Ink Heron' }, goal: { fr: 'Suis le chemin de lotus jusqu’à l’île du Héron d’encre', en: 'Follow the lotus path to the Ink Heron’s island' } },
+  { title: { fr: 'La prière du lac', en: 'The Prayer of the Lake' }, goal: { fr: 'Porte la prière du lac à Frère Gong, devant la pagode', en: 'Bring the Prayer of the Lake to Brother Gong, before the pagoda' } },
+  { title: { fr: 'La Pagode du Ciel', en: 'The Sky Pagoda' }, goal: { fr: 'Les portes sont ouvertes… (l’ascension arrive bientôt)', en: 'The doors stand open… (the climb is coming soon)' } },
 ];
 
 export const UI = {
@@ -511,6 +514,13 @@ export const BESTIARY: Record<string, BeastLore> = {
     text: {
       fr: 'Autrefois, un crapaud de jade à trois pattes : il buvait la pluie de trop et rendait celle qui manquait. L’orage l’a rempli d’encre, et il n’a plus jamais voulu rendre. Dans l’eau, il guérit ; l’or l’en chasse, l’indigo l’y enferme.',
       en: 'Once a three-legged jade toad: he drank the rain that was too much and gave back what was missing. The storm filled him with ink, and he never wanted to give back again. In the water he heals; gold drives him out, indigo locks him in.',
+    },
+  },
+  inkheron: {
+    name: { fr: 'Le Héron d’encre', en: 'The Ink Heron' }, where: { fr: 'L’île du Lac aux Lotus', en: 'The island of the Lotus Lake' },
+    text: {
+      fr: 'Les moines lui avaient confié la prière du lac : un héron blanc, qui pêchait les reflets plutôt que les poissons. L’orage l’a noircie jusqu’aux yeux. Son regard brûle en ligne droite ; un trait d’encre frais l’arrête, et si elle fixe trop longtemps ta propre encre, elle en est éblouie.',
+      en: 'The monks entrusted her with the prayer of the lake: a white heron, who fished for reflections rather than fish. The storm blackened her to the eyes. Her gaze burns in a straight line; a fresh stroke of ink stops it, and if she stares too long into your own ink, she is dazzled.',
     },
   },
   queen: {

@@ -4,7 +4,7 @@ import type { Npc } from '../game/npc';
 import { save } from '../game/progression';
 import { lang } from '../i18n';
 import { MapSource, Mark, blob, polyline } from '../ui/mapArt';
-import { T2, T2_NORTH, T2_ROADS, T2_PONDS, T2_STREAM, T2_STREAM_HALF, T2_BRIDGE, T2_FIXED, T2_CAMPS, T2_SHRINES, T2_SLUICES, T2_REGIONS, T2_VILLAGE, T2_LAKE, T2_HILL, T2_PAGODA, T2_BASIN, T2_QUEEN, T2_STAIR_LAMPS, T2_JETTY, TERRACES } from './terraces';
+import { T2, T2_NORTH, T2_ROADS, T2_PONDS, T2_STREAM, T2_STREAM_HALF, T2_BRIDGE, T2_FIXED, T2_CAMPS, T2_SHRINES, T2_SLUICES, T2_REGIONS, T2_VILLAGE, T2_LAKE, T2_HILL, T2_PAGODA, T2_BASIN, T2_QUEEN, T2_STAIR_LAMPS, T2_JETTY, T2_ISLAND, T2_LOTUS, TERRACES } from './terraces';
 
 export function t2MapSource(g: Game): MapSource {
   return {
@@ -51,6 +51,16 @@ export function t2MapSource(g: Game): MapSource {
         ctx.ellipse(p.x, p.y, p.rx, p.ry, 0, 0, Math.PI * 2);
         ctx.fill();
       }
+      // the island, and the lotus path once the flute has raised it
+      ctx.fillStyle = 'rgba(214,204,176,0.95)';
+      ctx.beginPath();
+      ctx.ellipse(T2_ISLAND.x, T2_ISLAND.y, T2_ISLAND.rx, T2_ISLAND.ry, 0, 0, Math.PI * 2);
+      ctx.fill();
+      if (save.perks.lotus) {
+        ctx.fillStyle = 'rgba(110,150,96,0.9)';
+        const [ax, ay] = T2_LOTUS.a, [bx, by] = T2_LOTUS.b;
+        for (let k = 0; k <= 10; k++) { ctx.beginPath(); ctx.arc(ax + ((bx - ax) * k) / 10, ay + ((by - ay) * k) / 10, 0.7, 0, Math.PI * 2); ctx.fill(); }
+      }
       ctx.fillStyle = 'rgba(200,120,150,0.55)';
       for (let i = 0; i < 24; i++) { const a = i * 0.7; ctx.beginPath(); ctx.arc(T2_LAKE.x + Math.cos(a) * T2_LAKE.rx * 0.75, T2_LAKE.y + Math.sin(a) * T2_LAKE.ry * 0.75, 0.5, 0, Math.PI * 2); ctx.fill(); }
       const stream = T2_STREAM.map((s) => [s.x, s.y] as [number, number]);
@@ -89,7 +99,8 @@ export function t2MapSource(g: Game): MapSource {
       out.push({ x: T2_BASIN.x, y: T2_BASIN.y, kind: save.main >= 15 ? 'down' : 'basin' });
       if (!save.bosses.includes('queen') && save.main >= 19) out.push({ x: T2_QUEEN.x, y: T2_QUEEN.y, kind: 'boss' });
       if (save.quests.lanterns && !save.quests.lanterns.done) for (const [x, y] of T2_STAIR_LAMPS) out.push({ x, y, kind: 'side' });
-      if (save.main >= 21) out.push({ x: T2_JETTY[0], y: T2_JETTY[1], kind: 'goal' });
+      if (save.main === 21) out.push({ x: T2_JETTY[0], y: T2_JETTY[1], kind: 'goal' });
+      if (save.main >= 22 && !save.bosses.includes('inkheron')) out.push({ x: T2_ISLAND.x, y: T2_ISLAND.y, kind: 'boss' });
       out.push({ x: 1, y: 70, kind: 'door' });
       for (const e of g.world.entities) {
         if (e.label !== 'npc' || e.dead) continue;

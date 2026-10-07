@@ -33,6 +33,9 @@ export const T2_DEN = { x: 190, y: 60 };
 export const T2_STAIR_LAMPS: V[] = [[97, 110], [103, 110], [97, 124], [103, 124]];
 /** The jetty on the lake's west shore. */
 export const T2_JETTY: V = [139, 30];
+/** The Ink Heron's island in the Lotus Lake, and the lotus path the flute raises to it. */
+export const T2_ISLAND = { x: 163, y: 27, rx: 7, ry: 4.8 };
+export const T2_LOTUS: { a: V; b: V; half: number } = { a: [142.4, 29.8], b: [156.8, 27.6], half: 1.15 };
 /** Where the pass meets Act I's valley. */
 export const T2_ENTRY: V = [5, 70];
 
@@ -345,6 +348,37 @@ export const TERRACES: Land = {
         stroke(g, pts, { width: 0.03, load: 0.3, dry: 0.8, seed: 2820 + k, press: 0, taperStart: 0.05, taperEnd: 0.05 });
       }
       for (const [dx, dy, rr] of [[-1.8, 0, 0.45], [0.6, 0.3, 0.3], [1.9, -0.2, 0.2]] as [number, number, number][]) washPoly(g, noisyOutline(cx + dx, cy + dy, rr, rr * 0.7, 0.2, 2830 + rr * 10), { pig: INK, density: 0.5, soft: 0.1, edge: 0.7, seed: 2830 });
+    }
+    // the Ink Heron's island: bare earth in the black water, reeds, her nest
+    if (near(T2_ISLAND.x, T2_ISLAND.y, T2_ISLAND.rx + 1)) {
+      const I = T2_ISLAND;
+      const o = noisyOutline(I.x, I.y, I.rx, I.ry, 0.1, 2861);
+      g.lift();
+      g.ctx.fillStyle = 'rgba(0,0,0,1)';
+      g.ctx.beginPath();
+      o.forEach((q, i) => (i === 0 ? g.ctx.moveTo(q[0], q[1]) : g.ctx.lineTo(q[0], q[1])));
+      g.ctx.closePath();
+      g.ctx.fill();
+      g.glaze();
+      washPoly(g, o, { pig: mixPig(INK, PIG_B, 0.5), density: 0.09, soft: 0.5, seed: 2862 });
+      const n = o.length;
+      stroke(g, o.slice(Math.floor(n * 0.02), Math.floor(n * 0.52)), { width: 0.16, load: 0.85, dry: 0.5, seed: 2863, taperStart: 0.05, taperEnd: 0.1 });
+      stroke(g, o.slice(Math.floor(n * 0.5)).concat([o[0]]), { width: 0.08, load: 0.5, dry: 0.6, seed: 2864, taperStart: 0.05, taperEnd: 0.1 });
+      const r = new Rng(2865);
+      for (let i = 0; i < 26; i++) {
+        const q = o[r.int(0, n - 1)];
+        const x = I.x + (q[0] - I.x) * r.range(0.8, 0.95), y = I.y + (q[1] - I.y) * r.range(0.8, 0.95);
+        if (r.chance(0.5)) stampAt(g, st.stones[r.int(0, st.stones.length - 1)], x, y, r.chance(0.5), 0.8);
+        else stampAt(g, st.tufts[r.int(0, st.tufts.length - 1)], x, y, r.chance(0.5), 0.8);
+      }
+      // the nest: a ring of broken reeds, and the ink she brought back
+      washBlob(g, I.x + 1.2, I.y + 0.8, 1.6, 0.9, { pig: INK, density: 0.22, soft: 0.4, seed: 2866 });
+      for (let k = 0; k < 30; k++) {
+        const a = r.range(0, Math.PI * 2), d = r.range(1.1, 1.8);
+        const x = I.x + 1.2 + Math.cos(a) * d, y = I.y + 0.8 + Math.sin(a) * d * 0.55;
+        const b = a + Math.PI / 2 + r.gauss() * 0.4, l = r.range(0.4, 0.9);
+        stroke(g, [[x - Math.cos(b) * l / 2, y - Math.sin(b) * l * 0.3], [x + Math.cos(b) * l / 2, y + Math.sin(b) * l * 0.3]], { width: 0.04, load: 0.7, dry: 0.5, seed: r.int(1, 1e6), press: 0 });
+      }
     }
     // the jetty: planks out over the water
     if (near(T2_JETTY[0], T2_JETTY[1], 4)) {
