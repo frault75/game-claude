@@ -1,4 +1,4 @@
-/** Player preferences, kept apart from the save: volumes, screen shake, the minimap. */
+/** Player preferences, kept apart from the save: volumes, screen shake, the minimap, the play style. */
 import { audio } from '../audio/engine';
 
 export interface Settings {
@@ -6,11 +6,13 @@ export interface Settings {
   sfx: number;
   shake: boolean;
   minimap: boolean;
+  /** 'action': move + Attack, Stroke and Ensō buttons (any device). 'brush': strokes and loops drawn freely. */
+  style: 'action' | 'brush';
 }
 
 const KEY = 'trait.settings.v1';
 
-export const settings: Settings = { music: 0.7, sfx: 0.85, shake: true, minimap: true };
+export const settings: Settings = { music: 0.7, sfx: 0.85, shake: true, minimap: true, style: 'action' };
 
 export function loadSettings(): void {
   try {

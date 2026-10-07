@@ -1,13 +1,18 @@
 import { uiSize } from './renderer';
+import { settings } from '../game/settings';
 /**
- * Keyboard, mouse, touch and gamepad merged into actions and "orders":
+ * Keyboard, mouse, touch and gamepad merged into actions and "orders".
+ * Play style 'action' (the default, any device): move, and three buttons: Attack (J, left click, X,
+ * the big touch button), Stroke (Space, right click, A, a dash that lays ink) and Ensō (F, middle
+ * click, Y, a loop round the child). Play style 'brush' keeps the drawn controls below:
  *   - touch, left part of the screen: a floating stick appears under the thumb and steers the child
  *   - tap / left click on the ground: go there; on a foe: attack it; on someone: talk
  *   - hold (left button, or a still finger on the right): keep walking towards the pointer
  *   - drag (finger on the right) / right-button drag: draw a stroke with the current ink
  *   - right click: a straight stroke towards the cursor
  */
-export type Action = 'attack' | 'release' | 'dodge' | 'interact' | 'pause' | 'debug' | 'confirm' | 'back' | 'up' | 'down' | 'left' | 'right';
+/** 'dodge' is the Stroke button (a dash that lays ink); 'enso' paints a loop round the child. */
+export type Action = 'attack' | 'release' | 'dodge' | 'enso' | 'interact' | 'pause' | 'debug' | 'confirm' | 'back' | 'up' | 'down' | 'left' | 'right';
 
 const KEYMAP: Record<string, Action[]> = {
   KeyW: ['up'], ArrowUp: ['up'],
@@ -16,7 +21,7 @@ const KEYMAP: Record<string, Action[]> = {
   KeyD: ['right'], ArrowRight: ['right'],
   Space: ['dodge'],
   ShiftLeft: ['dodge'],
-  KeyE: ['interact'], KeyF: ['interact'],
+  KeyE: ['interact'], KeyF: ['enso'],
   KeyJ: ['attack'],
   KeyK: ['dodge'],
   Escape: ['pause', 'back'],
@@ -51,6 +56,8 @@ export interface UiRegion {
   y: number;
   r: number;
   fn: () => void;
+  /** A button held down while the finger stays on it (Attack repeats, Stroke, Ensō). */
+  hold?: Action;
 }
 
 export class Input {
@@ -85,6 +92,13 @@ export class Input {
   inkCycle = 0;
   /** Clickable HUD buttons (UI units). */
   uiRegions: UiRegion[] = [];
+  /** Fingers holding a HUD button down, and which action each holds. */
+  private holds = new Map<number, Action>();
+
+  /** Move + buttons; drawn strokes only in the 'brush' style (a gamepad cannot draw). */
+  get actionStyle(): boolean {
+    return settings.style === 'action' || this.device === 'pad';
+  }
 
   get drawing(): boolean {
     return this.gesture?.mode === 'draw';
@@ -135,10 +149,16 @@ export class Input {
       } else this.device = 'kbm';
       this.press('confirm');
       this.held.delete('confirm');
-      if ((e.pointerType !== 'mouse' || e.button === 0) && this.hitUi(e.clientX, e.clientY)) return;
+      if ((e.pointerType !== 'mouse' || e.button === 0) && this.hitUi(e.clientX, e.clientY, e.pointerId)) return;
       if (e.pointerType === 'mouse') {
         this.mouseX = e.clientX;
         this.mouseY = e.clientY;
+        if (this.actionStyle && !this.uiMode) {
+          // action: left strikes towards the mouse, right dashes a stroke there, middle paints an ensō
+          const a: Action | null = e.button === 0 ? 'attack' : e.button === 2 ? 'dodge' : e.button === 1 ? 'enso' : null;
+          if (a) { e.preventDefault(); this.press(a); this.holds.set(-1 - e.button, a); }
+          return;
+        }
         if (e.button === 0) {
           this.leftHeld = true;
           this.leftT0 = performance.now();
@@ -185,6 +205,9 @@ export class Input {
       for (const ev of evs.length ? evs : [e]) this.moveGesture(ev.clientX, ev.clientY);
     });
     const up = (e: PointerEvent) => {
+      const hk = e.pointerType === 'mouse' ? -1 - e.button : e.pointerId;
+      const held = this.holds.get(hk);
+      if (held) { this.holds.delete(hk); this.held.delete(held); if (e.pointerType !== 'mouse') return; }
       if (this.stick && e.pointerId === this.stick.id) {
         const st = this.stick;
         this.stick = null;
@@ -199,16 +222,19 @@ export class Input {
     };
     el.addEventListener('pointerup', up);
     el.addEventListener('pointercancel', (e) => {
+      const held = this.holds.get(e.pointerId);
+      if (held) { this.holds.delete(e.pointerId); this.held.delete(held); }
       if (this.stick && e.pointerId === this.stick.id) this.stick = null;
       if (this.gesture && e.pointerId === this.gesture.id) this.endGesture(true);
     });
     el.addEventListener('contextmenu', (e) => e.preventDefault());
   }
 
-  private hitUi(x: number, y: number): boolean {
+  private hitUi(x: number, y: number, id: number): boolean {
     const [ux, uy] = this.toUi(x, y);
     for (const r of this.uiRegions) {
       if (Math.hypot(ux - r.x, uy - r.y) < r.r) {
+        if (r.hold) { this.press(r.hold); this.holds.set(id, r.hold); }
         r.fn();
         return true;
       }
@@ -232,6 +258,8 @@ export class Input {
     if (g.mode === 'pending') {
       // on a panel a finger that shakes a little still taps
       if (Math.hypot(x - g.sx, y - g.sy) < (this.uiMode ? DRAG_PX * 2 : DRAG_PX)) return;
+      // the action style never draws: a finger that slides is not a tap either
+      if (this.actionStyle && !this.uiMode) { g.mode = 'dead'; return; }
       // a moving finger on the right always draws (the stick is for walking)
       g.mode = 'draw';
       this.drawStart = [g.sx, g.sy];
@@ -338,7 +366,7 @@ export class Input {
     this.padAim = [ax, ay];
     if (Math.hypot(mx, my) > 0.3 || Math.hypot(ax, ay) > 0.3) this.device = 'pad';
     const map: [number, Action[] | 'inkPrev' | 'inkNext'][] = [
-      [0, ['dodge', 'confirm']], [1, ['back']], [2, ['attack']], [3, ['interact']],
+      [0, ['dodge', 'confirm']], [1, ['back']], [2, ['attack']], [3, ['enso', 'interact']],
       [7, ['dodge']], [6, ['dodge']], [4, 'inkPrev'], [5, 'inkNext'], [9, ['pause']], [8, ['debug']],
       [12, ['up']], [13, ['down']], [14, ['left']], [15, ['right']],
     ];
@@ -346,7 +374,13 @@ export class Input {
       const b = gp.buttons[i];
       const down = !!b && (b.pressed || b.value > 0.5);
       const was = this.padPrev[i] ?? false;
-      if (down && !was) {
+      // in play the D-pad holds the three skills (up, right, left) and the gourd (down); in panels it moves
+      const dpad: Record<number, string> = { 12: 'KeyR', 15: 'KeyT', 14: 'KeyG', 13: 'KeyH' };
+      if (down && !was && dpad[i] && !this.uiMode) {
+        this.device = 'pad';
+        this.anyPressed = true;
+        this.keysPressed.add(dpad[i]);
+      } else if (down && !was) {
         this.device = 'pad';
         this.anyPressed = true;
         if (acts === 'inkPrev') this.inkCycle = -1;
@@ -406,6 +440,8 @@ export class Input {
   /** Forget the current gesture and this frame's orders (dialogue opened or closed). */
   swallow(): void {
     this.stick = null;
+    for (const a of this.holds.values()) this.held.delete(a);
+    this.holds.clear();
     // the frame may be split into several game steps: what was read now must not be read again
     this.pressedNow.clear();
     this.keysPressed.clear();

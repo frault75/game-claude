@@ -220,7 +220,7 @@ export const LOTUS_UI = {
   play: { fr: 'Jouer de la flûte', en: 'Play the flute' },
   open: { fr: 'Les lotus se souviennent du chant. Un chemin de feuilles s’ouvre jusqu’à l’île.', en: 'The lotus remember the song. A path of leaves opens to the island.' },
   boss: { fr: 'Le Héron d’encre', en: 'The Ink Heron' },
-  gazeHint: { fr: 'Son regard brûle ! Trace un trait entre elle et toi pour l’arrêter.', en: 'Her gaze burns! Draw a stroke between her and you to stop it.' },
+  gazeHint: { fr: 'Son regard brûle ! Un trait frais entre elle et toi l’arrête : un Trait en travers de son regard.', en: 'Her gaze burns! A fresh stroke between her and you stops it: a Stroke across her gaze.' },
   dazzled: { fr: 'Elle a fixé ton encre trop longtemps : éblouie !', en: 'She stared into your ink too long: dazzled!' },
   down: { fr: 'Le Héron d’encre s’effondre dans les roseaux. Dans son nid, un rouleau scellé de rouge.', en: 'The Ink Heron collapses into the reeds. In her nest, a scroll sealed in red.' },
   scroll: { fr: 'La prière du lac', en: 'The Prayer of the Lake' },

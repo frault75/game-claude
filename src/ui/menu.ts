@@ -14,6 +14,7 @@ import { MapSource, sheet, seen, drawMark, drawLabel, Mark, MarkKind } from './m
 import { portrait } from '../gfx/gen/portraits';
 import { save, resetSave, BAG_SIZE } from '../game/progression';
 import { settings, saveSettings } from '../game/settings';
+import { controlsList } from '../game/controls';
 import { MAIN, STELES, MURALS, BESTIARY, REGION_LORE, JOURNAL_UI, L as LT } from '../i18n/lore';
 import { CAMPS, SHRINES, REGIONS } from '../world/layout';
 import { INK_ORDER } from '../game/inks';
@@ -46,6 +47,9 @@ const T = {
   sfx: { fr: 'Effets sonores', en: 'Sound effects' },
   shake: { fr: 'Secousses de l’écran', en: 'Screen shake' },
   minimap: { fr: 'Mini-carte', en: 'Minimap' },
+  style: { fr: 'Style de jeu', en: 'Play style' },
+  styleAction: { fr: 'Action', en: 'Action' },
+  styleBrush: { fr: 'Pinceau', en: 'Brush' },
   language: { fr: 'Langue', en: 'Language' },
   on: { fr: 'Oui', en: 'On' },
   off: { fr: 'Non', en: 'Off' },
@@ -60,14 +64,6 @@ const T = {
 };
 const L = (x: { fr: string; en: string }) => x[lang];
 
-const CONTROLS_KBM = {
-  fr: ['Clic : marcher, frapper, parler', 'Clic droit glissé : tracer (boucle = ensō)', 'Espace : trait droit vers la souris', 'E : parler · 1-4, Q, molette : encre', 'R, T, G : compétences', 'I : sac · C : arbre · M : carte · J : journal', 'Échap : menu'],
-  en: ['Click: walk, strike, talk', 'Right-drag: draw (a loop = ensō)', 'Space: straight stroke to the mouse', 'E: talk · 1-4, Q, wheel: ink', 'R, T, G: skills', 'I: bag · C: tree · M: map · J: journal', 'Esc: menu'],
-};
-const CONTROLS_TOUCH = {
-  fr: ['Pouce à gauche : un joystick apparaît', 'À droite, touche : frapper ou parler', 'À droite, glisse : tracer (boucle = ensō)', 'Pots en bas à droite : encre', 'Boutons ronds : compétences', 'En haut à gauche : sac, arbre, menu', 'La mini-carte ouvre la carte'],
-  en: ['Left thumb: a stick appears', 'Right side, tap: strike or talk', 'Right side, swipe: draw (a loop = ensō)', 'Pots bottom right: ink', 'Round buttons: skills', 'Top left: bag, tree, menu', 'Tap the minimap for the map'],
-};
 
 const BEAST_ORDER = ['blot', 'mite', 'wisp', 'crow', 'scarecrow', 'splitter', 'totem', 'boar', 'fox', 'brute', 'bat', 'grub', 'soldier', 'lantern', 'mother', 'ram king', 'warden', 'goat', 'wraith', 'frog', 'mantis'];
 const FLOOR_IDS = ['cave1', 'cave2', 'temple1', 'temple2'];
@@ -450,7 +446,7 @@ export class Menu {
     const pw = this.pw, ph = this.ph;
     const x0 = -pw / 2 + 70, xc = x0 + 360;
     let y = ph / 2 - 150;
-    const rowH = Math.min(92, (ph - 230) / 6);
+    const rowH = Math.min(92, (ph - 230) / 7);
     const slider = (label: string, get: () => number, set: (v: number) => void) => {
       this.put(label, x0, y + 18, 28);
       const v = Math.round(get() * 10);
@@ -468,6 +464,12 @@ export class Menu {
     slider(L(T.sfx), () => settings.sfx, (v) => (settings.sfx = v));
     toggle(L(T.shake), () => settings.shake, (v) => (settings.shake = v));
     toggle(L(T.minimap), () => settings.minimap, (v) => (settings.minimap = v));
+    // move + buttons, or strokes drawn freely
+    this.put(L(T.style), x0, y + 18, 28);
+    const pick = (st: 'action' | 'brush') => () => { if (settings.style !== st) { settings.style = st; saveSettings(); sfx.ui(); this.refresh(); } };
+    this.button(settings.style === 'action' ? `${L(T.styleAction)} ●` : L(T.styleAction), xc + 110, y, pick('action'), 200);
+    this.button(settings.style === 'brush' ? `${L(T.styleBrush)} ●` : L(T.styleBrush), xc + 330, y, pick('brush'), 200);
+    y -= rowH;
     this.put(L(T.language), x0, y + 18, 28);
     this.button(lang === 'fr' ? 'Français ●' : 'Français', xc + 110, y, () => { if (lang !== 'fr') { setLang('fr'); location.reload(); } }, 200);
     this.button(lang === 'en' ? 'English ●' : 'English', xc + 330, y, () => { if (lang !== 'en') { setLang('en'); location.reload(); } }, 200);
@@ -482,8 +484,7 @@ export class Menu {
     const cx = 160;
     let cy = ph / 2 - 140;
     cy -= this.put(L(T.controls), cx, cy, 30, { bold: true }).h + 10;
-    const list = this.device() === 'touch' ? CONTROLS_TOUCH : CONTROLS_KBM;
-    for (const line of list[lang]) cy -= this.put(line, cx, cy, 24, { italic: true, maxWidth: pw / 2 - 60 - cx }).h + 6;
+    for (const line of controlsList(this.device(), settings.style === 'action')) cy -= this.put(line, cx, cy, 24, { italic: true, maxWidth: pw / 2 - 60 - cx }).h + 6;
   }
 
   private button(label: string, x: number, y: number, act: () => void, width = 240): void {

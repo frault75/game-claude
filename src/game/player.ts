@@ -15,6 +15,7 @@ import { INKS, INK_ORDER, InkId } from './inks';
 import { save, stats, gear } from './progression';
 import { eff, rank, SkillId } from './skills';
 import { lang } from '../i18n';
+import type { Seg as StrokeSeg } from './stroke';
 
 const PARRY = () => (lang === 'fr' ? 'parade' : 'parry');
 
@@ -35,6 +36,15 @@ export const PLAYER = {
   waypointGap: 0.35,
   strikeDmg: 10,
   cutDmg: 10,
+  /** The Attack button lunges at the foe it picks: at most this far, in this long. */
+  lungeMax: 2.6,
+  lungeTime: 0.11,
+  /** The Ensō button: a loop this wide round the child, painted this fast, this often, at this cost. */
+  ensoR: 2.3,
+  ensoTime: 0.26,
+  ensoCd: 0.9,
+  ensoInk: 6,
+  ensoPig: 4.5,
 };
 
 let framesCache: ChildFrames | null = null;
@@ -45,6 +55,8 @@ interface Run {
   pts: V[];
   idx: number;
   seg: Seg | null;
+  /** What it lays: vermilion, or the colour of a Stroke dash (while pigment lasts). */
+  ink: InkId;
   open: boolean;
   speed: number;
   hit: Map<Entity, number>;
@@ -75,6 +87,10 @@ export class Player extends Entity {
   private combo = 0;
   private comboQueued = false;
   private strikeHit = false;
+  private lungeT = 0;
+  private strikeTarget: Entity | null = null;
+  private ensoCd = 0;
+  private ensoPaint: { ink: InkId; cx: number; cy: number; r: number; a0: number; dir: number; t: number; k: number; seg: StrokeSeg } | null = null;
   private animT = 0;
   lastSafe: V = [0, 0];
   private safeT = 0;
@@ -294,6 +310,8 @@ export class Player extends Entity {
     this.secondT = Math.max(0, this.secondT - dt);
     this.blessT = Math.max(0, this.blessT - dt);
     for (const k of Object.keys(this.cool) as SkillId[]) this.cool[k] = Math.max(0, (this.cool[k] ?? 0) - dt);
+    this.ensoCd = Math.max(0, this.ensoCd - dt);
+    this.updateEnso(dt);
     const [mx, my] = this.locked ? [0, 0] : inp.move();
     this.moveDir = [mx, my];
     this.updateAim();
@@ -325,15 +343,20 @@ export class Player extends Entity {
       if (!this.busy) {
         this.readOrders();
         this.readBrush();
+        let talked = false;
         if (inp.pressed('interact')) {
           const e = this.nearestTalkable();
-          if (e) { this.talkTarget = null; e.interact(); }
+          if (e) { this.talkTarget = null; e.interact(); talked = true; }
         }
+        if (inp.pressed('enso') && !talked) this.ensoPressed();
       }
     }
-    if (!this.locked && (this.state === 'normal' || this.state === 'strike') && inp.pressed('attack')) {
-      if (this.state === 'normal') this.startStrike(0);
-      else if (this.combo === 0 && this.stateT > 0.04) this.comboQueued = true;
+    if (!this.locked && (this.state === 'normal' || this.state === 'strike')) {
+      // a held button keeps striking (the action style)
+      const fresh = inp.pressed('attack');
+      const want = fresh || (inp.isDown('attack') && inp.actionStyle);
+      if (want && this.state === 'normal') this.attackPressed(fresh);
+      else if (want && this.state === 'strike' && this.combo < 2 && this.stateT > 0.04) this.comboQueued = true;
     }
 
     let tvx = 0, tvy = 0;
@@ -346,8 +369,11 @@ export class Player extends Entity {
     } else {
       if (this.state === 'hurt' && this.stateT > 0.18) { this.state = 'normal'; this.stateT = 0; }
       const k = Math.min(1, (PLAYER.accel * dt) / this.speed);
-      this.vx += (tvx - this.vx) * k;
-      this.vy += (tvy - this.vy) * k;
+      // a lunge keeps its speed until it lands
+      if (!(this.state === 'strike' && this.stateT < this.lungeT)) {
+        this.vx += (tvx - this.vx) * k;
+        this.vy += (tvy - this.vy) * k;
+      }
       const px = this.push[0] + w.wind[0], py = this.push[1] + w.wind[1];
       this.push[0] *= Math.max(0, 1 - dt * 6);
       this.push[1] *= Math.max(0, 1 - dt * 6);
@@ -432,7 +458,7 @@ export class Player extends Entity {
         return [(dx / d) * this.speed, (dy / d) * this.speed];
       }
       this.aim = [dx / d, dy / d];
-      this.startStrike(0);
+      this.startStrike(0, t);
       this.comboQueued = true;
       return [0, 0];
     }
@@ -474,7 +500,7 @@ export class Player extends Entity {
     const straight: V[] = [];
     for (const [sx, sy] of inp.strokeTaps) straight.push(this.ground(sx, sy));
     if (inp.pressed('dodge')) {
-      if (inp.device === 'pad') {
+      if (inp.device === 'pad' || inp.device === 'touch') {
         let [dx, dy] = this.moveDir;
         if (Math.hypot(dx, dy) < 0.2) [dx, dy] = this.aim;
         const l = Math.hypot(dx, dy) || 1;
@@ -497,10 +523,14 @@ export class Player extends Entity {
     const dist = Math.max(PLAYER.dashMin, Math.min(PLAYER.dashMax * (1 + eff('reach') / 100), d));
     tx = this.x + (dx / d) * dist;
     ty = this.y + (dy / d) * dist;
-    if (ink.runs ? this.ink < 1 : this.pigment < 0.6) { sfx.empty(); if (!ink.runs) this.onNoPigment?.(); return; }
+    const inp = this.world.input;
+    // the action style: every colour dashes too, laying its ink behind the child
+    const dash = ink.runs || inp.actionStyle;
+    if (dash ? this.ink < 1 : this.pigment < 0.6) { sfx.empty(); if (!ink.runs) this.onNoPigment?.(); return; }
     this.attackTarget = null;
     this.moveTarget = null;
-    if (ink.runs) {
+    if (dash) {
+      if (!ink.runs && this.pigment < 0.6) this.onNoPigment?.();
       // through a foe if one was aimed at
       const foe = this.foeAt(target[0], target[1] + 0.35);
       if (foe) {
@@ -509,7 +539,7 @@ export class Player extends Entity {
         tx = foe.x + (fx / l) * 1.3;
         ty = foe.y + (fy / l) * 1.3;
       }
-      this.startRun([[tx, ty]], false, PLAYER.dashSpeed);
+      this.startRun([[tx, ty]], false, PLAYER.dashSpeed, ink.runs || this.pigment < 0.6 ? 'vermilion' : save.ink);
     } else {
       this.startPaint([this.x + (dx / d) * 0.6, this.y + (dy / d) * 0.6]);
       if (!this.paint) return;
@@ -563,19 +593,20 @@ export class Player extends Entity {
   dropBrush(): void {
     this.run = null;
     this.paint = null;
+    this.ensoPaint = null;
     if (this.state === 'dash') { this.state = 'normal'; this.stateT = 0; }
   }
 
   // ---------- running along a stroke (vermilion) ----------
 
-  private startRun(pts: V[], open: boolean, speed: number): void {
+  private startRun(pts: V[], open: boolean, speed: number, ink: InkId = 'vermilion'): void {
     const w = this.world;
     if (this.ink < 0.6) { sfx.empty(); return; }
     if (this.run) this.endRun();
     this.state = 'dash';
     this.stateT = 0;
     this.sinceInk = 0;
-    this.run = { pts, idx: 0, seg: w.strokes.begin(this.x, this.y + 0.05, 'vermilion'), open, speed, hit: new Map(), dir: [0, 0] };
+    this.run = { pts, idx: 0, seg: w.strokes.begin(this.x, this.y + 0.05, ink), ink, open, speed, hit: new Map(), dir: [0, 0] };
     const dx = pts[0][0] - this.x, dy = pts[0][1] - this.y;
     sfx.trait(Math.min(6, Math.hypot(dx, dy)));
   }
@@ -618,6 +649,17 @@ export class Player extends Entity {
       const moved = Math.hypot(this.x - bx, this.y - by);
       movedTotal += moved;
       this.ink -= moved;
+      if (r.ink !== 'vermilion') {
+        // a coloured trail spends pigment; when it runs dry the rest of the dash is plain vermilion
+        const cost = moved * this.paintCost(r.ink);
+        if (this.pigment >= cost) this.pigment -= cost;
+        else {
+          r.ink = 'vermilion';
+          if (r.seg) { w.strokes.extend(r.seg, this.x, this.y + 0.05); w.strokes.finish(r.seg); }
+          r.seg = w.strokes.begin(this.x, this.y + 0.05, 'vermilion');
+          this.onNoPigment?.();
+        }
+      }
       budget -= step;
       r.dir = [dx / d, dy / d];
       if (moved < step * 0.3) { r.pts.length = r.idx; break; }
@@ -645,7 +687,7 @@ export class Player extends Entity {
       w.strokes.extend(r.seg, this.x, this.y + 0.05);
       w.strokes.finish(r.seg);
     }
-    r.seg = r.idx < r.pts.length || r.open ? w.strokes.begin(this.x, this.y + 0.05, 'vermilion') : null;
+    r.seg = r.idx < r.pts.length || r.open ? w.strokes.begin(this.x, this.y + 0.05, r.ink) : null;
   }
 
   private cut(ox: number, oy: number): void {
@@ -685,25 +727,135 @@ export class Player extends Entity {
     this.invuln = Math.max(this.invuln, 0.06);
   }
 
+  // ---------- the Ensō button: a loop painted round the child ----------
+
+  private ensoPressed(): void {
+    const w = this.world;
+    if (this.ensoCd > 0 || this.ensoPaint) return;
+    const ink = save.ink;
+    if (INKS[ink].runs) {
+      if (this.ink < PLAYER.ensoInk) { sfx.empty(); return; }
+      this.ink -= PLAYER.ensoInk;
+    } else {
+      const cost = this.paintCost(ink) * PLAYER.ensoPig;
+      if (this.pigment < cost) { sfx.empty(); this.onNoPigment?.(); return; }
+      this.pigment -= cost;
+    }
+    this.sinceInk = 0;
+    this.ensoCd = PLAYER.ensoCd;
+    const r = PLAYER.ensoR * (1 + eff('reach') / 200);
+    const a0 = Math.atan2(this.aim[1], this.aim[0]);
+    const cx = this.x, cy = this.y + 0.2;
+    const seg = w.strokes.begin(cx + Math.cos(a0) * r, cy + Math.sin(a0) * r * 0.85, ink);
+    seg.quiet = true;
+    this.ensoPaint = { ink, cx, cy, r, a0, dir: this.flip >= 0 ? 1 : -1, t: 0, k: 0, seg };
+    sfx.trait(4);
+  }
+
+  /** The brush goes round in a few frames, in fixed pieces; the last crosses the first and closes the loop. */
+  private updateEnso(dt: number): void {
+    const ep = this.ensoPaint;
+    if (!ep) return;
+    const w = this.world;
+    const N = 16, over = 0.3;
+    ep.t += dt;
+    const u = Math.min(1, ep.t / PLAYER.ensoTime);
+    const at = (k: number): V => {
+      const a = ep.a0 + ep.dir * (Math.PI * 2 + over) * (k / N);
+      return [ep.cx + Math.cos(a) * ep.r, ep.cy + Math.sin(a) * ep.r * 0.85];
+    };
+    const reach = u * N;
+    while (ep.k < N && reach >= ep.k + 1) {
+      const [x, y] = at(ep.k + 1);
+      w.strokes.extend(ep.seg, x, y);
+      w.strokes.finish(ep.seg);
+      ep.k++;
+      if (ep.k >= N) { this.ensoPaint = null; return; }
+      ep.seg = w.strokes.begin(x, y, ep.ink);
+      ep.seg.quiet = true;
+    }
+    const f = reach - ep.k;
+    const [x0, y0] = at(ep.k), [x1, y1] = at(ep.k + 1);
+    w.strokes.extend(ep.seg, x0 + (x1 - x0) * f, y0 + (y1 - y0) * f);
+  }
+
+  // ---------- the Attack button ----------
+
+  /** Attack pressed (or held): talk if someone is there and nothing to fight, else strike the foe it picks. */
+  private attackPressed(fresh: boolean): void {
+    const w = this.world, inp = w.input;
+    if (fresh) {
+      const foeNear = w.entities.some((e) => e.team === 'enemy' && !e.dead && Math.hypot(e.x - this.x, e.y - this.y) < 3.5);
+      if (!foeNear) {
+        let t: Entity | null = null;
+        if (inp.device === 'kbm' && inp.actionStyle) { const [mx, my] = w.mouseWorld(); t = this.talkableAt(mx, my); }
+        t = t ?? this.nearestTalkable(2.2);
+        if (t) {
+          if (Math.hypot(t.x - this.x, t.y - this.y) < t.radius + 1.6) { this.talkTarget = null; t.interact(); }
+          else this.talkTarget = t;
+          return;
+        }
+      }
+    }
+    this.startStrike(0, this.autoTarget());
+  }
+
+  /** The foe an Attack goes for: close, in front of the child (or near the mouse), not behind. */
+  private autoTarget(): Entity | null {
+    const w = this.world, inp = w.input;
+    const [ax, ay] = this.aim;
+    const mouse = inp.device === 'kbm' ? w.mouseWorld() : null;
+    let best: Entity | null = null, bs = Infinity;
+    for (const e of w.entities) {
+      if (e === this || e.dead || e.team !== 'enemy' || ((e as unknown as { dying?: number }).dying ?? 0) > 0) continue;
+      const dx = e.x - this.x, dy = e.y - this.y, d = Math.hypot(dx, dy);
+      if (d > 5.2) continue;
+      const dot = (dx * ax + dy * ay) / (d || 1);
+      if (dot < -0.1 && d > 1.4) continue;
+      let sc = d - dot * 2.2;
+      if (mouse) sc += Math.hypot(e.x - mouse[0], e.y - mouse[1]) * 0.6;
+      if (sc < bs) { bs = sc; best = e; }
+    }
+    return best;
+  }
+
   // ---------- brush strike ----------
 
-  private startStrike(combo: number): void {
+  /** A blow of the combo (0, 1, 2). Aimed at a foe, the child lunges at it first. */
+  private startStrike(combo: number, target: Entity | null = null): void {
     this.state = 'strike';
     this.stateT = 0;
     this.combo = combo;
     this.comboQueued = false;
     this.strikeHit = false;
+    this.lungeT = 0;
+    this.strikeTarget = target;
+    if (target) {
+      const dx = target.x - this.x, dy = target.y - this.y, d = Math.hypot(dx, dy) || 1;
+      this.aim = [dx / d, dy / d];
+      const gap = d - (PLAYER.strikeRange * 0.7 + target.radius * 0.5);
+      if (gap > 0.15) {
+        const dist = Math.min(PLAYER.lungeMax, gap);
+        this.lungeT = PLAYER.lungeTime;
+        this.vx = this.aim[0] * (dist / PLAYER.lungeTime);
+        this.vy = this.aim[1] * (dist / PLAYER.lungeTime);
+        this.invuln = Math.max(this.invuln, 0.08);
+        this.world.vfx.dust(this.x, this.y, 3);
+      }
+    }
     const [ax, ay] = this.aim;
     this.faceTowards(ax, ay);
-    this.vx = ax * 5;
-    this.vy = ay * 5;
+    if (!this.lungeT) { this.vx = ax * 5; this.vy = ay * 5; }
   }
 
   private updateStrike(): void {
     const w = this.world;
     const t = this.stateT;
-    const windup = 0.03, active = 0.07;
-    this.vx *= 0.82; this.vy *= 0.82;
+    // the lunge ends early once the foe is within reach
+    const tg = this.strikeTarget;
+    if (t < this.lungeT && tg && !tg.dead && Math.hypot(tg.x - this.x, tg.y - this.y) < PLAYER.strikeRange * 0.75 + tg.radius * 0.5) this.lungeT = t;
+    const windup = this.lungeT + 0.03, active = 0.07;
+    if (t >= this.lungeT) { this.vx *= 0.82; this.vy *= 0.82; }
     if (t >= windup && !this.strikeHit) {
       this.strikeHit = true;
       const [ax, ay] = this.aim;
@@ -717,26 +869,24 @@ export class Player extends Entity {
         const ex = e.x, ey = e.y + Math.min(0.5, e.knotY) + e.z * 0.3;
         const dx = ex - cx, dy = ey - cy;
         const d = Math.hypot(dx, dy) - e.radius * 0.8;
-        if (d > PLAYER.strikeRange) continue;
-        if (Math.abs(angleDiff(Math.atan2(dy, dx), ang)) > PLAYER.strikeHalf && d > 0.35) continue;
-        const rl = this.roll(PLAYER.strikeDmg * (this.combo === 1 ? 1.4 : 1) * (1 + eff('edge') / 100));
+        // the third blow sweeps wider and further
+        if (d > PLAYER.strikeRange + (this.combo === 2 ? 0.4 : 0)) continue;
+        if (Math.abs(angleDiff(Math.atan2(dy, dx), ang)) > (this.combo === 2 ? 1.6 : PLAYER.strikeHalf) && d > 0.35) continue;
+        const rl = this.roll(PLAYER.strikeDmg * [1, 1.25, 1.8][this.combo] * (1 + eff('edge') / 100));
         if (e.onHit({ dmg: rl.dmg, crit: rl.crit, fromX: this.x, fromY: this.y, kind: 'brush' })) landed++;
       }
       if (landed) {
-        w.hitstop = Math.max(w.hitstop, 0.04);
-        w.kick(ax * 0.15, ay * 0.15);
-        w.shake(0.06, 0.1);
+        const big = this.combo === 2;
+        w.hitstop = Math.max(w.hitstop, big ? 0.07 : 0.04);
+        w.kick(ax * (big ? 0.3 : 0.15), ay * (big ? 0.3 : 0.15));
+        w.shake(big ? 0.14 : 0.06, 0.1);
         this.onLanded?.(landed, 'brush');
       }
     }
-    const end = this.combo === 0 ? windup + active + 0.09 : windup + active + 0.15;
-    if (t >= windup + active && this.comboQueued && this.combo === 0) {
-      if (this.attackTarget && !this.attackTarget.dead) {
-        const dx = this.attackTarget.x - this.x, dy = this.attackTarget.y - this.y;
-        const l = Math.hypot(dx, dy) || 1;
-        this.aim = [dx / l, dy / l];
-      }
-      this.startStrike(1);
+    const end = windup + active + [0.09, 0.12, 0.22][this.combo];
+    if (t >= windup + active && this.comboQueued && this.combo < 2) {
+      const keep = this.attackTarget && !this.attackTarget.dead ? this.attackTarget : this.strikeTarget && !this.strikeTarget.dead ? this.strikeTarget : null;
+      this.startStrike(this.combo + 1, keep ?? this.autoTarget());
       return;
     }
     if (t >= end) {
@@ -850,7 +1000,7 @@ export class Player extends Entity {
     const dashing = this.state === 'dash' && speed > 1;
     if (this.state === 'strike') { pose = 'strike'; fps = 0; }
     else if (this.state === 'hurt') pose = 'hurt';
-    else if (dashing || this.paint) pose = 'cast';
+    else if (dashing || this.paint || this.ensoPaint) pose = 'cast';
     else if (speed > 0.6) { pose = 'walk'; fps = 11 * Math.min(1.3, speed / PLAYER.speed + 0.3); }
     const set = this.frames.pig[this.facing][pose];
     let idx: number;
