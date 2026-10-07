@@ -319,6 +319,22 @@ export class Hud {
     for (const s of Object.values(this.papers)) s.opacity = 0;
   }
 
+  /** A phone held upright: the top right corner is shared by the life drops, the minimap and the quest. */
+  private get tall(): boolean {
+    return this.r.uiH > this.r.uiW * 1.2;
+  }
+
+  /** On an upright phone the ink pots and the skill buttons fill the bottom: hints and the guardian's bar go higher. */
+  private get lift(): number {
+    return this.tall ? 300 : 0;
+  }
+
+  /** Where the quest tracker's title sits: top right, or under the minimap on an upright phone. */
+  private questAt(): [number, number] {
+    const r = this.r;
+    return this.tall ? [r.uiW / 2 - 40, r.uiH / 2 - 130 - this.miniR * 2 - 48] : [r.uiW / 2 - 40, r.uiH / 2 - 52];
+  }
+
   /** The current quest, top right. */
   setQuest(title: string, goal: string): void {
     const key = title + '|' + goal;
@@ -335,7 +351,7 @@ export class Hud {
       this.questT.reveal = 0;
     }
     this.questG?.dispose();
-    const g = brushText(goal, { size: 25, ppu: 1.5, italic: true, align: 'right', maxWidth: Math.min(640, this.r.uiW * 0.4) });
+    const g = brushText(goal, { size: 25, ppu: 1.5, italic: true, align: 'right', maxWidth: Math.min(640, this.r.uiW * (this.tall ? 0.6 : 0.4)) });
     this.questGW = g.w;
     this.questG = new Sprite(g);
     this.questG.mesh.renderOrder = LAYER.ui;
@@ -533,8 +549,9 @@ export class Hud {
   setMinimap(src: MapSource | null, on: boolean, px: number, py: number, dir: number, goal: [number, number] | null, dt: number): void {
     const r = this.r;
     const m = this.mini;
-    const R = (this.miniR = Math.max(76, r.uiH * 0.105));
-    const cx = r.uiW / 2 - 40 - R, cy = r.uiH / 2 - 132 - R;
+    // upright phone: a smaller map, just under the life drops (the quest goes beneath it)
+    const R = (this.miniR = this.tall ? Math.max(70, r.uiW * 0.12) : Math.max(76, r.uiH * 0.105));
+    const cx = r.uiW / 2 - 40 - R, cy = r.uiH / 2 - (this.tall ? 130 : 132) - R;
     const vis = !!src && on && this.visible && !this.panelOpen;
     for (const sp of [m.s, m.ring, m.paper, m.mask]) sp.setPos(cx, cy);
     m.s.mesh.scale.set(R, R, 1);
@@ -653,7 +670,7 @@ export class Hud {
     this.inkBg.opacity = this.visible ? 0.9 : 0;
     this.inkBg.mesh.position.x = ix + (this.inkLow > 0 ? Math.sin(this.inkLow * 80) * 4 : 0);
     this.comboPop = Math.max(0, this.comboPop - dt);
-    const cx = r.uiW / 2 - 40 - this.miniR * 2 - 120, cy = r.uiH / 2 - 190;
+    const [cx, cy] = this.tall ? [-r.uiW / 2 + 130, r.uiH / 2 - 340] : [r.uiW / 2 - 40 - this.miniR * 2 - 120, r.uiH / 2 - 190];
     const show = this.comboN > 1 && this.visible ? 1 : 0;
     this.comboS.setPos(cx, cy);
     const sc = 1 + this.comboPop * 2.2;
@@ -665,7 +682,7 @@ export class Hud {
     if (this.hint) {
       this.hintT += dt;
       const t = this.hintT;
-      this.hint.setPos(0, -r.uiH / 2 + 90);
+      this.hint.setPos(0, -r.uiH / 2 + 90 + this.lift);
       this.hint.reveal = Math.min(1.5, t * 1.4);
       this.hint.opacity = this.visible ? Math.max(0, Math.min(1, (this.hintDur - t) / 0.8)) : 0;
       if (t > this.hintDur) { this.hint.dispose(); this.hint = null; }
@@ -742,7 +759,7 @@ export class Hud {
     }
     // quest tracker
     this.questPop += dt;
-    const qx = r.uiW / 2 - 40, qy = r.uiH / 2 - 52;
+    const [qx, qy] = this.questAt();
     if (this.questT) {
       this.questT.setPos(qx - this.questW / 2, qy);
       this.questT.reveal = Math.min(1.5, this.questPop * 1.5);
@@ -757,19 +774,19 @@ export class Hud {
     m.tl.setPos(-r.uiW / 2 + 400, r.uiH / 2 - 150);
     m.br.setPos(r.uiW / 2 - 230, -r.uiH / 2 + 110);
     m.br.opacity = this.pots.length > 1 ? 1 : 0;
-    m.tr.setPos(r.uiW / 2 - 400, r.uiH / 2 - 90);
-    m.hint.setPos(0, -r.uiH / 2 + 90);
+    m.tr.setPos(qx - 360, qy - 38);
+    m.hint.setPos(0, -r.uiH / 2 + 90 + this.lift);
     m.hint.opacity = this.hint ? 1 : 0;
-    m.boss.setPos(0, -r.uiH / 2 + 110);
+    m.boss.setPos(0, -r.uiH / 2 + 110 + this.lift);
     m.boss.opacity = this.bossVis;
     const pp = this.papers, bd = this.visible ? this.backdrop * 0.85 : 0;
     pp.tl.setPos(-r.uiW / 2 + 250, r.uiH / 2 - 100);
     pp.tl.opacity = bd;
     pp.br.setPos(r.uiW / 2 - 230, -r.uiH / 2 + 100);
     pp.br.opacity = this.pots.length > 1 ? bd : 0;
-    pp.tr.setPos(r.uiW / 2 - 300, r.uiH / 2 - 70);
+    pp.tr.setPos(qx - 260, qy - 18);
     pp.tr.opacity = bd;
-    pp.hint.setPos(0, -r.uiH / 2 + 90);
+    pp.hint.setPos(0, -r.uiH / 2 + 90 + this.lift);
     pp.hint.opacity = this.hint ? bd * this.hint.opacity : 0;
     // the active skills and the gourd: a sheet behind the whole row, so they read in the darkest place
     {
@@ -787,11 +804,11 @@ export class Hud {
     if (this.bossName && this.bossBar) {
       this.bossNameT += dt;
       const showB = this.bossVis;
-      this.bossName.setPos(0, -r.uiH / 2 + 150);
+      this.bossName.setPos(0, -r.uiH / 2 + 150 + this.lift);
       this.bossName.reveal = Math.min(1.5, this.bossNameT * 0.8);
       const nameAlpha = this.bossNameT < 4 ? 1 : Math.max(0.0, 1 - (this.bossNameT - 4) / 1.5);
       this.bossName.opacity = nameAlpha * showB;
-      this.bossBar.setPos(0, -r.uiH / 2 + 80);
+      this.bossBar.setPos(0, -r.uiH / 2 + 80 + this.lift);
       this.bossBar.reveal = Math.max(0, Math.min(1.0, this.bossFrac)) * Math.min(1, this.bossNameT * 1.2);
       this.bossBar.opacity = showB * 0.9;
     }
