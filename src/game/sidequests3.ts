@@ -3,6 +3,7 @@ import type { QuestDef } from './questbook';
 import { save } from './progression';
 import { STEP } from './quests';
 import { P3_VISTAS, P3_GRELOTS } from '../world/peaks';
+import { BlankPage } from './blankPage';
 
 export const SIDE_QUESTS3: QuestDef[] = [
   {
@@ -156,5 +157,47 @@ export const SIDE_QUESTS3: QuestDef[] = [
       },
     ],
     reward: () => ({ xp: 380, rarity: 'rare', perk: ['coins', 40, { fr: '40 pièces (les économies de Pema).', en: '40 coins (Pema’s savings).' }] }),
+  },
+  {
+    id: 'pages',
+    title: { fr: 'Les pages blanches', en: 'The Blank Pages' },
+    giver: 'snow',
+    available: () => save.main >= STEP.epilogue,
+    offer: {
+      fr: [
+        'Depuis que tu es redescendu, il s’est passé quelque chose d’étrange. Des pages blanches sont apparues, çà et là. Pas des trous : du papier neuf.',
+        'Ce sont les endroits que la main avait trop effacés. Le monde les a gardés vides — pour toi. Il en a laissé une près du hameau des Saules, une plus loin vers l’est, une dans les rizières, et la dernière au sommet, près de la hutte.',
+        'Une page blanche attend un trait. Entoure-la : tu verras bien ce qui vient.',
+      ],
+      en: [
+        'Since you came down, something strange has happened. Blank pages have appeared here and there. Not holes: new paper.',
+        'They are the places the hand wiped too much. The world kept them empty — for you. It left one near Willow Hamlet, one further east, one in the terraces, and the last at the summit, by the hut.',
+        'A blank page is waiting for a stroke. Draw round it: you will see what comes.',
+      ],
+    },
+    accept: { fr: 'Je remplirai les pages.', en: 'I will fill the pages.' },
+    later: { fr: 'Plus tard, Mère Neige.', en: 'Later, Mother Snow.' },
+    stages: [
+      {
+        goal: { fr: 'Entoure les quatre pages blanches (hameau, est, rizières, sommet)', en: 'Draw round the four blank pages (hamlet, east, terraces, summit)' },
+        kind: 'event', event: 'blank', distinct: true, count: 4,
+        spots: [
+          { room: 'overworld', x: 27.5, y: 61.5 },
+          { room: 'overworld', x: 131.5, y: 82 },
+          { room: 'terraces', x: 75.5, y: 69.5 },
+          { room: 'peaks', x: 95.5, y: 140 },
+        ],
+        spotEntity: (i, x, y) => new BlankPage(i, x, y),
+      },
+      {
+        goal: { fr: 'Retourne voir Mère Neige', en: 'Return to Mother Snow' },
+        kind: 'talk', npc: 'snow',
+        say: {
+          fr: ['Un prunier, une grue, des bambous, un pin… Ce ne sont pas les pinceaux du maître. Ce sont les tiens.', 'Il y aura d’autres pages. Il y en aura toujours. C’est ça, un monde qui vit.', 'Prends ceci. C’était dans la hutte du sommet, sous la natte. Je crois que ça t’attendait.'],
+          en: ['A plum tree, a crane, bamboo, a pine… These are not the master’s brushstrokes. They are yours.', 'There will be other pages. There always will be. That is what a living world is.', 'Take this. It was in the hut at the summit, under the mat. I think it was waiting for you.'],
+        },
+      },
+    ],
+    reward: () => ({ xp: 1500, rarity: 'unique' }),
   },
 ];

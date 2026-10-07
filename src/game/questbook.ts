@@ -12,6 +12,7 @@ import { sfx } from '../audio/sfx';
 import { giveXp } from './rewards';
 import { lang } from '../i18n';
 import { QuestThing, ThingId } from './questThing';
+import type { Entity } from './entity';
 import type { Mark } from '../ui/mapArt';
 import type { Choice } from '../ui/dialog';
 
@@ -45,6 +46,9 @@ export interface Stage {
   distinct?: boolean;
   /** For a distinct event: where each value happens, marked on the map until it is seen. */
   spots?: Where[];
+  /** What stands at each spot while it waits (it calls onDone when the child has done what it asks);
+   *  once done it stays in the world for good, shown as done. */
+  spotEntity?: (i: number, x: number, y: number) => Entity & { onDone?: () => void; done?: () => void };
   /** Which step comes next (default: the following one; 'end' finishes the quest). */
   next?: (q: QState, npc?: string) => number | 'end';
 }
@@ -79,7 +83,7 @@ const UI = {
 
 export class Questbook {
   private defs: QuestDef[] = [];
-  private things: QuestThing[] = [];
+  private things: Entity[] = [];
 
   constructor(private g: Game) {}
 
@@ -240,6 +244,31 @@ export class Questbook {
       const t = g.world.add(new QuestThing(a.st.thing, at[0], at[1]));
       t.onTake = (id) => this.found(id);
       this.things.push(t);
+    }
+    for (const def of this.defs) {
+      const q = save.quests[def.id];
+      if (!q) continue;
+      def.stages.forEach((st, si) => {
+        if (st.kind !== 'event' || !st.spots || !st.spotEntity) return;
+        const waiting = !q.done && q.s === si;
+        st.spots.forEach((sp, i) => {
+          if (sp.room !== room) return;
+          const key = `spot:${def.id}:${i}`;
+          const done = !!save.perks[key];
+          if (!done && !waiting) return;
+          const at = this.where(sp);
+          if (!at) return;
+          const e = g.world.add(st.spotEntity!(i, at[0], at[1]));
+          if (done) { e.done?.(); return; }
+          e.onDone = () => {
+            // it stays: no longer one of the things the book clears
+            this.things = this.things.filter((x) => x !== e);
+            save.perks[key] = 1;
+            this.event(st.event!, i);
+          };
+          this.things.push(e);
+        });
+      });
     }
   }
 
