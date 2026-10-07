@@ -138,7 +138,7 @@ export class MasterHand extends Boss {
         const dx = p.x - this.from[0], dy = p.y - this.from[1];
         const along = dx * Math.cos(this.aimA) + dy * Math.sin(this.aimA);
         const side = Math.abs(-dx * Math.sin(this.aimA) + dy * Math.cos(this.aimA));
-        if (along > 0 && along < this.lineLeft && side < 1.2) p.hurt(2, p.x - Math.cos(this.aimA), p.y - Math.sin(this.aimA));
+        if (along > 0 && along < this.lineLeft && side < 1.2) p.hurt(3, p.x - Math.cos(this.aimA), p.y - Math.sin(this.aimA));
         this.wipe(this.from[0], this.from[1], this.aimA, this.lineLeft, 1.8);
         sfx.cut();
         w.shake(0.2, 0.3);
@@ -155,7 +155,7 @@ export class MasterHand extends Boss {
     this.tg = w.tele.add({ kind: 'circle', r: 2.8 }, cx, cy, 0, warn, {
       hold: 0.1,
       onFire: () => {
-        if (Math.hypot(p.x - cx, p.y - cy) < 3) p.hurt(2, cx, cy);
+        if (Math.hypot(p.x - cx, p.y - cy) < 3) p.hurt(3, cx, cy);
         sfx.impact(true);
         w.shake(0.4, 0.35);
         w.vfx.ripple(cx, cy, 2.8);

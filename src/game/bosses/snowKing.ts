@@ -120,7 +120,7 @@ export class SnowKing extends Boss {
     this.tg = w.tele.add({ kind: 'circle', r: 3.2 }, cx, cy, 0, warn, {
       hold: 0.1,
       onFire: () => {
-        if (Math.hypot(p.x - cx, p.y - cy) < 3.4) p.hurt(2, cx, cy);
+        if (Math.hypot(p.x - cx, p.y - cy) < 3.4) p.hurt(3, cx, cy);
         sfx.impact(true);
         w.shake(0.35, 0.3);
         w.vfx.ripple(cx, cy, 3);
@@ -249,7 +249,7 @@ export class SnowKing extends Boss {
         const moved = Math.hypot(this.x - ox, this.y - oy);
         this.rollLeft -= moved;
         if (Math.random() < 0.8) w.vfx.dust(this.x - Math.cos(this.aimA) * 1.5, this.y, 2, PIG_B);
-        if (Math.hypot(p.x - this.x, p.y - this.y) < this.radius + p.radius + 0.3) p.hurt(2, this.x, this.y);
+        if (Math.hypot(p.x - this.x, p.y - this.y) < this.radius + p.radius + 0.3) p.hurt(3, this.x, this.y);
         const out = Math.hypot(this.x - this.arena.x, this.y - this.arena.y) > this.arena.r - 1.4;
         if (out || moved < step * 0.4) {
           this.keepIn();

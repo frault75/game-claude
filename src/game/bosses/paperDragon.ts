@@ -324,7 +324,7 @@ export class PaperDragon extends Boss {
             this.tg = w.tele.add({ kind: 'circle', r: R - 0.3 }, c.cx, c.cy, 0, 1.5, {
               hold: 0.1,
               onFire: () => {
-                if (Math.hypot(p.x - c.cx, p.y - c.cy) < R - 0.1) p.hurt(2, c.cx, c.cy);
+                if (Math.hypot(p.x - c.cx, p.y - c.cy) < R - 0.1) p.hurt(3, c.cx, c.cy);
                 w.shake(0.3, 0.3);
                 sfx.impact(true);
                 w.vfx.ripple(c.cx, c.cy, R);

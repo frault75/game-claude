@@ -49,7 +49,7 @@ function getIce(): Frame {
 }
 
 /** Health by tier: Act I's valley (1–3), Act II's terraces and depths (3–4), Act III's peaks (5), the heart of the mountain (6). */
-export const TIER_HP = [1, 1.1, 1.8, 2.9, 4.0, 5.3, 6.6];
+export const TIER_HP = [1, 1.1, 1.8, 2.9, 4.0, 5.3, 6.2];
 
 /** Base for creatures: hit flash, knockback, freeze, camp leash, death by dissolving into a stain. */
 export class Creature extends Entity {
@@ -99,7 +99,8 @@ export class Creature extends Entity {
   setup(tier: number, elite: boolean): this {
     this.tier = tier;
     this.elite = elite;
-    const k = TIER_HP[Math.min(TIER_HP.length - 1, tier)] * (elite ? 3 : 1);
+    // an elite has three times the life; up in the peaks, where creatures are already strong, a little less
+    const k = TIER_HP[Math.min(TIER_HP.length - 1, tier)] * (elite ? (tier >= 5 ? 2.4 : 3) : 1);
     this.hp = Math.round(this.hp * k);
     this.maxHp = this.hp;
     this.xp = Math.round(this.xp * (1 + (tier - 1) * 0.4) * (elite ? 4 : 1));
