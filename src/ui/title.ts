@@ -48,7 +48,7 @@ export class Title {
   }
 
   private itemY(i: number): number {
-    return -80 * this.k() - (110 + i * 74) * this.ki();
+    return -100 * this.k() - (78 + i * 74) * this.ki();
   }
 
   open(hasSave: boolean): void {
@@ -72,7 +72,7 @@ export class Title {
     const name = brushText('Trait', { size: 170 * k, ppu: 1.2, weight: 700, halo: false });
     this.name = new Sprite(name);
     this.name.mesh.renderOrder = LAYER.ui + 41;
-    this.name.setPos(0, 170 * k);
+    this.name.setPos(0, 195 * k);
     this.name.reveal = 0;
     r.uiPig.add(this.name.mesh);
     const sp = new Painter(130, 130, 1, -65, -65);
@@ -90,7 +90,8 @@ export class Title {
     const sub = brushText(tr('Le dernier trait du maître', 'The master’s last stroke'), { size: 40 * k, ppu: 1.4, italic: true, halo: false });
     this.sub = new Sprite(sub);
     this.sub.mesh.renderOrder = LAYER.ui + 41;
-    this.sub.setPos(0, -80 * k);
+    // well clear of the ensō, which comes down to about -55
+    this.sub.setPos(0, -100 * k);
     this.sub.reveal = 0;
     r.uiPig.add(this.sub.mesh);
     const mp = new Painter(60, 40, 1, -30, -20);
@@ -168,8 +169,8 @@ export class Title {
       const a0 = 2.2, span = Math.PI * 1.88 * Math.max(0.02, ease);
       for (let i = 0; i < 64; i++) {
         const a = a0 - (i / 63) * span;
-        const rr = 250 * k * (1 + 0.03 * Math.sin(a * 3));
-        pts.push([Math.cos(a) * rr * 1.18, 150 * k + Math.sin(a) * rr * 0.95]);
+        const rr = 225 * k * (1 + 0.03 * Math.sin(a * 3));
+        pts.push([Math.cos(a) * rr * 1.18, 175 * k + Math.sin(a) * rr * 0.95]);
       }
       this.enso.set(pts, (q) => 16 * k * (1.2 - q * 0.7));
       this.enso.visible = t > 0.3;
@@ -179,7 +180,7 @@ export class Title {
       const u = Math.max(0, Math.min(1, (t - 2.2) / 0.35));
       const s = k * (1 + (1 - u) * 1.2);
       this.seal.mesh.scale.set(s, s, 1);
-      this.seal.setPos(300 * k, 70 * k);
+      this.seal.setPos(272 * k, 103 * k);
       this.seal.opacity = u > 0 ? 1 : 0;
       if (t > 2.2 && t - dt <= 2.2) sfx.impact(false);
     }
