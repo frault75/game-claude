@@ -116,6 +116,8 @@ export class Player extends Entity {
   /** Skill cooldowns (seconds left). */
   cool: Partial<Record<SkillId, number>> = {};
   private mistT = 0;
+  /** Moth dust, cold, sticky ink: walking is slower for a moment. */
+  slowT = 0;
   private secondT = 0;
   /** Turn to mist: untouchable and quicker for a moment. */
   mist(t: number): void {
@@ -137,7 +139,7 @@ export class Player extends Entity {
   }
   /** Walking speed with what the child wears. */
   get speed(): number {
-    return PLAYER.speed * (1 + (gear().speed + eff('light')) / 100) * (this.mistT > 0 ? 1.45 : 1);
+    return PLAYER.speed * (1 + (gear().speed + eff('light')) / 100) * (this.mistT > 0 ? 1.45 : 1) * (this.slowT > 0 ? 0.55 : 1);
   }
   /** Damage of a blow, maybe a critical one (doubled). */
   roll(base: number): { dmg: number; crit: boolean } {
@@ -288,6 +290,7 @@ export class Player extends Entity {
     this.invuln = Math.max(0, this.invuln - dt);
     this.sinceInk += dt;
     this.mistT = Math.max(0, this.mistT - dt);
+    this.slowT = Math.max(0, this.slowT - dt);
     this.secondT = Math.max(0, this.secondT - dt);
     this.blessT = Math.max(0, this.blessT - dt);
     for (const k of Object.keys(this.cool) as SkillId[]) this.cool[k] = Math.max(0, (this.cool[k] ?? 0) - dt);

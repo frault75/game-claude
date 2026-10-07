@@ -88,6 +88,7 @@ export class Inventory {
     this.active = true;
     save.newItems = false;
     this.sel = null;
+    this.note = null;
     this.build();
     this.input.swallow();
     sfx.ui();
@@ -287,6 +288,7 @@ export class Inventory {
       this.ring.opacity = 1;
     } else this.ring.opacity = 0;
     if (!it) {
+      if (this.note) { put(this.note, 30, { bold: true, color: [0.76, 0.23, 0.17] }); y -= 6; }
       put(L(T.empty), 26, { italic: true });
       return;
     }
@@ -359,10 +361,14 @@ export class Inventory {
   grindGain = (it: Item) => ({ common: 1.5, magic: 3, rare: 5, unique: 8 })[it.rarity];
   onGrind?: (pigment: number, name: string) => void;
 
+  /** What was just ground (shown in the panel: the HUD is hidden behind it). */
+  private note: string | null = null;
+
   private grindSel(): void {
     const it = this.selected();
     const s = this.sel;
     if (!it || !s) return;
+    this.note = null;
     if ((it.rarity === 'rare' || it.rarity === 'unique') && this.sureT <= 0) {
       this.sureT = 2.5;
       this.showDetail();
@@ -374,6 +380,7 @@ export class Inventory {
     this.sel = null;
     sfx.inkstone();
     this.onGrind?.(this.grindGain(it), itemName(it));
+    this.note = `${itemName(it)} — ${lang === 'fr' ? 'broyé' : 'ground'} : +${this.grindGain(it)} ${lang === 'fr' ? 'pigment' : 'pigment'}`;
     this.changed();
   }
 
@@ -411,6 +418,7 @@ export class Inventory {
       if (Math.abs(x - cl.x) < half && Math.abs(y - cl.y) < half) {
         this.sel = save.equip[SLOTS[i]] ? { where: 'equip', slot: SLOTS[i] } : null;
         this.sureT = 0;
+        this.note = null;
         sfx.ui();
         this.showDetail();
         return;
@@ -421,6 +429,7 @@ export class Inventory {
       if (Math.abs(x - cl.x) < half && Math.abs(y - cl.y) < half) {
         this.sel = save.bag[k] ? { where: 'bag', index: k } : null;
         this.sureT = 0;
+        this.note = null;
         sfx.ui();
         this.showDetail();
         return;

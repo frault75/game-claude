@@ -3,6 +3,7 @@
  * the Plum Plain with its camps and shrines, the Ram King's stone circle, the ways down into the cave and the temple.
  */
 import { Tadpole, Kappa, Tanuki, InkMonk, TempleBell } from '../beasts3';
+import { Moth, Eel, Crab, Stag } from '../beasts1b';
 import type { RoomDef } from '../room';
 import { T2_ENTRY } from '../../world/terraces';
 import { Frog, MistGoat, MistWraith, JadeMantis } from '../beasts2';
@@ -25,7 +26,7 @@ import { buildStamps, StampSet } from '../../world/stamps';
 import { buildArtCache, ArtCache } from '../../world/artCache';
 import {
   WORLD, CAMPS, SHRINES, PONDS, ARENA, REGIONS, CAVE, TEMPLE, BRIDGE, NORTH_WALL, RIVER_SAMPLES, ORCHARD_CAMPS,
-  STELE_SPOTS, NPC_SPOTS, CampDef, EnemyKind, regionAt, riverHalf, riverX,
+  STELE_SPOTS, NPC_SPOTS, CampDef, EnemyKind, regionAt, riverHalf, riverX, riverDist,
 } from '../../world/layout';
 import { Sprite, Frame, frameFrom, ySort } from '../../gfx/sprite';
 import { Painter, INK, PIG_A, PIG_B, mixPig } from '../../gfx/paint';
@@ -90,6 +91,10 @@ export function makeEnemy(kind: EnemyKind, x: number, y: number): Creature {
     case 'tanuki': return new Tanuki(x, y);
     case 'monk': return new InkMonk(x, y);
     case 'bell': return new TempleBell(x, y);
+    case 'moth': return new Moth(x, y);
+    case 'eel': return new Eel(x, y);
+    case 'crab': return new Crab(x, y);
+    case 'stag': return new Stag(x, y);
   }
 }
 
@@ -248,8 +253,13 @@ export const overworld: RoomDef = {
       local: (x, y) => {
         const reg = regionAt(x, y);
         if (reg === 'village') return null;
-        if (x < riverX(y)) return { kinds: ['blot', 'mite', 'crow'], champions: ['crow', 'scarecrow', 'blot', 'splitter'], tier: 1 };
-        return { kinds: ['blot', 'fox', 'boar', 'wisp', 'mite'], champions: ['boar', 'fox', 'brute', 'splitter'], tier: x > 110 ? 3 : 2 };
+        // every zone its own creatures (and the riverbanks theirs)
+        if (riverDist(x, y) < 8) return { kinds: ['crab', 'eel', 'crab'], champions: ['crab', 'eel'], tier: 2 };
+        if (reg === 'orchard') return { kinds: ['blot', 'moth', 'crow', 'moth'], champions: ['crow', 'scarecrow', 'moth'], tier: 1 };
+        if (reg === 'marsh' || reg === 'cave') return { kinds: ['eel', 'mite', 'wisp'], champions: ['eel', 'splitter'], tier: 2 };
+        if (reg === 'hills' || reg === 'temple') return { kinds: ['stag', 'fox', 'splitter'], champions: ['stag', 'boar'], tier: 3 };
+        if (reg === 'heath') return { kinds: ['crow', 'scarecrow', 'moth'], champions: ['scarecrow', 'brute'], tier: 3 };
+        return { kinds: ['fox', 'boar', 'blot', 'wisp'], champions: ['boar', 'fox', 'brute'], tier: x > 110 ? 3 : 2 };
       },
       calm: () => {
         const p = w.player;

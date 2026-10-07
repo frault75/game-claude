@@ -176,8 +176,11 @@ export function owMapSource(g: Game): MapSource {
     labels() {
       return [
         { x: VILLAGE.x, y: VILLAGE.y + 13, text: REGIONS.village.name[lang] },
-        { x: 46, y: 84, text: REGIONS.orchard.name[lang] },
-        { x: 118, y: 58, text: REGIONS.plain.name[lang] },
+        { x: 46, y: 80, text: REGIONS.orchard.name[lang] },
+        { x: 50, y: 96, text: REGIONS.marsh.name[lang] },
+        { x: 118, y: 62, text: REGIONS.plain.name[lang] },
+        { x: 100, y: 24, text: REGIONS.hills.name[lang] },
+        { x: 132, y: 102, text: REGIONS.heath.name[lang] },
         { x: ARENA.x, y: ARENA.y + ARENA.r + 3, text: REGIONS.arena.name[lang] },
         { x: CAVE.x, y: CAVE.y - 5, text: REGIONS.cave.name[lang] },
         { x: TEMPLE.x, y: TEMPLE.y + 8, text: REGIONS.temple.name[lang] },

@@ -474,6 +474,7 @@ function buildFloor(def: FloorDef, room: RoomDef, b: Parameters<RoomDef['build']
   }
   const doorSprites: Prop[] = [];
   const closeDoors = () => {
+    if (doors.length) g.after(1.2, () => g.hud.showHint(L(UI.doorsShut), 4));
     for (const [ax, ay, bx, by] of doors) {
       w.addCollider({ kind: 'seg', ax, ay, bx, by, r: 0.5 }, 'bossdoor');
       const pr = new Prop(A.brambles, (ax + bx) / 2, Math.min(ay, by) - (ay === by ? 0.3 : 0), 0, false);

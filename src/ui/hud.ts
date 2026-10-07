@@ -92,8 +92,8 @@ export class Hud {
   private questW = 0;
   private questGW = 0;
   private questPop = 0;
-  private masks: { tl: Sprite; br: Sprite; tr: Sprite; hint: Sprite; boss: Sprite };
-  private papers: { tl: Sprite; br: Sprite; tr: Sprite; hint: Sprite };
+  private masks: { tl: Sprite; br: Sprite; tr: Sprite; hint: Sprite; boss: Sprite; sk: Sprite };
+  private papers: { tl: Sprite; br: Sprite; tr: Sprite; hint: Sprite; sk: Sprite };
   /** Paper sheets behind the HUD in dark places (0..1). */
   backdrop = 0;
   /** Copper coins, top left after the menu button. */
@@ -307,12 +307,14 @@ export class Hud {
       tr: maskSprite(r, 900, 230),
       hint: maskSprite(r, 1300, 150),
       boss: maskSprite(r, 1100, 210),
+      sk: maskSprite(r, 620, 230),
     };
     this.papers = {
       tl: maskSprite(r, 560, 210, 'paper'),
       br: maskSprite(r, 460, 210, 'paper'),
       tr: maskSprite(r, 700, 160, 'paper'),
       hint: maskSprite(r, 1200, 120, 'paper'),
+      sk: maskSprite(r, 600, 190, 'paper'),
     };
     for (const s of Object.values(this.papers)) s.opacity = 0;
   }
@@ -423,9 +425,9 @@ export class Hud {
         this.r.uiAcc.add(art[4].mesh);
         for (const s of art) { s.mesh.renderOrder = LAYER.ui + 2; s.mesh.scale.set(1.05, 1.05, 1); }
         // a paper medallion behind it, so it reads on the darkest ground
-        const paper = maskSprite(this.r, 120, 120, 'paper');
+        const paper = maskSprite(this.r, 150, 150, 'paper');
         paper.mesh.renderOrder = LAYER.ui;
-        const mask = maskSprite(this.r, 150, 150);
+        const mask = maskSprite(this.r, 180, 180);
         let ks: Sprite | null = null;
         if (keys) {
           ks = new Sprite(brushText(['R', 'T', 'G'][k], { size: 24, ppu: 1.5, weight: 700 }));
@@ -702,7 +704,7 @@ export class Hud {
       const frac = this.skillCool[i] ?? 0;
       const vis = this.visible && !this.panelOpen;
       b.ring.opacity = vis ? 1 : 0;
-      b.paper.opacity = vis ? 0.95 : 0;
+      b.paper.opacity = vis ? 1 : 0;
       b.mask.opacity = vis ? 1 : 0;
       b.art.forEach((s, k) => {
         s.setPos(b.x, b.y);
@@ -769,6 +771,19 @@ export class Hud {
     pp.tr.opacity = bd;
     pp.hint.setPos(0, -r.uiH / 2 + 90);
     pp.hint.opacity = this.hint ? bd * this.hint.opacity : 0;
+    // the active skills and the gourd: a sheet behind the whole row, so they read in the darkest place
+    {
+      const n = this.skillBtns.length;
+      const rowY = -r.uiH / 2 + (this.pots.length > 1 ? 220 : 110);
+      const rowX = r.uiW / 2 - 90 - (n * 118) / 2;
+      const show = this.visible && !this.panelOpen && n > 0;
+      pp.sk.setPos(rowX, rowY);
+      pp.sk.mesh.scale.set((n + 1) * 118 / 600, 1, 1);
+      pp.sk.opacity = show ? Math.max(bd, 0) : 0;
+      m.sk.setPos(rowX, rowY);
+      m.sk.mesh.scale.set((n + 1) * 118 / 600, 1, 1);
+      m.sk.opacity = show ? 1 : 0;
+    }
     if (this.bossName && this.bossBar) {
       this.bossNameT += dt;
       const showB = this.bossVis;

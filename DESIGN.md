@@ -29,6 +29,12 @@ Action-RPG en monde ouvert, vue de dessus, à la Diablo, dans un monde peint au 
 
 **Donjons** : générateur à graine (salles reliées par des couloirs, boucles), murs de roche peints avec une face éclairée, escaliers, torches ; les ennemis contournent les murs (champ de distances) et ne voient pas à travers la roche.
 
+## 0 quater. Zones de l'Acte I et équilibrage
+
+Le val de l'Acte I est découpé en zones, chacune avec sa palette, sa musique, son histoire et ses créatures : **le Verger** (phalènes de papier — les esquisses jetées au vent par le maître, pliées par l'orage — qui tournent, plongent et éclatent en une poussière qui ralentit ; corbeaux, épouvantails, taches), **les Marais aux lucioles** au nord-ouest (anguilles d'encre qui nagent dans l'encre répandue et jaillissent pour mordre, à découvert un instant après), **les berges** (crabes-encriers : de côté, deux pinces, carapace quand on frappe fort, crachats d'encre), **la Plaine des pruniers** (sangliers, renards de fumée), **les Collines rouges** au sud-est (cerfs d'encre aux bois de prunier : ils gardent leurs distances, plantent leurs bois, et des racines d'épines jaillissent en ligne), **la Lande aux corbeaux** au nord-est. Les événements aléatoires tirent aussi leurs créatures de la zone. À l'Acte II, plus de créatures génériques : chaque camp et chaque événement utilise la faune locale.
+
+Équilibrage : courbe d'expérience plus raide (50 × niveau^1,75), dégâts par niveau +6,5 % (au lieu de 9 %), une vie tous les 3 niveaux (au lieu de 2), santé des ennemis par palier relevée (×1 / 1,1 / 1,8 / 2,9 / 4 / 5,3), et les créatures du palier 5 frappent plus fort.
+
 ## 0 ter. Acte II — Les Rizières en terrasses
 
 Monde ouvert de 200 × 150 au-delà du col de l'Est (sortie à l'est du Cercle de pierres, ouverte quand l'or est rendu). Zones avec chacune leur musique et leur palette (les couleurs glissent d'une zone à l'autre) : **le Col des Brumes** (pins, brouillard ; chèvres de brume, spectres), **les Terrasses de Jade** (bandes de rizières en anneaux autour d'une colline ; grenouilles d'encre, tanuki), **le Village des Roseaux** (Dame Héron-Blanc, le vieux Cheng, Tao, Mina, Lin la marchande), **le Lac aux Lotus** (kappa), **la Bambouseraie** (mantes de jade ; la hutte de Maître Yu, la clairière de la Reine), **le Parvis de la Pagode** (Frère Gong, l'escalier aux quatre lanternes). Carte d'acte peinte à l'arrivée.

@@ -75,15 +75,16 @@ export function gearChanged(): void {
 export const save: Save = fresh();
 
 export function xpToNext(level: number): number {
-  return Math.round(45 * Math.pow(level, 1.6));
+  // a steeper climb: each level is earned (the story's rewards still carry you, the camps a little less)
+  return Math.round(50 * Math.pow(level, 1.75));
 }
 
 export const stats = {
-  maxHp: (lv: number) => 5 + Math.floor((lv - 1) / 2),
+  maxHp: (lv: number) => 5 + Math.floor((lv - 1) / 3),
   inkMax: (lv: number) => 20 + (lv - 1) * 1.5,
   /** Coloured inks draw from pigment, which does not flow back on its own. */
   pigmentMax: (lv: number) => 10 + (lv - 1),
-  dmg: (lv: number) => 1 + (lv - 1) * 0.09,
+  dmg: (lv: number) => 1 + (lv - 1) * 0.065,
 };
 
 export function loadSave(): boolean {

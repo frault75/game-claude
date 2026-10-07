@@ -16,6 +16,10 @@ export const PALETTES: Record<string, Palette> = {
   blank: { paper: '#F7F3E9', ink: '#8E8B85', a: '#B9B5AE', b: '#CFCBC3' },
   cave: { paper: '#D9D1BD', ink: '#17130F', a: '#6E9A86', b: '#8A6A48' },
   temple: { paper: '#DCD8C8', ink: '#12181B', a: '#4F807B', b: '#C29A45' },
+  // Act I's zones
+  marsh: { paper: '#E2E1D0', ink: '#1A221E', a: '#6E9A86', b: '#9AA060' },
+  plain: { paper: '#F0E6D6', ink: '#2A2226', a: '#D896AE', b: '#BDA96C' },
+  heath: { paper: '#E6E0CE', ink: '#221F1E', a: '#9A8C7A', b: '#B47A4A' },
   // Act II
   terraces: { paper: '#EDE8D2', ink: '#1F2620', a: '#7FA36B', b: '#C9B26A' },
   bamboo: { paper: '#E6E6D3', ink: '#16201A', a: '#5E8C5A', b: '#A8B07A' },

@@ -93,6 +93,25 @@ export const THEMES: Record<string, Theme> = {
     calmLead: ['pluck'], fightLead: ['pluck'],
     pad: 0.5, padBright: 0.4, drums: 0.5, register: 5, bell: 0.05, rest: 0.6,
   },
+  // Act I's zones: the firefly marshes, the plum plain, the crow heath
+  marsh: {
+    root: 53, scale: MINOR_PENTA, bpm: 58,
+    progressions: [[0, 3, 0, 4], [0, 2, 3, 0], [3, 4, 0, 0]],
+    calmLead: ['bell', 'pluck', 'bowed'], fightLead: ['bowed', 'pluck'],
+    pad: 1, padBright: 0.3, drums: 0.8, register: 5, bell: 0.24, rest: 0.42,
+  },
+  plain: {
+    root: 64, scale: PENTA, bpm: 82,
+    progressions: [[0, 3, 4, 0], [0, 4, 2, 3], [3, 4, 0, 2], [0, 2, 4, 3]],
+    calmLead: ['pluck', 'flute', 'pluck'], fightLead: ['flute', 'pluck'],
+    pad: 0.7, padBright: 0.6, drums: 0.95, register: 5, bell: 0.06, rest: 0.25,
+  },
+  heath: {
+    root: 52, scale: HIRA, bpm: 70,
+    progressions: [[0, 1, 3, 0], [0, 4, 3, 1], [3, 1, 0, 4]],
+    calmLead: ['bowed', 'flute'], fightLead: ['bowed', 'pluck'],
+    pad: 0.9, padBright: 0.35, drums: 0.9, register: 5, bell: 0.1, rest: 0.35,
+  },
   // Act II: the rice terraces, the misty pass, the reed village, the bamboo, the lotus lake, the pagoda
   terraces: {
     root: 60, scale: [0, 2, 5, 7, 9], bpm: 76,

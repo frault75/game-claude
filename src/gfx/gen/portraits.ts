@@ -5,6 +5,7 @@ import { buildCrowFrames, buildScarecrowFrames, buildBoarFrames, buildFoxFrames,
 import { getTotemFrames } from '../../game/enemies';
 import { buildFrogFrames, buildGoatFrames, buildWraithFrames, buildMantisFrames } from './bestiary2';
 import { buildWardenFrames } from '../../game/bosses/warden';
+import { buildMothFrames, buildEelFrames, buildCrabFrames, buildStagFrames } from './bestiary1b';
 import { buildTadpoleFrames, buildKappaFrames, buildTanukiFrames, buildToadKingFrames, buildQueenFrames, buildHeronFrames, buildMonkFrames, buildBellFrames, buildFacelessFrames } from './bestiary3';
 
 const MAKERS: Record<string, () => Frame> = {
@@ -25,6 +26,10 @@ const MAKERS: Record<string, () => Frame> = {
   mother: () => buildBlotFrames(3301, 1)[0],
   'ram king': () => buildBruteFrames(2501)[0],
   warden: () => buildWardenFrames(4401)[0],
+  moth: () => buildMothFrames(1701)[0],
+  eel: () => buildEelFrames(1801)[2],
+  crab: () => buildCrabFrames(1901)[2],
+  stag: () => buildStagFrames(2001)[0],
   frog: () => buildFrogFrames(3101)[0],
   goat: () => buildGoatFrames(3201)[0],
   wraith: () => buildWraithFrames(3301)[0],
