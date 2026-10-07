@@ -7,7 +7,7 @@ import type { Game } from '../game';
 import { Entity } from '../entity';
 import { Creature } from '../enemies';
 import { Chunks } from '../../world/chunks';
-import { TERRACES, T2, T2_ENTRY, T2_PONDS, T2_STREAM, T2_STREAM_HALF, T2_BRIDGE, T2_NORTH, T2_CAMPS, T2_SHRINES, T2_SLUICES, T2_REGIONS, T2_VILLAGE, T2_PAGODA, T2_BASIN, T2_HERMIT, T2_QUEEN, T2_STAIR_LAMPS, T2_JETTY, t2RegionAt } from '../../world/terraces';
+import { TERRACES, T2, T2_ENTRY, T2_PONDS, T2_STREAM, T2_STREAM_HALF, T2_BRIDGE, T2_NORTH, T2_CAMPS, T2_SHRINES, T2_SLUICES, T2_REGIONS, T2_VILLAGE, T2_PAGODA, T2_BASIN, T2_HERMIT, T2_QUEEN, T2_STAIR_LAMPS, T2_JETTY, T2_ISLAND, T2_LOTUS, T2_LAKE, t2RegionAt } from '../../world/terraces';
 import { t2MapSource } from '../../world/t2Map';
 import { WORLD } from '../../world/layout';
 import type { EnemyKind } from '../../world/layout';
@@ -19,7 +19,9 @@ import { stroke } from '../../gfx/brush';
 import { SPRITE_PPU } from '../../gfx/gen/flora';
 import { lang } from '../../i18n';
 import { L, LL } from '../../i18n/lore';
-import { NAMES2, HERON, YU, IDLE2, REGION_LORE2, ACT2_TITLE, SLUICE_UI, BASIN_UI, QUEEN_UI, LAMP_UI } from '../../i18n/lore2';
+import { NAMES2, HERON, YU, IDLE2, REGION_LORE2, ACT2_TITLE, SLUICE_UI, BASIN_UI, QUEEN_UI, LAMP_UI, LOTUS_UI, GONG_PRAYER, PAGODA_UI } from '../../i18n/lore2';
+import { InkHeron } from '../bosses/inkHeron';
+import { buildLotusFrames } from '../../gfx/gen/bestiary3';
 import { MantisQueen } from '../bosses/mantisQueen';
 import { Pickup } from '../pickups';
 import { dropLoot } from '../loot';
@@ -238,6 +240,150 @@ class StairLamp extends Entity {
   }
 }
 
+let lotusArt: Frame[] | null = null;
+let flowerArt: Frame | null = null;
+/** A lotus pad on the path to the island: it rises out of the black water when the flute plays. */
+class LotusPad extends Entity {
+  private s!: Sprite;
+  private fl: Sprite | null = null;
+  private t = Math.random() * 6;
+  private up = 0;
+  private rising = false;
+  constructor(x: number, y: number, private v: number, risen: boolean, private flower: boolean) {
+    super();
+    this.x = x; this.y = y;
+    this.label = 'lotus';
+    this.up = risen ? 1 : 0;
+  }
+  init(w: World): void {
+    lotusArt ??= buildLotusFrames(3801);
+    if (!flowerArt) {
+      const c = new Painter(1, 1, SPRITE_PPU / 2, -0.5, -0.3);
+      c.over();
+      for (let k = 0; k < 5; k++) {
+        const a = -Math.PI / 2 + (k - 2) * 0.45;
+        c.ctx.fillStyle = k % 2 ? 'rgba(236,160,186,1)' : 'rgba(246,196,212,1)';
+        c.ctx.beginPath();
+        c.ctx.ellipse(Math.cos(a + Math.PI) * 0.1, 0.12 - Math.sin(a + Math.PI) * 0.12, 0.08, 0.16, a + Math.PI / 2, 0, Math.PI * 2);
+        c.ctx.fill();
+      }
+      flowerArt = frameFrom(c);
+    }
+    this.s = new Sprite(lotusArt[this.v % lotusArt.length]);
+    this.s.mesh.renderOrder = LAYER.groundDetail + 30;
+    w.r.scenePig.add(this.s.mesh);
+    this.sprites.push(this.s);
+    if (this.flower) {
+      this.fl = new Sprite(flowerArt);
+      this.fl.mesh.renderOrder = LAYER.groundDetail + 31;
+      w.r.sceneAcc.add(this.fl.mesh);
+      this.sprites.push(this.fl);
+    }
+    this.apply();
+  }
+  rise(): void {
+    this.rising = true;
+    this.world.vfx.ripple(this.x, this.y, 1.2);
+  }
+  private apply(): void {
+    const k = this.up;
+    this.s.setPos(this.x, this.y + Math.sin(this.t * 1.3) * 0.03);
+    this.s.mesh.scale.set(k, k, 1);
+    this.s.opacity = k;
+    if (this.fl) { this.fl.setPos(this.x + 0.2, this.y + 0.1); this.fl.mesh.scale.set(k, k, 1); this.fl.opacity = k; }
+  }
+  update(dt: number): void {
+    this.t += dt;
+    if (this.rising && this.up < 1) this.up = Math.min(1, this.up + dt * 2.5);
+    this.apply();
+  }
+}
+
+/** The old jetty on the lake's west shore, where the flute is played. */
+class Jetty extends Entity {
+  onPlay?: () => void;
+  constructor(x: number, y: number) {
+    super();
+    this.x = x; this.y = y;
+    this.radius = 0.5;
+    this.interactive = true;
+    this.label = 'jetty';
+    this.promptH = 1.2;
+  }
+  interact(): void {
+    this.onPlay?.();
+  }
+}
+
+let scrollArt: { pig: Frame; red: Frame } | null = null;
+/** The prayer of the lake: a scroll sealed in red, in the Ink Heron's nest. */
+class PrayerScroll extends Entity {
+  private t = 0;
+  onTake?: () => void;
+  constructor(x: number, y: number) {
+    super();
+    this.x = x; this.y = y;
+    this.label = 'scroll';
+  }
+  init(): void {
+    if (!scrollArt) {
+      const p = new Painter(1.6, 1.4, SPRITE_PPU, -0.8, -0.2);
+      const q = new Painter(1.6, 1.4, SPRITE_PPU, -0.8, -0.2);
+      p.glaze();
+      q.glaze();
+      washPoly(p, roughen([[-0.5, 0.25], [0.5, 0.25], [0.5, 0.55], [-0.5, 0.55]], 0.01, 3101, 0.02), { pig: mixPig(INK, PIG_B, 0.4), density: 0.25, soft: 0.05, edge: 0.9, seed: 3101 });
+      for (const x of [-0.55, 0.55]) p.circle(x, 0.4, 0.17, INK, 0.75);
+      stroke(q, [[-0.08, 0.32], [0.08, 0.48]], { width: 0.12, pig: VERMILION, load: 1, seed: 3102 });
+      q.dab(0, 0.4, 0.7, LIGHT, 0.6, 0);
+      scrollArt = { pig: frameFrom(p), red: frameFrom(q) };
+    }
+    this.addSprite(new Sprite(scrollArt.pig));
+    this.addSprite(new Sprite(scrollArt.red), true);
+  }
+  update(dt: number): void {
+    this.t += dt;
+    for (const s of this.sprites) { s.setPos(this.x, this.y + 0.3 + Math.sin(this.t * 2) * 0.08); s.mesh.renderOrder = ySort(this.y); }
+    if (Math.sin(this.t * 3) > 0.5) this.world.vfx.glowAt(this.x, this.y + 0.6, 1.4, 0.2);
+    const p = this.world.player;
+    if (Math.hypot(p.x - this.x, p.y - this.y) < 1) { this.destroy(); this.onTake?.(); }
+  }
+}
+
+/** A closed ellipse as points. */
+function ellipsePts(cx: number, cy: number, rx: number, ry: number, n: number): [number, number][] {
+  const out: [number, number][] = [];
+  for (let k = 0; k <= n; k++) { const a = (k / n) * Math.PI * 2; out.push([cx + Math.cos(a) * rx, cy + Math.sin(a) * ry]); }
+  return out;
+}
+
+/**
+ * Cut a band (the lotus path) out of a closed outline: segments inside the band are dropped, those
+ * crossing its edge are clipped there, so the band's walls and the outline meet without a gap.
+ */
+function cutBand(pts: [number, number][], a: [number, number], b: [number, number], half: number): [number, number, number, number][] {
+  const L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  const ux = (b[0] - a[0]) / L, uy = (b[1] - a[1]) / L;
+  const side = (p: [number, number]) => -(p[0] - a[0]) * uy + (p[1] - a[1]) * ux;
+  const along = (p: [number, number]) => (p[0] - a[0]) * ux + (p[1] - a[1]) * uy;
+  const inBand = (p: [number, number]) => Math.abs(side(p)) < half && along(p) > -2 && along(p) < L + 2;
+  const out: [number, number, number, number][] = [];
+  const lerp = (p: [number, number], q: [number, number], t: number): [number, number] => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p = pts[i], q = pts[i + 1];
+    const ip = inBand(p), iq = inBand(q);
+    if (ip && iq) continue;
+    if (!ip && !iq) { out.push([p[0], p[1], q[0], q[1]]); continue; }
+    // one end inside: clip where the segment crosses the band's edge
+    const sp = side(p), sq = side(q);
+    const edge = ip ? (sq > 0 ? half : -half) : (sp > 0 ? half : -half);
+    const t = (edge - sp) / (sq - sp || 1e-6);
+    const c = lerp(p, q, Math.max(0, Math.min(1, t)));
+    if (ip) out.push([c[0], c[1], q[0], q[1]]);
+    else out.push([p[0], p[1], c[0], c[1]]);
+  }
+  return out;
+}
+
 export const terraces: RoomDef = {
   id: 'terraces',
   area: 'terraces',
@@ -268,12 +414,23 @@ export const terraces: RoomDef = {
 
     // ---------- water and walls ----------
     T2_PONDS.forEach((p, i) => {
+      if (i === 0) return;
       const n = Math.max(2, Math.round((p.rx / p.ry) * 1.5));
       for (let k = 0; k < n; k++) {
         const tt = n === 1 ? 0 : k / (n - 1) - 0.5;
         w.addCollider({ kind: 'circle', x: p.x + tt * (p.rx * 1.3), y: p.y, r: p.ry * 0.85 }, 't2pond' + i);
       }
     });
+    // the lake: its shore, the island's shore, and the lotus path between them (closed until the flute)
+    {
+      const LP = T2_LOTUS, I = T2_ISLAND;
+      for (const [ax, ay, bx, by] of cutBand(ellipsePts(T2_LAKE.x, T2_LAKE.y, T2_LAKE.rx * 0.86, T2_LAKE.ry * 0.84, 64), LP.a, LP.b, LP.half)) w.addCollider({ kind: 'seg', ax, ay, bx, by, r: 0.3 }, 'lake');
+      for (const [ax, ay, bx, by] of cutBand(ellipsePts(I.x, I.y, I.rx * 0.95, I.ry * 0.95, 44), LP.a, LP.b, LP.half)) w.addCollider({ kind: 'seg', ax, ay, bx, by, r: 0.3 }, 'lake');
+      const L = Math.hypot(LP.b[0] - LP.a[0], LP.b[1] - LP.a[1]);
+      const nx = -(LP.b[1] - LP.a[1]) / L, ny = (LP.b[0] - LP.a[0]) / L;
+      for (const sd of [1, -1]) w.addCollider({ kind: 'seg', ax: LP.a[0] + nx * LP.half * sd, ay: LP.a[1] + ny * LP.half * sd, bx: LP.b[0] + nx * LP.half * sd, by: LP.b[1] + ny * LP.half * sd, r: 0.25 }, 'lake');
+      if (!save.perks.lotus) w.addCollider({ kind: 'seg', ax: LP.a[0] + 1.2 + nx * LP.half, ay: LP.a[1] + ny * LP.half, bx: LP.a[0] + 1.2 - nx * LP.half, by: LP.a[1] - ny * LP.half, r: 0.3 }, 'lotusGate');
+    }
     const deckLo = T2_BRIDGE.y - T2_BRIDGE.half - 0.15, deckHi = T2_BRIDGE.y + T2_BRIDGE.half + 0.15;
     for (const side of [1, -1]) {
       for (let i = 0; i < T2_STREAM.length - 2; i += 2) {
@@ -345,6 +502,21 @@ export const terraces: RoomDef = {
       else if (m === STEP.hermit) speak(heron, LL(HERON.hermit));
       else speak(heron, LL(IDLE2.heron));
     };
+    gong.onTalk = () => {
+      if (save.main === STEP.prayer) {
+        speak(gong, LL(GONG_PRAYER), () => {
+          if (save.main !== STEP.prayer) return;
+          save.perks.pagodaOpen = 1;
+          writeSave();
+          giveXp(g, 200);
+          sfx.wave();
+          w.shake(0.3, 0.8);
+          w.vfx.ripple(T2_PAGODA.x, T2_PAGODA.y, 4);
+          void g.story.show([L(PAGODA_UI.opened)], { size: 34, y: r.uiH / 2 - 190, hold: 3.5 });
+          setMain(g, STEP.pagoda);
+        });
+      } else speak(gong, LL(IDLE2.gong));
+    };
     yu.onTalk = () => {
       const m = save.main;
       if (m === STEP.hermit) speak(yu, LL(YU.meet), () => { if (save.main === STEP.hermit) { giveXp(g, 120); setMain(g, STEP.queen); } });
@@ -359,6 +531,7 @@ export const terraces: RoomDef = {
     const mainBusiness: Record<string, () => boolean> = {
       heron: () => (save.main <= STEP.meetHeron && save.main >= STEP.end) || save.main === STEP.toadBack,
       yu: () => save.main === STEP.hermit || save.main === STEP.yuBack,
+      gong: () => save.main === STEP.prayer,
     };
     for (const n of people) {
       const base = n.onTalk;
@@ -470,6 +643,13 @@ export const terraces: RoomDef = {
         g.hud.hideBoss();
         for (const en of w.entities) if (en.label === 'mantis' && !(en as Creature).home) en.destroy();
       }
+      if (inkHeron && !inkHeron.defeated) {
+        inkHeron.destroy();
+        inkHeron = null;
+        w.removeColliders('heronGate');
+        g.hud.hideBoss();
+        for (const en of w.entities) if ((en.label === 'frog' || en.label === 'inkdrop') && !(en as Creature).home) en.destroy();
+      }
       chunks.buildAround(w.player.x, w.player.y, r.viewW / 2 + 2, r.viewH / 2 + 2);
     };
 
@@ -498,6 +678,95 @@ export const terraces: RoomDef = {
       const q = g.quests.state('lanterns');
       if (!q || q.done) return;
       for (const l of lamps) if (!l.lit && Math.hypot(p.x - l.x, p.y - l.y) < 2.2) g.hintOnce('lampCold', L(LAMP_UI.cold), 4);
+    });
+
+    // ---------- the Lotus Lake: the flute, the path, the island ----------
+    const pads: LotusPad[] = [];
+    {
+      const LP = T2_LOTUS;
+      const L = Math.hypot(LP.b[0] - LP.a[0], LP.b[1] - LP.a[1]);
+      const n = Math.round(L / 1.15);
+      for (let k = 0; k <= n; k++) {
+        const t = k / n;
+        const x = LP.a[0] + 1.4 + (LP.b[0] - LP.a[0] - 1.4) * t + Math.sin(k * 2.3) * 0.25, y = LP.a[1] + (LP.b[1] - LP.a[1]) * t + Math.cos(k * 1.7) * 0.3;
+        pads.push(b.add(new LotusPad(x, y, k, !!save.perks.lotus, k % 3 === 1)));
+      }
+    }
+    const jetty = b.add(new Jetty(T2_JETTY[0] + 2.2, T2_JETTY[1]));
+    jetty.onPlay = () => {
+      if (save.perks.lotus) return;
+      if (save.main < STEP.lotus) { g.hud.showHint(L(LOTUS_UI.jetty), 4); return; }
+      save.perks.lotus = 1;
+      writeSave();
+      jetty.interactive = false;
+      sfx.song();
+      g.hud.showHint(L(LOTUS_UI.play), 2);
+      for (let k = 0; k < 10; k++) g.after(k * 0.42, () => w.vfx.glowAt(jetty.x + 0.3 + Math.random() * 0.4, jetty.y + 1.6 + k * 0.08, 0.7, 0.4));
+      pads.forEach((pd, k) => g.after(1.2 + k * 0.22, () => pd.rise()));
+      g.after(1.2 + pads.length * 0.22 + 0.4, () => {
+        w.removeColliders('lotusGate');
+        void g.story.show([L(LOTUS_UI.open)], { size: 34, y: r.uiH / 2 - 190, hold: 3.5 });
+        if (save.main === STEP.lotus) setMain(g, STEP.heronBoss);
+      });
+    };
+    if (save.perks.lotus) jetty.interactive = false;
+    let inkHeron: InkHeron | null = null;
+    const startHeron = () => {
+      const I = T2_ISLAND, LP = T2_LOTUS;
+      const hb = b.add(new InkHeron(I.x + 2, I.y + 0.6, I));
+      inkHeron = hb;
+      const L2 = Math.hypot(LP.b[0] - LP.a[0], LP.b[1] - LP.a[1]);
+      const ux = (LP.b[0] - LP.a[0]) / L2, uy = (LP.b[1] - LP.a[1]) / L2;
+      const gx = LP.b[0] - ux * 1.2, gy = LP.b[1] - uy * 1.2;
+      w.addCollider({ kind: 'seg', ax: gx - uy * LP.half * 1.2, ay: gy + ux * LP.half * 1.2, bx: gx + uy * LP.half * 1.2, by: gy - ux * LP.half * 1.2, r: 0.3 }, 'heronGate');
+      g.hud.showBoss(L(LOTUS_UI.boss));
+      sfx.wave();
+      hb.onGaze = () => g.hintOnce('heronGaze', L(LOTUS_UI.gazeHint), 4.5);
+      hb.onDazzled = () => g.hud.showHint(L(LOTUS_UI.dazzled), 3);
+      hb.onDefeat = () => {
+        music.boss = 0.2;
+        w.removeColliders('heronGate');
+        g.hud.hideBoss();
+        save.bosses.push('inkheron');
+        writeSave();
+        discover(g, 'inkheron');
+        giveXp(g, 640);
+        for (let i = 0; i < 4; i++) b.add(new Pickup(hb.x, hb.y, i % 2 ? 'ink' : 'life', i % 2 ? 10 : 2));
+        for (let i = 0; i < 5; i++) b.add(new Pickup(hb.x + (i - 2) * 0.5, hb.y, 'coin', 14));
+        dropLoot(g, hb.x, hb.y, 'boss', 12);
+        for (const en of w.entities) if (en.label === 'frog' && !(en as Creature).home) (en as Creature).onHit?.({ dmg: 999, fromX: hb.x, fromY: hb.y, kind: 'enso' });
+        g.after(1.6, () => {
+          void g.story.show([L(LOTUS_UI.down)], { size: 36, y: r.uiH / 2 - 200, hold: 3.2 });
+          spawnScroll();
+          inkHeron = null;
+        });
+      };
+    };
+    const spawnScroll = () => {
+      if (save.main >= STEP.prayer) return;
+      const sc = b.add(new PrayerScroll(T2_ISLAND.x + 1.2, T2_ISLAND.y + 0.8));
+      sc.onTake = () => {
+        sfx.uiConfirm();
+        g.talk({ name: L(LOTUS_UI.scroll) }, [L(LOTUS_UI.scrollText)], () => setMain(g, STEP.prayer));
+      };
+    };
+    if (save.bosses.includes('inkheron')) spawnScroll();
+    w.scripts.push(() => {
+      const p = w.player;
+      if (inkHeron) { g.hud.bossFrac = inkHeron.frac; if (!inkHeron.defeated) music.boss = 1; return; }
+      if (save.bosses.includes('inkheron') || save.main < STEP.heronBoss || p.state === 'dead') return;
+      const I = T2_ISLAND;
+      if (((p.x - I.x) / I.rx) ** 2 + ((p.y - I.y) / I.ry) ** 2 < 0.55) startHeron();
+    });
+
+    // ---------- the pagoda doors ----------
+    let doorHintT = 0;
+    w.scripts.push((dt) => {
+      doorHintT -= dt;
+      const p = w.player;
+      if (doorHintT > 0 || Math.hypot(p.x - T2_PAGODA.x, p.y - (T2_PAGODA.y - 1.5)) > 3) return;
+      g.hud.showHint(L(save.perks.pagodaOpen ? PAGODA_UI.soon : PAGODA_UI.shut), 4);
+      doorHintT = 10;
     });
 
     // ---------- regions: names, music, colours, stories ----------
@@ -537,7 +806,10 @@ export const terraces: RoomDef = {
       else if (m === STEP.toadBack) target = [heron.x, heron.y];
       else if (m === STEP.hermit || m === STEP.yuBack) target = [yu.x, yu.y];
       else if (m === STEP.queen) target = [T2_QUEEN.x, T2_QUEEN.y];
-      else if (m === STEP.lotus) target = [T2_JETTY[0], T2_JETTY[1]];
+      else if (m === STEP.lotus) target = [jetty.x, jetty.y];
+      else if (m === STEP.heronBoss) target = [T2_ISLAND.x, T2_ISLAND.y];
+      else if (m === STEP.prayer) target = save.bosses.includes('inkheron') && w.entities.some((e) => e.label === 'scroll') ? [T2_ISLAND.x + 1.2, T2_ISLAND.y + 0.8] : [gong.x, gong.y];
+      else if (m === STEP.pagoda) target = [T2_PAGODA.x, T2_PAGODA.y - 1.5];
       g.objective = target;
       const vh = r.viewH / r.zoom, vw = vh * (r.pxW / r.pxH);
       g.hud.arrowTarget = target ? [((target[0] - w.camX) / vw) * r.uiW, ((target[1] - w.camY) / vh) * r.uiH] : null;
