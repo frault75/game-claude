@@ -40,6 +40,9 @@ export const STEP = {
   snow: 28,
   bells: 29,
   bellsBack: 30,
+  kings: 31,
+  sealBack: 32,
+  summit: 33,
 } as const;
 
 /** Title and goal of the current step (with progress where it counts). */
@@ -52,6 +55,7 @@ export function questLine(): [string, string] {
   }
   if (save.main === STEP.sluices) goal += ` (${save.sluices.length}/3)`;
   if (save.main === STEP.bells) goal += ` (${[0, 1, 2].filter((i) => save.perks['bell' + i]).length}/3)`;
+  if (save.main === STEP.kings) goal += ` (${['sealA', 'sealB'].filter((k) => save.perks[k]).length}/2)`;
   if (save.main >= MAIN.length) {
     const beasts = Object.keys(BESTIARY).length;
     goal = lang === 'fr'

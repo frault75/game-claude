@@ -9,7 +9,7 @@ import type { World } from '../world';
 import { Entity } from '../entity';
 import { Creature } from '../enemies';
 import { Chunks } from '../../world/chunks';
-import { PEAKS, P3, P3_ENTRY, P3_NORTH, P3_PONDS, P3_CAMPS, P3_SHRINES, P3_REGIONS, P3_MONASTERY, P3_BELLS, P3_CREVASSES, P3_TEARS, p3RegionAt } from '../../world/peaks';
+import { PEAKS, P3, P3_ENTRY, P3_NORTH, P3_PONDS, P3_CAMPS, P3_SHRINES, P3_REGIONS, P3_MONASTERY, P3_BELLS, P3_CREVASSES, P3_TEARS, P3_KING, P3_DRAGON, P3_SUMMIT, p3RegionAt } from '../../world/peaks';
 import { p3MapSource } from '../../world/p3Map';
 import type { EnemyKind } from '../../world/layout';
 import { Sprite, Frame, frameFrom, ySort, LAYER } from '../../gfx/sprite';
@@ -20,13 +20,18 @@ import { shadow } from '../../gfx/gen/ground';
 import { SPRITE_PPU } from '../../gfx/gen/flora';
 import { lang, t } from '../../i18n';
 import { L, LL } from '../../i18n/lore';
-import { NAMES3, SNOW, IDLE3, REGION_LORE3, ACT3_TITLE, BELL3_UI } from '../../i18n/lore3';
+import { NAMES3, SNOW, IDLE3, REGION_LORE3, ACT3_TITLE, BELL3_UI, KING_UI, DRAGON_UI, SEAL_UI } from '../../i18n/lore3';
 import { music } from '../../audio/music';
 import { sfx } from '../../audio/sfx';
 import { save, writeSave } from '../progression';
 import { Npc } from '../npc';
 import { STEP, setMain } from '../quests';
-import { giveXp, onKill } from '../rewards';
+import { giveXp, onKill, discover } from '../rewards';
+import { Pickup } from '../pickups';
+import { dropLoot } from '../loot';
+import { Boss } from '../boss';
+import { SnowKing } from '../bosses/snowKing';
+import { PaperDragon } from '../bosses/paperDragon';
 import { makeEnemy, sharedArt, sharedStamps, GROUND_DETAIL_PPU, Shrine } from './overworld';
 import { runCamps } from '../camps';
 import { Events } from '../events';
@@ -221,14 +226,26 @@ export const peaks: RoomDef = {
       const m = save.main;
       if (m <= STEP.snow) speak(snow, LL(SNOW.meet), () => { if (save.main < STEP.bells) { giveXp(g, 200); setMain(g, STEP.bells); } });
       else if (m === STEP.bells) speak(snow, LL(SNOW.bells));
-      else speak(snow, LL(SNOW.back));
+      else if (m === STEP.bellsBack) speak(snow, LL(SNOW.back), () => { if (save.main === STEP.bellsBack) { giveXp(g, 300); setMain(g, STEP.kings); } });
+      else if (m === STEP.kings) speak(snow, LL(SNOW.kings));
+      else if (m === STEP.sealBack) {
+        speak(snow, LL(SNOW.seal), () => {
+          if (save.main !== STEP.sealBack) return;
+          save.perks.seal = 1;
+          giveXp(g, 600);
+          w.vfx.splat(snow.x, snow.y + 1.4, 0, 12, 1, 'red');
+          sfx.uiConfirm();
+          void g.story.show([L(SEAL_UI.joined)], { size: 38, y: r.uiH / 2 - 200, hold: 3 });
+          setMain(g, STEP.summit);
+        });
+      } else speak(snow, LL(SNOW.after));
     };
     suzu.onTalk = () => speak(suzu, LL(IDLE3.suzu), undefined, [
       { label: lang === 'fr' ? 'Voir tes marchandises' : 'See your goods', act: () => g.shop.open(suzu.displayName) },
       { label: lang === 'fr' ? 'Rien, merci' : 'Nothing, thanks', act: () => {} },
     ]);
     const mainBusiness: Record<string, () => boolean> = {
-      snow: () => (save.main >= STEP.act3 && save.main <= STEP.snow) || save.main === STEP.bellsBack,
+      snow: () => (save.main >= STEP.act3 && save.main <= STEP.snow) || save.main === STEP.bellsBack || save.main === STEP.sealBack,
     };
     for (const n of people) {
       const base = n.onTalk;
@@ -328,7 +345,112 @@ export const peaks: RoomDef = {
       }
     });
 
+    // ---------- the two keepers of the master's seal ----------
+    const fights: { boss: Boss | null; tag: string; adds: string }[] = [];
+    const halfWon = (key: 'sealA' | 'sealB') => {
+      save.perks[key] = 1;
+      writeSave();
+      const n = ['sealA', 'sealB'].filter((k) => save.perks[k]).length;
+      g.after(3.4, () => {
+        void g.story.show([n >= 2 ? L(SEAL_UI.both) : `${L(SEAL_UI.half)}  (${n}/2)`], { size: 34, y: r.uiH / 2 - 200, hold: 3 });
+        if (n >= 2 && save.main === STEP.kings) setMain(g, STEP.sealBack);
+      });
+    };
+    const ring = (a: { x: number; y: number; r: number }, tag: string) => {
+      const R = a.r + 0.4;
+      for (let k = 0; k < 28; k++) {
+        const a0 = (k / 28) * Math.PI * 2, a1 = ((k + 1) / 28) * Math.PI * 2;
+        w.addCollider({ kind: 'seg', ax: a.x + Math.cos(a0) * R, ay: a.y + Math.sin(a0) * R * 0.85, bx: a.x + Math.cos(a1) * R, by: a.y + Math.sin(a1) * R * 0.85, r: 0.3 }, tag);
+      }
+    };
+    const reward = (bs: Boss, key: string, xp: number, adds: string) => {
+      music.boss = 0.2;
+      g.hud.hideBoss();
+      save.bosses.push(key);
+      writeSave();
+      discover(g, key);
+      giveXp(g, xp);
+      for (let i = 0; i < 4; i++) b.add(new Pickup(bs.x, bs.y, i % 2 ? 'ink' : 'life', i % 2 ? 12 : 2));
+      for (let i = 0; i < 6; i++) b.add(new Pickup(bs.x + (i - 2.5) * 0.5, bs.y, 'coin', 12));
+      dropLoot(g, bs.x, bs.y, 'boss', 12);
+      for (const en of w.entities) if (en.label === adds && !(en as Creature).home) (en as Creature).onHit?.({ dmg: 9999, fromX: bs.x, fromY: bs.y, kind: 'enso' });
+    };
+    const king: { boss: Boss | null; tag: string; adds: string } = { boss: null, tag: 'kingRing', adds: 'yeti' };
+    const dragon: { boss: Boss | null; tag: string; adds: string } = { boss: null, tag: 'dragonRing', adds: 'crane' };
+    fights.push(king, dragon);
+    const startKing = () => {
+      const K = P3_KING;
+      const sk = b.add(new SnowKing(K.x, K.y + 2, K));
+      king.boss = sk;
+      ring(K, king.tag);
+      g.hud.showBoss(L(KING_UI.boss));
+      sfx.wave();
+      g.after(3.5, () => { if (!sk.defeated) g.hud.showHint(L(KING_UI.hint), 4); });
+      let toldBlock = false;
+      sk.onBreath = (blocked) => {
+        if (blocked && !toldBlock) { toldBlock = true; g.hud.showHint(L(KING_UI.blocked), 2.5); }
+        if (!blocked) g.hintOnce('kingBreath', L(KING_UI.breath), 5);
+      };
+      sk.onPhase = () => g.after(1, () => { if (!sk.defeated) g.hud.showHint(L(KING_UI.call), 3); });
+      sk.onDefeat = () => {
+        w.removeColliders(king.tag);
+        reward(sk, 'snowking', 1100, 'yeti');
+        g.after(1.6, () => {
+          void g.story.show([L(KING_UI.down)], { size: 36, y: r.uiH / 2 - 200, hold: 3 });
+          halfWon('sealA');
+          king.boss = null;
+        });
+      };
+    };
+    const startDragon = () => {
+      const D = P3_DRAGON;
+      const pd = b.add(new PaperDragon(D.x, D.y + 1, D));
+      dragon.boss = pd;
+      ring(D, dragon.tag);
+      g.hud.showBoss(L(DRAGON_UI.boss));
+      g.after(4, () => { if (!pd.defeated) g.hud.showHint(L(DRAGON_UI.hint), 4); });
+      pd.onDowned = () => g.hintOnce('dragonGold', L(DRAGON_UI.gold), 3);
+      pd.onPhase = () => g.after(0.4, () => { if (!pd.defeated) g.hud.showHint(L(DRAGON_UI.fold), 3); });
+      pd.onDefeat = () => {
+        w.removeColliders(dragon.tag);
+        reward(pd, 'dragon', 1100, 'crane');
+        g.after(1.6, () => {
+          void g.story.show([L(DRAGON_UI.down)], { size: 36, y: r.uiH / 2 - 200, hold: 3 });
+          halfWon('sealB');
+          dragon.boss = null;
+        });
+      };
+    };
+    w.scripts.push(() => {
+      const p = w.player;
+      w.camLook = null;
+      for (const f of fights) {
+        if (!f.boss) continue;
+        g.hud.bossFrac = f.boss.frac;
+        if (!f.boss.defeated) { music.boss = 1; w.camLook = [f.boss.x, f.boss.y + f.boss.z + 1.5]; }
+        return;
+      }
+      if (p.state === 'dead') return;
+      if (!save.bosses.includes('snowking') && Math.hypot(p.x - P3_KING.x, p.y - P3_KING.y) < P3_KING.r - 2.5) {
+        if (save.main >= STEP.kings) startKing();
+        else g.hintOnce('kingWait', L(KING_UI.wait), 4);
+      }
+      if (!save.bosses.includes('dragon') && Math.hypot(p.x - P3_DRAGON.x, p.y - P3_DRAGON.y) < P3_DRAGON.r - 2.5) {
+        if (save.main >= STEP.kings) startDragon();
+        else g.hintOnce('dragonWait', L(DRAGON_UI.wait), 4);
+      }
+      if (save.main === STEP.summit && Math.hypot(p.x - P3_SUMMIT.x, p.y - P3_SUMMIT.y) < 12) g.hintOnce('summitSoon', L(SEAL_UI.summit), 5);
+    });
+
     g.onRespawn = () => {
+      for (const f of fights) {
+        if (!f.boss || f.boss.defeated) continue;
+        f.boss.destroy();
+        f.boss = null;
+        w.removeColliders(f.tag);
+        g.hud.hideBoss();
+        for (const en of w.entities) if (en.label === f.adds && !(en as Creature).home) en.destroy();
+      }
       chunks.buildAround(w.player.x, w.player.y, r.viewW / 2 + 2, r.viewH / 2 + 2);
     };
 
@@ -363,7 +485,15 @@ export const peaks: RoomDef = {
       const m = save.main, p = w.player;
       let target: [number, number] | null = null;
       if (m <= STEP.monastery) target = [M.x, M.y - 9];
-      else if (m === STEP.snow || m === STEP.bellsBack) target = [snow.x, snow.y];
+      else if (m === STEP.snow || m === STEP.bellsBack || m === STEP.sealBack) target = [snow.x, snow.y];
+      else if (m === STEP.kings) {
+        let bd = Infinity;
+        for (const [key, a] of [['snowking', P3_KING], ['dragon', P3_DRAGON]] as const) {
+          if (save.bosses.includes(key)) continue;
+          const d = Math.hypot(a.x - p.x, a.y - p.y);
+          if (d < bd) { bd = d; target = [a.x, a.y]; }
+        }
+      } else if (m === STEP.summit) target = [P3_SUMMIT.x, P3_SUMMIT.y - 6];
       else if (m === STEP.bells) {
         let bd = Infinity;
         for (const bl of bells) {

@@ -27,6 +27,9 @@ export const P3_LAKE = { x: 136, y: 30, rx: 9, ry: 5.5 };
 export const P3_BELLS: V[] = [[34, 106], [172, 100], [100, 128]];
 /** The glacier bell stands on an island of ice, ringed by a crevasse. */
 export const P3_ISLE = { x: 172, y: 100, r: 3.2, ring: 6 };
+/** The Snow King's hollow, deep in the Frost Forest, and the Paper Dragon's nest on the Glacier. */
+export const P3_KING = { x: 38, y: 134, r: 8.5 };
+export const P3_DRAGON = { x: 168, y: 136, r: 9.5 };
 
 export const P3_ROADS: { pts: V[]; w: number }[] = [
   { pts: [[100, 0], [88, 10], [110, 18], [90, 27], [104, 36], [100, 46]], w: 2.4 },
@@ -34,6 +37,9 @@ export const P3_ROADS: { pts: V[]; w: number }[] = [
   { pts: [[114, 60], [134, 66], [152, 76], [160, 90]], w: 1.8 },
   { pts: [[100, 72], [96, 88], [102, 104], [100, 118]], w: 1.8 },
   { pts: [[100, 134], [96, 140], [100, 146]], w: 1.6 },
+  // on through the forest to the Snow King's hollow; across the glacier to the dragon's nest
+  { pts: [[40, 100], [34, 112], [40, 122], [38, 126]], w: 1.5 },
+  { pts: [[160, 90], [148, 100], [144, 114], [154, 126], [162, 130]], w: 1.5 },
 ];
 
 export const P3_PONDS: PondDef[] = [{ ...P3_LAKE, seed: 3301 }];
@@ -110,11 +116,11 @@ export const P3_CAMPS: CampDef[] = [
   { id: 204, x: 54, y: 120, r: 6, tier: 5, members: ['yeti', 'yeti', 'snowfox'], elites: 1 },
   { id: 205, x: 150, y: 46, r: 5, tier: 4, members: ['crane', 'crane', 'crane'], elites: 0 },
   { id: 206, x: 166, y: 84, r: 5, tier: 5, members: ['yeti', 'crane', 'crane'], elites: 0 },
-  { id: 207, x: 184, y: 128, r: 6, tier: 5, members: ['crane', 'yeti', 'snowfox'], elites: 1 },
+  { id: 207, x: 190, y: 114, r: 6, tier: 5, members: ['crane', 'yeti', 'snowfox'], elites: 1 },
   { id: 208, x: 84, y: 106, r: 5, tier: 5, members: ['eraser', 'eraser', 'crane'], elites: 0 },
   { id: 209, x: 120, y: 120, r: 5, tier: 5, members: ['eraser', 'eraser', 'eraser'], elites: 1 },
   { id: 210, x: 112, y: 92, r: 5, tier: 4, members: ['snowfox', 'crane', 'yeti'], elites: 0 },
-  { id: 211, x: 22, y: 128, r: 5, tier: 5, members: ['snowfox', 'snowfox', 'snowfox', 'yeti'], elites: 1 },
+  { id: 211, x: 14, y: 112, r: 5, tier: 5, members: ['snowfox', 'snowfox', 'snowfox', 'yeti'], elites: 1 },
 ];
 
 export const P3_SHRINES = [
@@ -195,6 +201,8 @@ function isClearing(x: number, y: number): boolean {
     if (dx * dx + (dy < 0 ? dy / 12 : dy / 6) ** 2 < 1) return true;
   }
   if (Math.hypot(x - P3_ISLE.x, y - P3_ISLE.y) < P3_ISLE.ring + 2) return true;
+  // the guardians' grounds, wide to the south: pines in front would hide the fight
+  for (const a of [P3_KING, P3_DRAGON]) { const dy = y - a.y; if (Math.hypot(x - a.x, dy < 0 ? dy / 1.9 : dy * 1.1) < a.r + 1.5) return true; }
   for (const p of P3_PONDS) if (((x - p.x) / (p.rx + 1.5)) ** 2 + ((y - p.y) / (p.ry + 1.5)) ** 2 < 1) return true;
   for (const c of P3_CREVASSES) if (inPoly(x, y, c)) return true;
   for (const t of P3_TEARS) if (inPoly(x, y, t)) return true;
@@ -285,6 +293,38 @@ export const PEAKS: Land = {
           const [px, py] = pts[k];
           washPoly(g, [[px - 0.18, py], [px + 0.18, py], [px + 0.16, py - 0.42], [px - 0.16, py - 0.42]], { pig: k % 3 === 0 ? PIG_A : k % 3 === 1 ? PIG_B : INK, density: 0.35, soft: 0.05, seed: Math.round(px * 13 + k) });
         }
+      }
+    }
+    // the Snow King's hollow: trampled snow, a frozen pool of breath, gnawed bones
+    const K = P3_KING;
+    if (near(K.x, K.y, K.r + 2)) {
+      washBlob(g, K.x, K.y, K.r, K.r * 0.75, { pig: mixPig(INK, PIG_B, 0.5), density: 0.06, soft: 0.8, seed: 3521 });
+      washBlob(g, K.x + 2, K.y + 3, 3.2, 1.8, { pig: PIG_A, density: 0.1, soft: 0.5, seed: 3522 });
+      const rk = new Rng(3523);
+      for (let i = 0; i < 26; i++) {
+        const a = rk.range(0, Math.PI * 2), d = rk.range(2, K.r - 1);
+        const x = K.x + Math.cos(a) * d, y = K.y + Math.sin(a) * d * 0.75;
+        // great footprints
+        washPoly(g, noisyOutline(x, y, 0.35, 0.5, 0.2, rk.int(1, 1e6)), { pig: INK, density: 0.1, soft: 0.4, seed: rk.int(1, 1e6) });
+      }
+      for (let i = 0; i < 7; i++) {
+        const x = K.x + rk.range(-K.r + 2, K.r - 2), y = K.y + rk.range(-K.r * 0.6, K.r * 0.6), a = rk.range(0, Math.PI);
+        stroke(g, [[x - Math.cos(a) * 0.5, y - Math.sin(a) * 0.2], [x + Math.cos(a) * 0.5, y + Math.sin(a) * 0.2]], { width: 0.1, pig: mixPig(INK, PIG_B, 0.6), load: 0.5, seed: rk.int(1, 1e6) });
+      }
+    }
+    // the Paper Dragon's nest: sheets of folded paper scattered on the ice
+    const D = P3_DRAGON;
+    if (near(D.x, D.y, D.r + 2)) {
+      washBlob(g, D.x, D.y, D.r, D.r * 0.75, { pig: PIG_A, density: 0.05, soft: 0.8, seed: 3531 });
+      const rd = new Rng(3532);
+      for (let i = 0; i < 16; i++) {
+        const a = rd.range(0, Math.PI * 2), d = Math.sqrt(rd.next()) * (D.r - 1);
+        const x = D.x + Math.cos(a) * d, y = D.y + Math.sin(a) * d * 0.75;
+        const s0 = rd.range(0.3, 0.7), t = rd.range(0, Math.PI);
+        const sheet: V[] = [0, 1, 2, 3].map((k) => [x + Math.cos(t + k * Math.PI / 2) * s0, y + Math.sin(t + k * Math.PI / 2) * s0 * 0.6]);
+        washPoly(g, sheet, { pig: mixPig(INK, PIG_B, 0.3), density: 0.08, soft: 0.05, seed: rd.int(1, 1e6) });
+        stroke(g, [...sheet, sheet[0]], { width: 0.02, pig: mixPig(INK, PIG_B, 0.5), load: 0.4, dry: 0.5, seed: rd.int(1, 1e6), press: 0 });
+        if (rd.chance(0.5)) stroke(g, [sheet[0], sheet[2]], { width: 0.02, pig: mixPig(INK, PIG_A, 0.4), load: 0.5, seed: rd.int(1, 1e6), press: 0 });
       }
     }
     // the bells' plinths

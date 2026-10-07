@@ -2,7 +2,7 @@
  * Act III's creatures, painted on snow: the yeti of the stair and the forest, the white snow fox and
  * its illusions, the paper crane of the glacier, the eraser of the erased valley (a hole in the drawing).
  */
-import { Painter, INK, PIG_A, PIG_B, mixPig } from '../paint';
+import { Painter, INK, PIG_A, PIG_B, VERMILION, mixPig } from '../paint';
 import { stroke, V2 } from '../brush';
 import { washPoly, noisyOutline } from '../wash';
 import { Frame, frameFrom } from '../sprite';
@@ -196,4 +196,117 @@ export function buildEraserFrames(seed: number): Frame[] {
     out.push(frameFrom(p));
   }
   return out;
+}
+
+export interface Layered4 { pig: Frame[]; red: Frame[] }
+
+/**
+ * The Snow King, faces +x: [idle, raise, slam, roll, breath, dazed]. A yeti twice as tall, a crown of
+ * icicles; the red layer gives him two cold embers for eyes.
+ */
+export function buildSnowKingFrames(seed: number): Layered4 {
+  const pig: Frame[] = [], red: Frame[] = [];
+  for (let i = 0; i < 6; i++) {
+    const S = 1.9;
+    const p = new Painter(7, 7.2, SPRITE_PPU / 1.6, -3.5, -0.5);
+    const q = new Painter(7, 7.2, SPRITE_PPU / 2.4, -3.5, -0.5);
+    q.glaze();
+    const r = new Rng(seed + i * 17);
+    p.glaze();
+    const roll = i === 3;
+    if (roll) {
+      // curled into a great snowball, fur and a glimpse of a fist
+      const b = noisyOutline(0, 1.7, 1.75, 1.6, 0.08, seed + i);
+      p.reserve(() => poly(p, b), 0.95);
+      p.glaze();
+      washPoly(p, b, { pig: mixPig(INK, PIG_B, 0.4), density: 0.16, soft: 0.5, edge: 0.95, seed: seed + i, blooms: 1 });
+      fur(p, b, seed + 30, 160, 0.3);
+      for (let k = 0; k < 6; k++) { const a = r.range(0, Math.PI * 2); stroke(p, [[Math.cos(a) * 0.4, 1.7 + Math.sin(a) * 0.4], [Math.cos(a) * 1.4, 1.7 + Math.sin(a) * 1.3]], { width: 0.05, load: 0.5, dry: 0.7, seed: r.int(1, 1e6), press: 0 }); }
+      pig.push(frameFrom(p));
+      red.push(frameFrom(q));
+      continue;
+    }
+    const raise = i === 1, slam = i === 2, breath = i === 4, dazed = i === 5;
+    const b = noisyOutline(0, 1.25 * S - (slam ? 0.3 : 0), 0.95 * S, 1.05 * S - (slam ? 0.3 : 0), 0.12, seed + i);
+    p.reserve(() => poly(p, b), 0.95);
+    p.glaze();
+    washPoly(p, b, { pig: mixPig(INK, PIG_B, 0.45), density: 0.2, soft: 0.5, edge: 0.95, seed: seed + i, blooms: 1 });
+    fur(p, b, seed + 20 + i, 200, 0.36);
+    for (let k = 0; k < 22; k++) {
+      const x = r.range(-1.1, 1.1), y = r.range(1.2, 3.5);
+      stroke(p, [[x, y], [x + r.gauss() * 0.08, y - r.range(0.25, 0.5)]], { width: 0.05, load: 0.5, dry: 0.6, seed: r.int(1, 1e6), taperEnd: 0.9, press: 0 });
+    }
+    for (const lx of [-0.85, 0.85]) {
+      stroke(p, [[lx, 0.65], [lx, 0.0]], { width: 0.55, load: 0.25, dry: 0.4, seed: r.int(1, 1e6) });
+      stroke(p, [[lx - 0.45, 0.02], [lx + 0.45, 0.0]], { width: 0.1, load: 1, seed: r.int(1, 1e6) });
+    }
+    for (const s of [1, -1]) {
+      const arm: V2[] = raise ? [[s * 1.45, 3.2], [s * 1.9, 4.6], [s * 1.3, 5.7]] : slam ? [[s * 1.5, 2.6], [s * 2.4, 1.5], [s * 2.6, 0.3]] : breath && s > 0 ? [[1.5, 3.0], [2.1, 2.6], [2.3, 2.0]] : [[s * 1.6, 3.0], [s * 2.0, 1.9], [s * 1.8, 0.9]];
+      stroke(p, arm, { width: 0.6, pig: mixPig(INK, PIG_B, 0.4), load: 0.24, dry: 0.4, seed: r.int(1, 1e6) });
+      fur(p, arm, seed + 40 + s + i, 22, 0.18);
+      stroke(p, [arm[2], [arm[2][0] + s * 0.15, arm[2][1] - 0.22]], { width: 0.14, load: 1, seed: r.int(1, 1e6) });
+    }
+    // the face, and the crown of icicles
+    const fx = 0.45, fy = 3.75 - (slam ? 0.4 : 0) - (dazed ? 0.3 : 0);
+    washPoly(p, noisyOutline(fx, fy, 0.62, 0.55, 0.1, seed + 70), { pig: INK, density: 0.8, soft: 0.05, seed: seed + 70 });
+    if (breath) washPoly(p, noisyOutline(fx + 0.4, fy - 0.22, 0.28, 0.2, 0.15, seed + 75), { pig: mixPig(INK, PIG_A, 0.4), density: 0.5, soft: 0.2, seed: seed + 75 });
+    for (let k = 0; k < 7; k++) {
+      const x = fx - 0.7 + k * 0.23, h = 0.4 + (k % 2) * 0.35 + (k === 3 ? 0.3 : 0);
+      washPoly(p, [[x - 0.08, fy + 0.5], [x + 0.08, fy + 0.5], [x, fy + 0.5 + h]], { pig: mixPig(INK, PIG_A, 0.5), density: 0.4, soft: 0.05, edge: 0.9, seed: seed + 80 + k });
+      stroke(p, [[x - 0.08, fy + 0.5], [x, fy + 0.5 + h], [x + 0.08, fy + 0.5]], { width: 0.03, load: 0.9, seed: r.int(1, 1e6) });
+    }
+    if (dazed) for (let k = 0; k < 3; k++) stroke(q, [[fx - 0.5 + k * 0.4, fy + 1.4], [fx - 0.3 + k * 0.4, fy + 1.6]], { width: 0.08, pig: VERMILION, load: 0.8, seed: r.int(1, 1e6) });
+    else for (const ex of [-0.2, 0.25]) q.circle(fx + ex, fy + 0.08, 0.11, VERMILION, 1);
+    pig.push(frameFrom(p));
+    red.push(frameFrom(q));
+  }
+  return { pig, red };
+}
+
+/** The Paper Dragon: [head open, head shut], a body fold, a tail; the red layer: eyes and the seal on its brow. */
+export function buildDragonFrames(seed: number): { head: Frame[]; headRed: Frame[]; seg: Frame; tail: Frame } {
+  const head: Frame[] = [], headRed: Frame[] = [];
+  for (let i = 0; i < 2; i++) {
+    const p = new Painter(3.2, 2.6, SPRITE_PPU / 1.5, -1.6, -1.0);
+    const q = new Painter(3.2, 2.6, SPRITE_PPU / 2, -1.6, -1.0);
+    p.glaze(); q.glaze();
+    const open = i === 0 ? 0.35 : 0.08;
+    const upper: V2[] = [[-0.9, 0.3], [0.2, 0.55], [1.3, 0.2 + open * 0.3], [0.4, 0.05]];
+    const lower: V2[] = [[-0.9, 0.1], [0.4, -0.05], [1.2, -0.25 - open * 0.6], [0.1, -0.35]];
+    for (const [tri, d] of [[upper, 0.14], [lower, 0.28]] as [V2[], number][]) {
+      p.reserve(() => poly(p, tri), 0.95);
+      p.glaze();
+      washPoly(p, tri, { pig: mixPig(INK, PIG_B, 0.3), density: d, soft: 0.05, edge: 0.95, seed: seed + 10 + i });
+      stroke(p, [...tri, tri[0]], { width: 0.035, load: 0.95, seed: seed + 20 + i, taperStart: 0.02, taperEnd: 0.02 });
+    }
+    // horns: two long folds swept back, whiskers
+    for (const s of [0, 1]) stroke(p, [[-0.2 - s * 0.2, 0.5], [-0.9 - s * 0.3, 1.1 + s * 0.15], [-1.4 - s * 0.1, 1.2 + s * 0.2]], { width: 0.05, load: 1, seed: seed + 30 + s, taperEnd: 0.8 });
+    stroke(p, [[1.1, 0.0], [1.4, -0.3], [1.5, -0.7]], { width: 0.025, load: 0.9, seed: seed + 35 });
+    eyes(p, [[0.35, 0.32, 0.07, 0.05]]);
+    q.circle(0.35, 0.32, 0.08, VERMILION, 1);
+    washPoly(q, [[-0.15, 0.38], [0.05, 0.38], [0.05, 0.5], [-0.15, 0.5]], { pig: VERMILION, density: 0.9, soft: 0.05, seed: seed + 40 });
+    head.push(frameFrom(p));
+    headRed.push(frameFrom(q));
+  }
+  const s = new Painter(1.8, 1.6, SPRITE_PPU / 1.5, -0.9, -0.8);
+  s.glaze();
+  const dia: V2[] = [[-0.65, 0], [0, 0.42], [0.65, 0], [0, -0.42]];
+  s.reserve(() => poly(s, dia), 0.95);
+  s.glaze();
+  washPoly(s, [[-0.65, 0], [0, 0.42], [0, -0.42]], { pig: mixPig(INK, PIG_B, 0.3), density: 0.12, soft: 0.05, seed: seed + 50 });
+  washPoly(s, [[0.65, 0], [0, 0.42], [0, -0.42]], { pig: mixPig(INK, PIG_A, 0.3), density: 0.26, soft: 0.05, seed: seed + 51 });
+  stroke(s, [...dia, dia[0]], { width: 0.03, load: 0.95, seed: seed + 52, taperStart: 0.02, taperEnd: 0.02 });
+  stroke(s, [[0, 0.42], [0, -0.42]], { width: 0.02, load: 0.7, seed: seed + 53 });
+  // a little fin on its back
+  stroke(s, [[-0.1, 0.4], [0.05, 0.72], [0.2, 0.38]], { width: 0.03, load: 0.9, seed: seed + 54 });
+  const t = new Painter(2, 1.6, SPRITE_PPU / 1.5, -1, -0.8);
+  t.glaze();
+  for (const k of [-1, 1]) {
+    const fin: V2[] = [[0.5, 0], [-0.8, k * 0.55], [-0.4, 0]];
+    t.reserve(() => poly(t, fin), 0.95);
+    t.glaze();
+    washPoly(t, fin, { pig: mixPig(INK, PIG_A, 0.3), density: 0.2, soft: 0.05, seed: seed + 60 + k });
+    stroke(t, [...fin, fin[0]], { width: 0.03, load: 0.95, seed: seed + 62 + k, taperStart: 0.02, taperEnd: 0.02 });
+  }
+  return { head, headRed, seg: frameFrom(s), tail: frameFrom(t) };
 }

@@ -38,6 +38,8 @@ export class World {
   readonly vfx: Vfx;
   camX = 0;
   camY = 0;
+  /** A point the camera leans towards (a guardian in a fight), keeping the child in view. */
+  camLook: [number, number] | null = null;
   private shakeT = 0;
   private shakeAmp = 0;
   hitstop = 0;
@@ -344,7 +346,12 @@ export class World {
       if (this.shakeT > 0) this.shakeT -= dt;
       return;
     }
-    const tx = p.x + ax * 1.4 + p.vx * 0.04, ty = p.y + 0.5 + ay * 1.0 + p.vy * 0.04;
+    let tx = p.x + ax * 1.4 + p.vx * 0.04, ty = p.y + 0.5 + ay * 1.0 + p.vy * 0.04;
+    if (this.camLook) {
+      const vh = this.r.viewH / this.r.zoom, vw = vh * (this.r.pxW / this.r.pxH);
+      tx += Math.max(-vw * 0.26, Math.min(vw * 0.26, (this.camLook[0] - p.x) * 0.45));
+      ty += Math.max(-vh * 0.26, Math.min(vh * 0.26, (this.camLook[1] - p.y) * 0.45));
+    }
     const k = Math.min(1, dt * 7);
     this.camX += (tx - this.camX) * k;
     this.camY += (ty - this.camY) * k;
@@ -380,6 +387,7 @@ export class World {
     this.cleanups = [];
     this.onFreeze = [];
     this.onBolt = [];
+    this.camLook = null;
     this.clearGrid();
     this.colliders = [];
     this.hazards = [];

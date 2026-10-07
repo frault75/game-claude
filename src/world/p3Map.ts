@@ -4,7 +4,7 @@ import type { Npc } from '../game/npc';
 import { save } from '../game/progression';
 import { lang } from '../i18n';
 import { MapSource, Mark, blob, polyline } from '../ui/mapArt';
-import { P3, P3_NORTH, P3_ROADS, P3_PONDS, P3_FIXED, P3_CAMPS, P3_SHRINES, P3_REGIONS, P3_MONASTERY, P3_SUMMIT, P3_BELLS, P3_CREVASSES, P3_TEARS, PEAKS, p3RegionAt } from './peaks';
+import { P3, P3_NORTH, P3_ROADS, P3_PONDS, P3_FIXED, P3_CAMPS, P3_SHRINES, P3_REGIONS, P3_MONASTERY, P3_SUMMIT, P3_BELLS, P3_CREVASSES, P3_TEARS, P3_KING, P3_DRAGON, PEAKS, p3RegionAt } from './peaks';
 
 export function p3MapSource(g: Game): MapSource {
   return {
@@ -58,6 +58,10 @@ export function p3MapSource(g: Game): MapSource {
       for (const c of P3_CAMPS) if (!save.camps.includes(c.id)) out.push({ x: c.x, y: c.y, kind: 'camp' });
       P3_BELLS.forEach(([x, y], i) => out.push({ x, y, kind: save.perks['bell' + i] ? 'shrineOn' : 'relic' }));
       out.push({ x: P3.w / 2, y: 1, kind: 'door' });
+      if (save.main >= 31) {
+        if (!save.bosses.includes('snowking')) out.push({ x: P3_KING.x, y: P3_KING.y, kind: 'boss' });
+        if (!save.bosses.includes('dragon')) out.push({ x: P3_DRAGON.x, y: P3_DRAGON.y, kind: 'boss' });
+      }
       for (const e of g.world.entities) {
         if (e.label !== 'npc' || e.dead) continue;
         out.push({ x: e.x, y: e.y, kind: (e as Npc).marker === 'quest' ? 'quest' : 'npc' });

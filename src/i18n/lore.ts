@@ -326,7 +326,10 @@ export const MAIN: QuestStep[] = [
   { title: { fr: 'L’Escalier des nuages', en: 'The Cloud Stair' }, goal: { fr: 'Rejoins le Monastère suspendu, en haut de l’escalier', en: 'Reach the Hanging Monastery, at the top of the stair' } },
   { title: { fr: 'Mère Neige', en: 'Mother Snow' }, goal: { fr: 'Parle à Mère Neige, au monastère', en: 'Speak to Mother Snow, at the monastery' } },
   { title: { fr: 'Les trois cloches', en: 'The Three Bells' }, goal: { fr: 'Fais sonner les trois cloches des cimes', en: 'Ring the three bells of the peaks' } },
-  { title: { fr: 'La page tendue', en: 'The Taut Page' }, goal: { fr: 'Retourne voir Mère Neige (Acte III, la suite arrive)', en: 'Return to Mother Snow (Act III continues soon)' } },
+  { title: { fr: 'La page tendue', en: 'The Taut Page' }, goal: { fr: 'Retourne voir Mère Neige', en: 'Return to Mother Snow' } },
+  { title: { fr: 'Le sceau brisé', en: 'The Broken Seal' }, goal: { fr: 'Reprends les moitiés du sceau : forêt et glacier', en: 'Win back the seal’s halves: forest and glacier' } },
+  { title: { fr: 'Le sceau brisé', en: 'The Broken Seal' }, goal: { fr: 'Rapporte le sceau à Mère Neige', en: 'Bring the seal to Mother Snow' } },
+  { title: { fr: 'Le sommet du maître', en: 'The Master’s Summit' }, goal: { fr: 'Monte au sommet, au nord de la vallée effacée (Acte III, la suite arrive)', en: 'Climb to the summit, north of the erased valley (Act III continues soon)' } },
 ];
 
 export const UI = {
@@ -618,6 +621,20 @@ export const BESTIARY: Record<string, BeastLore> = {
     text: {
       fr: 'Les moines lui avaient confié la prière du lac : un héron blanc, qui pêchait les reflets plutôt que les poissons. L’orage l’a noircie jusqu’aux yeux. Son regard brûle en ligne droite ; un trait d’encre frais l’arrête, et si elle fixe trop longtemps ta propre encre, elle en est éblouie.',
       en: 'The monks entrusted her with the prayer of the lake: a white heron, who fished for reflections rather than fish. The storm blackened her to the eyes. Her gaze burns in a straight line; a fresh stroke of ink stops it, and if she stares too long into your own ink, she is dazzled.',
+    },
+  },
+  snowking: {
+    name: { fr: 'Le Roi des Neiges', en: 'The Snow King' }, where: { fr: 'Le cœur de la Forêt de givre', en: 'The heart of the Frost Forest' },
+    text: {
+      fr: 'Le plus doux des yétis : il portait le maître sur son dos quand la neige était trop haute, et le maître lui a laissé une couronne de glaçons. L’orage l’a rendu énorme. Il roule en boule de neige — esquive-le, il s’écrase contre les pins. Son souffle gèle tout, sauf le jade vivant. Son propre givre ne le fige pas, et sa fourrure détourne le pinceau tant qu’il tient debout.',
+      en: 'The gentlest of the yetis: he carried the master on his back when the snow was too deep, and the master left him a crown of icicles. The storm made him huge. He rolls into a snowball — dodge him, and he crashes into the pines. His breath freezes everything but living jade. His own frost does not freeze him, and his fur turns the brush aside as long as he stands.',
+    },
+  },
+  dragon: {
+    name: { fr: 'Le Dragon de papier', en: 'The Paper Dragon' }, where: { fr: 'Le nid du Glacier', en: 'The nest on the Glacier' },
+    text: {
+      fr: 'Les moines pliaient mille grues pour un vœu. Un hiver, ils en ont plié dix mille, pour que le maître redescende. Le vœu s’est plié sur lui-même et il est devenu un dragon. Il vole hors d’atteinte, plonge, puis se replie sur la glace : c’est là qu’on le frappe. L’or le foudroie et le jette au sol. Blessé, sa queue se déplie en grues.',
+      en: 'The monks folded a thousand cranes for a wish. One winter they folded ten thousand, so that the master would come down. The wish folded in on itself and became a dragon. It flies out of reach, dives, then folds itself again on the ice: that is when you strike it. Gold strikes it and throws it down. Wounded, its tail unfolds into cranes.',
     },
   },
   queen: {
