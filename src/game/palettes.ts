@@ -27,6 +27,13 @@ export const PALETTES: Record<string, Palette> = {
   pass: { paper: '#E2E1DA', ink: '#1C1E22', a: '#8C98A8', b: '#B6A890' },
   pagoda: { paper: '#DED6C4', ink: '#15120F', a: '#B4473A', b: '#C8A24A' },
   cistern: { paper: '#D6D6C6', ink: '#111A18', a: '#5E8C7A', b: '#8C7C58' },
+  // Act III: the snow is the paper
+  snow: { paper: '#F4F3EE', ink: '#1B2029', a: '#8FA8C6', b: '#B9B2A6' },
+  monastery: { paper: '#F1EDE4', ink: '#1E1A1A', a: '#B5503E', b: '#C8A456' },
+  frost: { paper: '#EEF1F0', ink: '#16201F', a: '#7FA6A0', b: '#A4B3BE' },
+  glacier: { paper: '#F0F4F6', ink: '#14202B', a: '#6FB0CF', b: '#A9C4D6' },
+  erased: { paper: '#F7F6F2', ink: '#6E6C68', a: '#BDB9B2', b: '#D2CEC6' },
+  summit: { paper: '#F8F6EF', ink: '#121212', a: '#C23A2B', b: '#D2B060' },
   /** The blank page once restored: true ink returns. */
   blankInked: { paper: '#F7F3E9', ink: '#141414', a: '#D7A3A0', b: '#3F5F82' },
 };

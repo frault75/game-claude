@@ -1,6 +1,7 @@
 /** Owns the world, player and HUD; loads rooms; exits, death, ensō, combo, music, story. */
 import type { Renderer } from '../core/renderer';
 import { SIDE_QUESTS2 } from './sidequests2';
+import { SIDE_QUESTS3 } from './sidequests3';
 import type { Events } from './events';
 import { Shop } from '../ui/shop';
 import { Questbook } from './questbook';
@@ -125,6 +126,7 @@ export class Game {
     this.quests = new Questbook(this);
     this.quests.register(SIDE_QUESTS);
     this.quests.register(SIDE_QUESTS2);
+    this.quests.register(SIDE_QUESTS3);
     this.cine = new Cinematic(r, input);
     this.menu = new Menu(r, input);
     this.shop = new Shop(r, input);

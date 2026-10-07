@@ -155,6 +155,43 @@ export const THEMES: Record<string, Theme> = {
     calmLead: ['bell', 'pluck', 'bowed'], fightLead: ['bowed', 'pluck'],
     pad: 1, padBright: 0.22, drums: 0.95, register: 5, bell: 0.3, rest: 0.42,
   },
+  // Act III: the white peaks
+  peaks: {
+    root: 57, scale: SUS, bpm: 60,
+    progressions: [[0, 3, 0, 4], [0, 2, 3, 0], [3, 4, 0, 2]],
+    calmLead: ['flute', 'bell', 'flute'], fightLead: ['bowed', 'flute'],
+    pad: 0.9, padBright: 0.55, drums: 0.75, register: 6, bell: 0.16, rest: 0.45,
+  },
+  monastery: {
+    root: 50, scale: HIRA, bpm: 52,
+    progressions: [[0, 3, 4, 0], [0, 1, 3, 0], [4, 3, 1, 0]],
+    calmLead: ['bell', 'bowed', 'bell'], fightLead: ['bowed'],
+    pad: 1, padBright: 0.4, drums: 0.55, register: 5, bell: 0.4, rest: 0.5,
+  },
+  frost: {
+    root: 54, scale: MINOR_PENTA, bpm: 74,
+    progressions: [[0, 3, 2, 4], [0, 4, 3, 0], [3, 2, 0, 4]],
+    calmLead: ['pluck', 'bell', 'flute'], fightLead: ['pluck', 'bowed'],
+    pad: 0.85, padBright: 0.4, drums: 0.9, register: 6, bell: 0.2, rest: 0.3,
+  },
+  glacier: {
+    root: 59, scale: SUS, bpm: 56,
+    progressions: [[0, 2, 0, 3], [0, 4, 2, 0], [3, 0, 4, 0]],
+    calmLead: ['bell', 'bell', 'flute'], fightLead: ['bowed', 'bell'],
+    pad: 1, padBright: 0.7, drums: 0.7, register: 6, bell: 0.35, rest: 0.45,
+  },
+  erased: {
+    root: 48, scale: [0, 1, 5, 7, 8], bpm: 46,
+    progressions: [[0, 1, 0, 4], [0, 3, 1, 0]],
+    calmLead: ['bowed', 'bell'], fightLead: ['bowed', 'pluck'],
+    pad: 0.7, padBright: 0.15, drums: 0.8, register: 5, bell: 0.12, rest: 0.6,
+  },
+  summit: {
+    root: 62, scale: PENTA, bpm: 48,
+    progressions: [[0, 3, 4, 0], [0, 2, 3, 4]],
+    calmLead: ['flute', 'bell'], fightLead: ['flute', 'bowed'],
+    pad: 1, padBright: 0.6, drums: 0.5, register: 6, bell: 0.3, rest: 0.5,
+  },
   practice: {
     root: 62, scale: PENTA, bpm: 70,
     progressions: [[0, 3, 4, 0]],

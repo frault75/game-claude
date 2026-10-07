@@ -45,7 +45,11 @@ export const T2_ROADS: { pts: V[]; w: number }[] = [
   { pts: [[106, 47], [102, 64], [96, 82], [100, 100], [100, 118], [100, 133]], w: 2.2 },
   { pts: [[76, 58], [70, 72], [74, 96], [88, 104], [100, 100]], w: 1.7 },
   { pts: [[100, 102], [118, 108], [136, 113], [154, 118]], w: 1.7 },
+  // to the Cloud Stair, north-west of the pagoda
+  { pts: [[100, 120], [86, 128], [72, 134], [62, 140]], w: 1.7 },
 ];
+/** The foot of the Cloud Stair (Act III). */
+export const T2_STAIR: V = [62, 140];
 
 /** The stream from the north, along the hill's east flank, into the lake. */
 const STREAM: V[] = [[128, 151], [124, 132], [130, 114], [124, 98], [128, 82], [122, 66], [126, 54], [138, 48], [149, 43], [156, 36]];
@@ -173,6 +177,8 @@ export const T2_FIXED: Fixed[] = (() => {
     // Master Yu's hut in the grove
     { kind: 'hut', x: T2_HERMIT.x, y: T2_HERMIT.y, v: 2, flip: true },
     { kind: 'fence', x: T2_HERMIT.x - 4.2, y: T2_HERMIT.y - 2.4, v: 1 },
+    // the foot of the Cloud Stair
+    { kind: 'pillar', x: 59, y: 139.2 }, { kind: 'pillar', x: 65, y: 139.2 },
     // ruins in the pass and by the lake
     { kind: 'broken', x: 26, y: 78, v: 1 }, { kind: 'ruinWall', x: 30, y: 66, v: 0 },
     { kind: 'broken', x: 176, y: 20, v: 2 }, { kind: 'ruinWall', x: 146, y: 14, v: 1 },
@@ -221,6 +227,7 @@ function isClearing(x: number, y: number): boolean {
   if (y > 100 && y < 104 && x > 154 && x < T2_HERMIT.x) return true;
   if (Math.hypot(x - T2_QUEEN.x, y - T2_QUEEN.y) < T2_QUEEN.r + 0.5) return true;
   if (Math.hypot(x - T2_JETTY[0], y - T2_JETTY[1]) < 3) return true;
+  if (Math.hypot(x - T2_STAIR[0], y - T2_STAIR[1]) < 6) return true;
   for (const p of T2_PONDS) if (((x - p.x) / (p.rx + 1.5)) ** 2 + ((y - p.y) / (p.ry + 1.5)) ** 2 < 1) return true;
   for (const f of T2_FIXED) if (f.kind !== 'mountains' && f.kind !== 'fence' && Math.hypot(x - f.x, y - f.y) < 3) return true;
   if (Math.hypot(x - T2_ENTRY[0], y - T2_ENTRY[1]) < 5) return true;
@@ -388,6 +395,16 @@ export const TERRACES: Land = {
         washPoly(g, [[x, jy - 0.7], [x + 0.45, jy - 0.7], [x + 0.45, jy + 0.7], [x, jy + 0.7]], { pig: mixPig(INK, PIG_B, 0.6), density: 0.3, soft: 0.05, edge: 0.7, seed: 2840 + k });
       }
       for (const yy of [jy - 0.75, jy + 0.75]) stroke(g, [[jx + 0.5, yy], [jx + 4.5, yy]], { width: 0.06, load: 0.8, seed: 2850 + yy });
+    }
+    // the Cloud Stair: steps cut into the mountain, climbing into the clouds
+    if (near(T2_STAIR[0], T2_STAIR[1], 4)) {
+      const [sx, sy] = T2_STAIR;
+      for (let k = 0; k < 7; k++) {
+        const yy = sy - 0.6 + k * 0.45, hw = 1.6 - k * 0.12;
+        washPoly(g, [[sx - hw, yy], [sx + hw, yy], [sx + hw, yy + 0.38], [sx - hw, yy + 0.38]], { pig: mixPig(INK, PIG_B, 0.4), density: 0.14 + k * 0.03, soft: 0.05, edge: 0.6, seed: 2900 + k });
+        stroke(g, [[sx - hw, yy + 0.38], [sx + hw, yy + 0.38]], { width: 0.05, load: 0.8, dry: 0.4, seed: 2910 + k });
+      }
+      washBlob(g, sx, sy + 3.6, 3.5, 1.2, { pig: PIG_B, density: 0.04, soft: 0.9, seed: 2920 });
     }
     // the north: mountain foot
     if (y0 + S > T2_NORTH - 3) {

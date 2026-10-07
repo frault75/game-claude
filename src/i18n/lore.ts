@@ -321,7 +321,12 @@ export const MAIN: QuestStep[] = [
   { title: { fr: 'La prière du lac', en: 'The Prayer of the Lake' }, goal: { fr: 'Porte la prière du lac à Frère Gong, devant la pagode', en: 'Bring the Prayer of the Lake to Brother Gong, before the pagoda' } },
   { title: { fr: 'La Pagode du Ciel', en: 'The Sky Pagoda' }, goal: { fr: 'Monte jusqu’au sommet de la Pagode du Ciel', en: 'Climb to the top of the Sky Pagoda' } },
   { title: { fr: 'Le jade', en: 'The Jade' }, goal: { fr: 'Rapporte le jade à la Dame Héron-Blanc', en: 'Bring the jade to Lady White Heron' } },
-  { title: { fr: 'Fin de l’Acte II', en: 'End of Act II' }, goal: { fr: 'Le blanc manque encore, loin au nord… (Acte III à venir)', en: 'The white is still missing, far to the north… (Act III coming)' } },
+  { title: { fr: 'Les Cimes blanches', en: 'The White Peaks' }, goal: { fr: 'Monte l’Escalier des nuages, au nord-ouest de la pagode', en: 'Climb the Cloud Stair, north-west of the pagoda' } },
+  // Act III
+  { title: { fr: 'L’Escalier des nuages', en: 'The Cloud Stair' }, goal: { fr: 'Rejoins le Monastère suspendu, en haut de l’escalier', en: 'Reach the Hanging Monastery, at the top of the stair' } },
+  { title: { fr: 'Mère Neige', en: 'Mother Snow' }, goal: { fr: 'Parle à Mère Neige, au monastère', en: 'Speak to Mother Snow, at the monastery' } },
+  { title: { fr: 'Les trois cloches', en: 'The Three Bells' }, goal: { fr: 'Fais sonner les trois cloches des cimes', en: 'Ring the three bells of the peaks' } },
+  { title: { fr: 'La page tendue', en: 'The Taut Page' }, goal: { fr: 'Retourne voir Mère Neige (Acte III, la suite arrive)', en: 'Return to Mother Snow (Act III continues soon)' } },
 ];
 
 export const UI = {
@@ -529,6 +534,34 @@ export const BESTIARY: Record<string, BeastLore> = {
     text: {
       fr: 'Ses bois sont des branches de prunier, et quand il les plante en terre, des racines d’épines jaillissent en ligne droite jusqu’à toi. Il garde ses distances : c’est un seigneur, il ne se bat pas de près. Quand ses bois sont en terre, il est sans défense.',
       en: 'Its antlers are plum branches, and when it plants them in the earth, thorny roots burst out in a straight line all the way to you. It keeps its distance: it is a lord, it does not fight up close. While its antlers are in the earth, it is defenceless.',
+    },
+  },
+  yeti: {
+    name: { fr: 'Yéti', en: 'Yeti' }, where: { fr: 'L’Escalier des nuages, la Forêt de givre', en: 'The Cloud Stair, the Frost Forest' },
+    text: {
+      fr: 'Ils portaient le bois du monastère pour une poignée de sel. Le maître ne les a jamais peints : ils sont faits du blanc qu’il laissait, et de l’encre qu’on a mis dedans depuis. Ils lèvent les deux poings avant de frapper la neige, et leurs boules de neige engourdissent les jambes.',
+      en: 'They carried the monastery’s wood for a fistful of salt. The master never painted them: they are made of the white he left, and of the ink put into them since. They raise both fists before striking the snow, and their snowballs numb the legs.',
+    },
+  },
+  snowfox: {
+    name: { fr: 'Renard des neiges', en: 'Snow Fox' }, where: { fr: 'La Forêt de givre', en: 'The Frost Forest' },
+    text: {
+      fr: 'Trois queues, comme trois pointes de pinceau. Il tourne autour de toi, mord, crache des feux follets, puis se dédouble : ses illusions se brisent d’un coup, et n’ont pas d’ombre. La vraie bête, si.',
+      en: 'Three tails, like three brush tips. It circles you, bites, spits fox-fire, then splits in two: its illusions break at one blow, and cast no shadow. The real beast does.',
+    },
+  },
+  crane: {
+    name: { fr: 'Grue de papier', en: 'Paper Crane' }, where: { fr: 'Le Glacier, les pentes', en: 'The Glacier, the slopes' },
+    text: {
+      fr: 'Les moines en pliaient mille pour un vœu. L’orage a exaucé le mauvais. Elle plane hors d’atteinte, plonge en ligne droite, puis reste pliée sur la neige, étourdie : c’est là qu’on la déplie pour de bon. Une boucle tracée sous elle l’attrape même en vol.',
+      en: 'The monks folded a thousand of them for a wish. The storm granted the wrong one. It glides out of reach, dives in a straight line, then lies folded on the snow, stunned: that is when you unfold it for good. A loop drawn under it catches it even in flight.',
+    },
+  },
+  eraser: {
+    name: { fr: 'Effaceur', en: 'Eraser' }, where: { fr: 'La Vallée effacée', en: 'The Erased Valley' },
+    text: {
+      fr: 'Ce n’est pas une créature : c’est un endroit où le papier s’est oublié. Il avale chaque trait qu’il touche, et l’encre de celui qu’il touche. Les traits lancés vers lui disparaissent dans sa bouche ; le pinceau, lui, le blesse.',
+      en: 'It is not a creature: it is a place where the paper forgot itself. It swallows every stroke it touches, and the ink of whoever it touches. Strokes thrown at it vanish into its mouth; the brush, though, wounds it.',
     },
   },
   tadpole: {

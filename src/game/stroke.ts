@@ -193,6 +193,13 @@ export class Strokes {
     this.segs = this.segs.filter((s) => s !== seg);
   }
 
+  /** Erase the finished strokes near a point (erasers swallow lines). Returns how many went. */
+  eraseNear(x: number, y: number, r: number): number {
+    const gone = this.segs.filter((s) => !s.live && distToSeg(x, y, s.ax, s.ay, s.bx, s.by) < r);
+    for (const s of gone) this.remove(s);
+    return gone.length;
+  }
+
   /** Fresh ink under a point: a bridge over the void. */
   bridgeAt(x: number, y: number, r = 0.45): boolean {
     for (const s of this.segs) if (distToSeg(x, y, s.ax, s.ay, s.bx, s.by) < r) return true;

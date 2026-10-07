@@ -595,17 +595,6 @@ export function act2EndShots(t: { lines: string[]; end: string; next: string; ne
     }
     return p;
   });
-  const peaks = painted('act3peaks', () => {
-    const p = new Painter(1500, 700, 0.6, -750, -380);
-    p.glaze();
-    // white peaks: the paper is the snow, the ink only the shadows
-    for (let k = 0; k < 3; k++) {
-      const pts = ridge(30 + k * 7, -200 + k * 60, 260 - k * 70, 1500);
-      washPoly(p, roughen(pts, 5, 500 + k, 16), { pig: mixPig(INK, PIG_B, 0.3), density: 0.06 + k * 0.05, soft: 0.6, seed: 510 + k });
-      stroke(p, pts.slice(1, -1), { width: 5 - k, load: 0.7, dry: 0.6, seed: 520 + k, taperStart: 0.05, taperEnd: 0.05 });
-    }
-    return p;
-  });
   return [
     {
       dur: 7,
@@ -628,11 +617,43 @@ export function act2EndShots(t: { lines: string[]; end: string; next: string; ne
       lines: [{ text: t.lines[3], at: 3.4 }],
       build(kit) {
         kit.add(text(t.end, 70, { bold: true }), 'pig', { y: 120, at: 0.4, dur: 1.2 });
-        kit.add(peaks, 'pig', { y: -150, at: 2.2, dur: 3, drift: [-5, 0] });
+        kit.add(act3Peaks(), 'pig', { y: -150, at: 2.2, dur: 3, drift: [-5, 0] });
         kit.add(text(t.next, 44, { italic: true }), 'pig', { y: -20, at: 4.6, dur: 0.9 });
         kit.add(text(t.nextName, 64, { bold: true }), 'pig', { y: -100, at: 5.3, dur: 1.2 });
       },
       tick(tt, kit) { if (tt > 0.4 && kit.once('gong')) music.motif(true, 'bell', 0); },
     },
   ];
+}
+
+/** White peaks: the paper is the snow, the ink only the shadows. */
+function act3Peaks(): Frame {
+  return painted('act3peaks', () => {
+    const p = new Painter(1500, 700, 0.6, -750, -380);
+    p.glaze();
+    for (let k = 0; k < 3; k++) {
+      const pts = ridge(30 + k * 7, -200 + k * 60, 260 - k * 70, 1500);
+      washPoly(p, roughen(pts, 5, 500 + k, 16), { pig: mixPig(INK, PIG_B, 0.3), density: 0.06 + k * 0.05, soft: 0.6, seed: 510 + k });
+      stroke(p, pts.slice(1, -1), { width: 5 - k, load: 0.7, dry: 0.6, seed: 520 + k, taperStart: 0.05, taperEnd: 0.05 });
+    }
+    // a tiny monastery clinging to a cliff, and a thread of stair
+    washPoly(p, [[180, 20], [240, 20], [230, 60], [190, 60]], { pig: INK, density: 0.5, soft: 0.05, seed: 530 });
+    stroke(p, [[170, 62], [210, 92], [250, 62]], { width: 6, load: 1, seed: 531 });
+    stroke(p, [[210, 18], [160, -40], [200, -110], [150, -180], [190, -260]], { width: 3, load: 0.6, dry: 0.7, seed: 532 });
+    return p;
+  });
+}
+
+/** The opening sheet of Act III. */
+export function act3Shots(title: { act: string; name: string; line: string }): Shot[] {
+  return [{
+    dur: 7.5,
+    lines: [{ text: title.line, at: 2.6 }],
+    build(kit) {
+      kit.add(act3Peaks(), 'pig', { y: -60, at: 0.2, dur: 2.6, drift: [-5, 0] });
+      kit.add(text(title.act, 54, { italic: true }), 'pig', { y: 300, at: 0.8, dur: 0.9 });
+      kit.add(text(title.name, 92, { bold: true }), 'pig', { y: 210, at: 1.4, dur: 1.2 });
+    },
+    tick(t, kit) { if (t > 1.4 && kit.once('gong')) music.motif(false, 'bell', 1); },
+  }];
 }
