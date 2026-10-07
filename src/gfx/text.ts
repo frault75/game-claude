@@ -46,6 +46,14 @@ function wrap(ctx: CanvasRenderingContext2D, text: string, maxW: number): string
   return out;
 }
 
+/** How wide brushText would make one line of text (the same units as its `w`). */
+export function textWidth(text: string, size: number, weight = 400, italic = false, ppu = 1.4): number {
+  const px = size * ppu;
+  if (!measureCtx) measureCtx = document.createElement('canvas').getContext('2d')!;
+  measureCtx.font = `${italic ? 'italic ' : ''}${weight} ${px}px ${SERIF}`;
+  return Math.ceil(measureCtx.measureText(text).width + px * 0.8) / ppu;
+}
+
 export function brushText(text: string, o: TextOpts): TextArt {
   const ppu = o.ppu ?? 2;
   const px = o.size * ppu;

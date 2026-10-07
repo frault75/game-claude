@@ -3,7 +3,7 @@
  * and put active skills in one of the three slots. C or Esc to close.
  */
 import type { Renderer } from '../core/renderer';
-import { tabStrip, MenuTab } from './menu';
+import { tabStrip, sheetSize, MenuTab } from './menu';
 import type { Input } from '../core/input';
 import { Painter, INK } from '../gfx/paint';
 import { Sprite, Frame, frameFrom, LAYER } from '../gfx/sprite';
@@ -43,6 +43,8 @@ export class Tree {
   private sel: SkillId | null = null;
   private pw = 0;
   private ph = 0;
+  /** An upright phone: the tree on top, its card underneath. */
+  private tall = false;
   private ring: Frame | null = null;
   private btn: Frame | null = null;
   onChange?: () => void;
@@ -86,9 +88,10 @@ export class Tree {
 
   private build(): void {
     const r = this.r;
-    const pw = Math.min(1560, r.uiW - 40), ph = Math.min(860, r.uiH - 40);
+    const { pw, ph, tall } = sheetSize(r);
     this.pw = pw;
     this.ph = ph;
+    this.tall = tall;
     const p = new Painter(pw + 40, ph + 40, 0.5, -(pw + 40) / 2, -(ph + 40) / 2);
     const edge = roughen([[-pw / 2, -ph / 2], [pw / 2, -ph / 2], [pw / 2, ph / 2], [-pw / 2, ph / 2]], 8, 71, 20);
     p.reserve(() => edge.forEach((q, i) => (i === 0 ? p.ctx.moveTo(q[0], q[1]) : p.ctx.lineTo(q[0], q[1]))), 0.97);
@@ -97,14 +100,15 @@ export class Tree {
     stroke(p, [[-pw / 2 + 20, ph / 2 - 8], [pw / 2 - 20, ph / 2 - 12]], { width: 8, load: 0.85, dry: 0.5, seed: 73, taperStart: 0.03, taperEnd: 0.12 });
     stroke(p, [[-pw / 2 + 30, -ph / 2 + 8], [pw / 2 - 30, -ph / 2 + 6]], { width: 5, load: 0.5, dry: 0.7, seed: 74, taperStart: 0.1, taperEnd: 0.2 });
     // the tree's three trunks and their branches
-    const colX = (b: number) => -pw / 2 + 170 + b * 240;
-    const rowY = (row: number) => ph / 2 - 175 - row * ((ph - 270) / 3.2);
+    const colX = (b: number) => (tall ? (b - 1) * (pw / 3 - 6) : -pw / 2 + 170 + b * 240);
+    const rowY = (row: number) => (tall ? ph / 2 - 200 - row * 150 : ph / 2 - 175 - row * ((ph - 270) / 3.2));
     for (let b = 0; b < 3; b++) stroke(p, [[colX(b), rowY(3) - 30], [colX(b) + 6, (rowY(0) + rowY(3)) / 2], [colX(b), rowY(0) + 20]], { width: 5, load: 0.3, dry: 0.7, seed: 75 + b, taperStart: 0.1, taperEnd: 0.4 });
-    stroke(p, [[-pw / 2 + 880, ph / 2 - 90], [-pw / 2 + 876, -ph / 2 + 40]], { width: 3, load: 0.35, dry: 0.7, seed: 79 });
+    if (tall) stroke(p, [[-pw / 2 + 40, this.cardTop() + 24], [pw / 2 - 40, this.cardTop() + 20]], { width: 3, load: 0.35, dry: 0.7, seed: 79 });
+    else stroke(p, [[-pw / 2 + 880, ph / 2 - 90], [-pw / 2 + 876, -ph / 2 + 40]], { width: 3, load: 0.35, dry: 0.7, seed: 79 });
     this.sprites.push(this.add(new Sprite(frameFrom(p)), 'pig', LAYER.ui + 30));
     const m = maskSprite(r, pw + 160, ph + 160);
     m.mesh.renderOrder = LAYER.ui + 30;
-    this.sprites.push(m, maskSprite(r, pw + 30, ph + 30, 'cover'));
+    this.sprites.push(m, maskSprite(r, tall ? r.uiW + 240 : pw + 30, ph + 30, 'cover'));
     this.tabs = tabStrip(r, pw, ph, 'tree', (sp) => this.sprites.push(sp));
     const x = new Painter(80, 80, 1, -40, -40);
     x.glaze();
@@ -122,7 +126,7 @@ export class Tree {
       const bi = BRANCHES.indexOf(s.branch);
       const pair = SKILLS.filter((o) => o.branch === s.branch && o.row === s.row);
       const k = pair.indexOf(s);
-      const x0 = colX(bi) + (pair.length > 1 ? (k === 0 ? -58 : 58) : 0);
+      const x0 = colX(bi) + (pair.length > 1 ? (k === 0 ? -1 : 1) * (tall ? 54 : 58) : 0);
       this.nodes.push({ id: s.id, x: x0, y: rowY(s.row) });
     }
     if (!this.ring) {
@@ -144,7 +148,8 @@ export class Tree {
     // points left
     const pl = pointsLeft();
     const pt = this.text(`${L(T.title)} · ${pl} ${L(T.points)}`, 26, { italic: true, color: pl > 0 ? [0.76, 0.23, 0.17] : undefined });
-    pt.s.setPos(-pw / 2 + 60 + pt.w / 2, -ph / 2 + 42);
+    if (this.tall) pt.s.setPos(0, this.cardTop() + 64);
+    else pt.s.setPos(-pw / 2 + 60 + pt.w / 2, -ph / 2 + 42);
     this.dyn.push(pt.s);
     for (const n of this.nodes) {
       const s = SKILL[n.id];
@@ -186,9 +191,9 @@ export class Tree {
         this.dyn.push(sr);
       }
     }
-    // the card on the right
-    const x0 = -pw / 2 + 910, w = pw / 2 - 40 - x0;
-    let y = ph / 2 - 60;
+    // the card on the right (under the tree on an upright phone)
+    const x0 = this.tall ? -pw / 2 + 40 : -pw / 2 + 910, w = pw / 2 - 40 - x0;
+    let y = this.tall ? this.cardTop() : ph / 2 - 60;
     const put = (str: string, size: number, o: Parameters<Tree['text']>[2] = {}) => {
       const t = this.text(str, size, { maxWidth: w, ...o });
       t.s.setPos(x0 + t.w / 2, y - t.h / 2);
@@ -214,12 +219,12 @@ export class Tree {
     if (why) { y -= 6; put(why, 22, { italic: true, color: [0.76, 0.23, 0.17] }); }
     else if (spentIn(s.branch) < s.row * 2) { y -= 6; put(L(T.locked).replace('{n}', String(s.row * 2 - spentIn(s.branch))), 22, { italic: true }); }
     const by = -ph / 2 + 70;
-    if (canLearn(id)) this.button(L(T.learn), x0 + 130, by, () => { if (learn(id)) { writeSave(); sfx.uiConfirm(); this.onChange?.(); this.refresh(); } });
+    if (canLearn(id)) this.button(L(T.learn), this.tall ? 0 : x0 + 130, by, () => { if (learn(id)) { writeSave(); sfx.uiConfirm(); this.onChange?.(); this.refresh(); } });
     if (s.active && rk > 0) {
       // three small slot buttons in a row
       for (let k = 0; k < 3; k++) {
         const on = save.slots[k] === id;
-        const bx = x0 + 70 + k * 150, byy = by + (canLearn(id) ? 100 : 0);
+        const bx = this.tall ? -60 + k * 140 : x0 + 70 + k * 150, byy = by + (canLearn(id) ? (this.tall ? 90 : 100) : 0);
         this.button(`${k + 1}${on ? ' ●' : ''}`, bx, byy, () => {
           const prev = save.slots.indexOf(id);
           if (prev >= 0) save.slots[prev] = save.slots[k];
@@ -231,9 +236,16 @@ export class Tree {
         }, 120);
       }
       const lab = this.text(L(T.slot), 22, { italic: true });
-      lab.s.setPos(x0 + lab.w / 2, by + (canLearn(id) ? 100 : 0) + 56);
+      // beside the slots on an upright phone, above them otherwise
+      if (this.tall) lab.s.setPos(x0 + lab.w / 2, by + (canLearn(id) ? 90 : 0));
+      else lab.s.setPos(x0 + lab.w / 2, by + (canLearn(id) ? 100 : 0) + 56);
       this.dyn.push(lab.s);
     }
+  }
+
+  /** Where the card starts on an upright phone (under the tree's last row). */
+  private cardTop(): number {
+    return this.ph / 2 - 200 - 3 * 150 - 175;
   }
 
   private button(label: string, x: number, y: number, act: () => void, width = 240): void {
