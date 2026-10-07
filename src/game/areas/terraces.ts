@@ -507,10 +507,11 @@ export const terraces: RoomDef = {
     runCamps(g, b, T2_CAMPS, makeEnemy);
     const localKinds = (reg: string): { kinds: EnemyKind[]; champions: EnemyKind[]; tier: number } | null => {
       if (reg === 'reeds') return null;
-      if (reg === 'pass') return { kinds: ['goat', 'wraith', 'wisp'], champions: ['goat', 'wraith', 'brute'], tier: 3 };
-      if (reg === 'bamboo') return { kinds: ['mantis', 'wraith'], champions: ['mantis', 'brute'], tier: 4 };
-      if (reg === 'lake') return { kinds: ['frog', 'wisp', 'kappa'], champions: ['frog', 'kappa', 'splitter'], tier: 3 };
-      return { kinds: ['frog', 'frog', 'wraith', 'mite'], champions: ['frog', 'goat', 'splitter'], tier: 3 };
+      if (reg === 'pass') return { kinds: ['goat', 'wraith', 'goat'], champions: ['goat', 'wraith'], tier: 3 };
+      if (reg === 'bamboo') return { kinds: ['mantis', 'wraith', 'mantis'], champions: ['mantis'], tier: 4 };
+      if (reg === 'lake') return { kinds: ['frog', 'kappa', 'tadpole'], champions: ['frog', 'kappa'], tier: 3 };
+      if (reg === 'pagoda') return { kinds: ['monk', 'wraith'], champions: ['monk', 'wraith'], tier: 4 };
+      return { kinds: ['frog', 'frog', 'wraith', 'tadpole'], champions: ['frog', 'goat', 'kappa'], tier: 3 };
     };
     const events = new Events(g, {
       make: (k, x, y) => makeEnemy(k, x, y),

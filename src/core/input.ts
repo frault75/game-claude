@@ -161,6 +161,9 @@ export class Input {
         this.mouseX = e.clientX;
         this.mouseY = e.clientY;
         this.mouseMoved = true;
+        // a button released elsewhere (outside the window, during a loading screen): let go here too
+        if (this.leftHeld && !(e.buttons & 1)) { this.leftHeld = false; this.holdPoint = null; }
+        if (this.gesture && this.gesture.button === 'right' && !(e.buttons & 2)) this.endGesture(false);
         if (this.leftHeld && this.holdPoint) this.holdPoint = [e.clientX, e.clientY];
       }
       const st = this.stick;

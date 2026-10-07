@@ -48,7 +48,8 @@ function getIce(): Frame {
   return iceFrame;
 }
 
-export const TIER_HP = [1, 1, 1.5, 2.3, 3.1];
+/** Health by tier: Act I's valley (1–3), Act II's terraces and depths (3–4), Act III's peaks (5). */
+export const TIER_HP = [1, 1.1, 1.8, 2.9, 4.0, 5.3];
 
 /** Base for creatures: hit flash, knockback, freeze, camp leash, death by dissolving into a stain. */
 export class Creature extends Entity {
@@ -84,7 +85,7 @@ export class Creature extends Entity {
 
   /** How much one blow costs the child: deeper places and elites hit harder. */
   get power(): number {
-    return 1 + (this.tier >= 3 ? 1 : 0) + (this.elite ? 1 : 0) + this.bonusPower;
+    return 1 + (this.tier >= 3 ? 1 : 0) + (this.tier >= 5 ? 1 : 0) + (this.elite ? 1 : 0) + this.bonusPower;
   }
 
   constructor() {

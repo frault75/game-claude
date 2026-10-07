@@ -21,7 +21,10 @@ export interface Region {
 export const REGIONS: Record<string, Region> = {
   village: { id: 'village', name: { fr: 'Le Hameau des Saules', en: 'Willow Hamlet' }, palette: 'orchard', music: 'orchard' },
   orchard: { id: 'orchard', name: { fr: 'Le Verger', en: 'The Orchard' }, palette: 'orchard', music: 'river' },
-  plain: { id: 'plain', name: { fr: 'La Plaine des pruniers', en: 'The Plum Plain' }, palette: 'orchard', music: 'storm' },
+  marsh: { id: 'marsh', name: { fr: 'Les Marais aux lucioles', en: 'The Firefly Marshes' }, palette: 'marsh', music: 'marsh' },
+  plain: { id: 'plain', name: { fr: 'La Plaine des pruniers', en: 'The Plum Plain' }, palette: 'plain', music: 'plain' },
+  hills: { id: 'hills', name: { fr: 'Les Collines rouges', en: 'The Red Hills' }, palette: 'hills', music: 'hills' },
+  heath: { id: 'heath', name: { fr: 'La Lande aux corbeaux', en: 'The Crow Heath' }, palette: 'heath', music: 'heath' },
   arena: { id: 'arena', name: { fr: 'Le Cercle de pierres', en: 'The Stone Circle' }, palette: 'storm', music: 'storm' },
   cave: { id: 'cave', name: { fr: 'La Grotte aux lucioles', en: 'The Firefly Cave' }, palette: 'orchard', music: 'river' },
   temple: { id: 'temple', name: { fr: 'Le Temple englouti', en: 'The Sunken Temple' }, palette: 'orchard', music: 'storm' },
@@ -40,7 +43,8 @@ export const NORTH_WALL = 113.5;
 
 export type EnemyKind = 'blot' | 'mite' | 'wisp' | 'splitter' | 'brute' | 'totem'
   | 'crow' | 'scarecrow' | 'boar' | 'fox' | 'bat' | 'grub' | 'soldier' | 'lantern'
-  | 'frog' | 'goat' | 'wraith' | 'mantis' | 'tadpole' | 'kappa' | 'tanuki' | 'monk' | 'bell';
+  | 'frog' | 'goat' | 'wraith' | 'mantis' | 'tadpole' | 'kappa' | 'tanuki' | 'monk' | 'bell'
+  | 'moth' | 'eel' | 'crab' | 'stag';
 
 export interface CampDef {
   id: number;
@@ -97,21 +101,21 @@ export const SHRINES: ShrineDef[] = [
 
 export const CAMPS: CampDef[] = [
   // the orchard: blots, crows over the plum trees, the scarecrow of the fields
-  { id: 0, x: 50, y: 54, r: 4, tier: 1, members: ['blot', 'blot', 'crow', 'crow'], elites: 0 },
-  { id: 1, x: 58, y: 76, r: 5, tier: 1, members: ['scarecrow', 'crow', 'crow', 'mite', 'mite'], elites: 0 },
-  { id: 2, x: 42, y: 92, r: 5, tier: 1, members: ['blot', 'mite', 'mite', 'mite', 'wisp'], elites: 0 },
-  { id: 3, x: 64, y: 54, r: 5, tier: 1, members: ['blot', 'blot', 'scarecrow', 'crow'], elites: 1 },
+  { id: 0, x: 50, y: 54, r: 4, tier: 1, members: ['blot', 'moth', 'crow', 'moth'], elites: 0 },
+  { id: 1, x: 58, y: 76, r: 5, tier: 1, members: ['scarecrow', 'crow', 'moth', 'moth', 'mite'], elites: 0 },
+  { id: 2, x: 42, y: 92, r: 5, tier: 1, members: ['eel', 'mite', 'wisp', 'eel', 'mite'], elites: 0 },
+  { id: 3, x: 64, y: 54, r: 5, tier: 1, members: ['blot', 'crab', 'scarecrow', 'crow'], elites: 1 },
   // the plain: boars, smoke foxes, rams, ink wells
-  { id: 4, x: 82, y: 92, r: 6, tier: 2, members: ['totem', 'boar', 'blot', 'mite', 'mite'], elites: 0 },
-  { id: 5, x: 86, y: 74, r: 5, tier: 2, members: ['fox', 'fox', 'wisp', 'blot'], elites: 0 },
-  { id: 6, x: 98, y: 32, r: 6, tier: 2, members: ['splitter', 'boar', 'boar', 'mite', 'mite'], elites: 1 },
-  { id: 7, x: 104, y: 68, r: 5, tier: 2, members: ['brute', 'fox', 'blot', 'wisp'], elites: 0 },
-  { id: 8, x: 112, y: 46, r: 6, tier: 3, members: ['totem', 'fox', 'wisp', 'boar'], elites: 1 },
-  { id: 9, x: 120, y: 90, r: 6, tier: 3, members: ['brute', 'splitter', 'crow', 'crow', 'crow'], elites: 1 },
-  { id: 10, x: 138, y: 54, r: 6, tier: 3, members: ['brute', 'brute', 'fox', 'wisp'], elites: 1 },
-  { id: 11, x: 140, y: 80, r: 6, tier: 3, members: ['totem', 'boar', 'boar', 'fox', 'wisp'], elites: 2 },
-  { id: 12, x: 134, y: 26, r: 6, tier: 3, members: ['fox', 'fox', 'fox', 'crow', 'crow'], elites: 1 },
-  { id: 13, x: 158, y: 96, r: 6, tier: 3, members: ['scarecrow', 'brute', 'boar', 'crow', 'crow'], elites: 1 },
+  { id: 4, x: 82, y: 92, r: 6, tier: 2, members: ['crab', 'crab', 'eel', 'mite'], elites: 0 },
+  { id: 5, x: 86, y: 74, r: 5, tier: 2, members: ['fox', 'fox', 'crab', 'blot'], elites: 0 },
+  { id: 6, x: 98, y: 32, r: 6, tier: 2, members: ['splitter', 'stag', 'boar', 'mite'], elites: 1 },
+  { id: 7, x: 104, y: 68, r: 5, tier: 2, members: ['brute', 'fox', 'boar', 'wisp'], elites: 0 },
+  { id: 8, x: 112, y: 46, r: 6, tier: 3, members: ['totem', 'fox', 'stag', 'boar'], elites: 1 },
+  { id: 9, x: 120, y: 90, r: 6, tier: 3, members: ['brute', 'scarecrow', 'crow', 'crow', 'crow'], elites: 1 },
+  { id: 10, x: 138, y: 54, r: 6, tier: 3, members: ['brute', 'boar', 'fox', 'fox'], elites: 1 },
+  { id: 11, x: 140, y: 80, r: 6, tier: 3, members: ['totem', 'boar', 'boar', 'fox'], elites: 2 },
+  { id: 12, x: 134, y: 26, r: 6, tier: 3, members: ['stag', 'stag', 'fox', 'crow'], elites: 1 },
+  { id: 13, x: 158, y: 96, r: 6, tier: 3, members: ['scarecrow', 'brute', 'crow', 'crow', 'moth'], elites: 1 },
 ];
 
 /** Camps the first quest asks for: the orchard east of the hamlet. */
@@ -296,7 +300,10 @@ export function regionAt(x: number, y: number): string {
   if (Math.hypot(x - ARENA.x, y - ARENA.y) < ARENA.r + 2) return 'arena';
   if (Math.hypot(x - CAVE.x, y - CAVE.y) < 9) return 'cave';
   if (Math.hypot(x - TEMPLE.x, y - TEMPLE.y) < 10) return 'temple';
-  return x < riverX(y) ? 'orchard' : 'plain';
+  if (x < riverX(y)) return y > 86 ? 'marsh' : 'orchard';
+  if (y < 36) return 'hills';
+  if (y > 88) return 'heath';
+  return 'plain';
 }
 
 /** Places where nothing tall may grow. */

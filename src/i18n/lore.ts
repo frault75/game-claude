@@ -342,6 +342,7 @@ export const UI = {
   wardenHint: { fr: 'Sa pierre est trop dure… Fige-le à l’indigo !', en: 'His stone is too hard… Freeze him with indigo!' },
   urnHint: { fr: 'Plus de pigment ? Brise les urnes d’argile aux coins de la salle.', en: 'Out of pigment? Break the clay urns in the corners of the hall.' },
   indigoHint: { fr: 'Prends l’indigo (2, ou touche la goutte bleue) pour le figer.', en: 'Take the indigo (2, or tap the blue drop) to freeze him.' },
+  doorsShut: { fr: 'Les ronces se referment derrière toi : vaincs le gardien pour rouvrir la salle.', en: 'Brambles close behind you: defeat the guardian to open the hall again.' },
   rift: { fr: 'Une déchirure dans le papier : elle ramène à la surface.', en: 'A tear in the paper: it leads back to the surface.' },
   enterCave: { fr: 'La Grotte aux lucioles', en: 'The Firefly Cave' },
   enterTemple: { fr: 'Le Temple englouti', en: 'The Sunken Temple' },
@@ -502,6 +503,34 @@ export const BESTIARY: Record<string, BeastLore> = {
       en: 'The master painted it for impatient pupils: “It waits, it waits, then it is over.” The ink left it the waiting and took the patience.',
     },
   },
+  moth: {
+    name: { fr: 'Phalène de papier', en: 'Paper Moth' }, where: { fr: 'Le Verger, la Lande', en: 'The Orchard, the Heath' },
+    text: {
+      fr: 'Les esquisses que le maître jetait au vent, pliées par l’orage en papillons de nuit. Elles tournent autour de toi, plongent, et éclatent en une poussière qui alourdit les jambes. Les traits du maître se voient encore sur leurs ailes : de vieux croquis de pruniers, ratés, puis oubliés.',
+      en: 'The sketches the master threw to the wind, folded by the storm into night moths. They circle you, dive, and burst into a dust that makes your legs heavy. The master’s strokes still show on their wings: old sketches of plum trees, failed, then forgotten.',
+    },
+  },
+  eel: {
+    name: { fr: 'Anguille d’encre', en: 'Ink Eel' }, where: { fr: 'Les Marais aux lucioles, les berges', en: 'The Firefly Marshes, the riverbanks' },
+    text: {
+      fr: 'Elle nage dans l’encre répandue comme dans de l’eau, et le sol n’a pour elle aucun fond. On ne voit que ses rides ; elle jaillit, mord, puis reste un instant à découvert, étonnée d’avoir de l’air autour d’elle. C’est le moment.',
+      en: 'It swims in spilled ink as in water, and for it the ground has no bottom. You see only its ripples; it leaps out, bites, then lies exposed a moment, surprised to have air around it. That is the moment.',
+    },
+  },
+  crab: {
+    name: { fr: 'Crabe-encrier', en: 'Inkpot Crab' }, where: { fr: 'Les berges de la rivière', en: 'The riverbanks' },
+    text: {
+      fr: 'Il porte sur le dos une pierre à encre, et dans le creux de la pierre, l’encre de l’orage. Il marche de côté, pince deux fois, et se cache dans sa carapace dès qu’on le frappe fort : patience, il en ressort toujours pour cracher.',
+      en: 'It carries an inkstone on its back, and in the hollow of the stone, the storm’s ink. It walks sideways, pinches twice, and hides in its shell as soon as it is struck hard: patience, it always comes out again to spit.',
+    },
+  },
+  stag: {
+    name: { fr: 'Cerf d’encre', en: 'Ink Stag' }, where: { fr: 'Les Collines rouges', en: 'The Red Hills' },
+    text: {
+      fr: 'Ses bois sont des branches de prunier, et quand il les plante en terre, des racines d’épines jaillissent en ligne droite jusqu’à toi. Il garde ses distances : c’est un seigneur, il ne se bat pas de près. Quand ses bois sont en terre, il est sans défense.',
+      en: 'Its antlers are plum branches, and when it plants them in the earth, thorny roots burst out in a straight line all the way to you. It keeps its distance: it is a lord, it does not fight up close. While its antlers are in the earth, it is defenceless.',
+    },
+  },
   tadpole: {
     name: { fr: 'Têtard', en: 'Tadpole' }, where: { fr: 'Le Grand Bassin', en: 'The Great Basin' },
     text: {
@@ -580,6 +609,18 @@ export const REGION_LORE: Record<string, Tr> = {
   plain: {
     fr: 'La plaine était le grand blanc du rouleau : il la laissait vide, pour que la peinture respire.',
     en: 'The plain was the great white of the scroll: he left it empty, so the painting could breathe.',
+  },
+  marsh: {
+    fr: 'Les lucioles venaient de la grotte boire aux marais. Depuis l’orage, l’eau est d’encre, et quelque chose y nage — on voit les rides, jamais le dos.',
+    en: 'The fireflies came down from the cave to drink in the marshes. Since the storm the water is ink, and something swims in it — you see the ripples, never the back.',
+  },
+  hills: {
+    fr: 'Le maître broyait ici l’ocre de ses collines. Les cerfs qui les gardaient portaient sur la tête des branches de ses pruniers ; l’encre les a rendus jaloux de leurs bois.',
+    en: 'The master ground the ochre of his hills here. The stags that kept them wore branches of his plum trees on their heads; the ink made them jealous of their antlers.',
+  },
+  heath: {
+    fr: 'Une lande où rien ne pousse que la bruyère et les épouvantails. Les corbeaux y comptent les passants. Personne ne sait ce qu’ils font des nombres.',
+    en: 'A heath where nothing grows but heather and scarecrows. The crows count the passers-by there. No one knows what they do with the numbers.',
   },
   arena: {
     fr: 'Des pierres levées en cercle, comme un ensō de granit. Quelque chose piétine en son centre.',
