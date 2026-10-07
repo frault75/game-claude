@@ -41,6 +41,8 @@ export class Entity {
   bouncy = false;
   /** Flies over water and gaps. */
   airborne = false;
+  /** A guardian: while it fights near the child, the camera leans towards it. */
+  camFocus = false;
   sprites: Sprite[] = [];
   /** Shown in the debug overlay. */
   label = 'entity';

@@ -31,7 +31,11 @@ export class Story {
   show(texts: string[], o: { size?: number; y?: number; hold?: number; gap?: number; italic?: boolean; stagger?: number } = {}): Promise<void> {
     const size = o.size ?? 40;
     const gap = o.gap ?? size * 1.6;
-    const y0 = (o.y ?? 60) + ((texts.length - 1) * gap) / 2;
+    let y = o.y ?? 60;
+    // a phone held upright keeps its life, icons, minimap and quest at the top: write below them
+    const r = this.r;
+    if (r.uiH > r.uiW * 1.2 && y > r.uiH / 2 - 340) y = Math.min(y, r.uiH / 2 - 560);
+    const y0 = y + ((texts.length - 1) * gap) / 2;
     const stagger = o.stagger ?? 1.2;
     const group = this.nextGroup++;
     // wait for what is already on screen (but not too long)
