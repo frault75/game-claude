@@ -257,6 +257,14 @@ export const MURALS: Record<string, Tr> = {
     fr: 'Une grande tache s’étale sur la paroi, et dans la tache, des yeux. Elle a mangé quelque chose de bleu.',
     en: 'A great blot spreads over the wall, and in the blot, eyes. It has eaten something blue.',
   },
+  basin1: {
+    fr: 'Une fresque à demi effacée : des paysans portent une statue de crapaud de jade jusqu’au bassin, en chantant. Sous la fresque, gravé : « Il boit la pluie de trop, il rend la pluie qui manque. »',
+    en: 'A half-faded fresco: farmers carry a jade toad statue down to the basin, singing. Beneath it, carved: “He drinks the rain that is too much, he gives back the rain that is missing.”',
+  },
+  basin2: {
+    fr: 'Les marques de l’eau sur les murs, année après année. La dernière est noire, et beaucoup trop haute. Quelqu’un a écrit dessous : « Il ne rend plus rien. »',
+    en: 'Water marks on the walls, year after year. The last one is black, and far too high. Someone wrote beneath it: “He gives nothing back now.”',
+  },
   temple1: {
     fr: 'Les prêtres de l’or priaient en silence, les mains ouvertes, pour que la lumière ne s’échappe pas.',
     en: 'The priests of gold prayed in silence, hands open, so the light would not escape.',
@@ -290,7 +298,13 @@ export const MAIN: QuestStep[] = [
   { title: { fr: 'Les Rizières en terrasses', en: 'The Rice Terraces' }, goal: { fr: 'Suis la route jusqu’au Village des Roseaux', en: 'Follow the road to the Reed Village' } },
   { title: { fr: 'La Dame Héron-Blanc', en: 'Lady White Heron' }, goal: { fr: 'Parle à la Dame Héron-Blanc, au village', en: 'Speak to Lady White Heron, in the village' } },
   { title: { fr: 'Les trois vannes', en: 'The Three Sluices' }, goal: { fr: 'Rouvre les trois vannes des terrasses', en: 'Reopen the three sluices of the terraces' } },
-  { title: { fr: 'Le Roi Crapaud', en: 'The Toad King' }, goal: { fr: 'L’eau descend… mais quelque chose l’attend en bas (Acte II, suite à venir)', en: 'The water flows down… but something waits below (Act II continues soon)' } },
+  { title: { fr: 'Le Grand Bassin', en: 'The Great Basin' }, goal: { fr: 'Descends dans le Grand Bassin, au sud des terrasses', en: 'Go down into the Great Basin, south of the terraces' } },
+  { title: { fr: 'Le Grand Bassin', en: 'The Great Basin' }, goal: { fr: 'Trouve ce qui boit l’eau, au fond du Bassin', en: 'Find what drinks the water, at the bottom of the Basin' } },
+  { title: { fr: 'Le Roi Crapaud', en: 'The Toad King' }, goal: { fr: 'Retourne voir la Dame Héron-Blanc', en: 'Return to Lady White Heron' } },
+  { title: { fr: 'L’ermite des bambous', en: 'The Hermit of the Bamboo' }, goal: { fr: 'Trouve Maître Yu, au fond de la Bambouseraie (est)', en: 'Find Master Yu, deep in the Bamboo Grove (east)' } },
+  { title: { fr: 'La Reine des mantes', en: 'The Mantis Queen' }, goal: { fr: 'Abats la Reine des mantes, au cœur de la Bambouseraie', en: 'Slay the Mantis Queen, in the heart of the Bamboo Grove' } },
+  { title: { fr: 'La Reine des mantes', en: 'The Mantis Queen' }, goal: { fr: 'Retourne voir Maître Yu', en: 'Return to Master Yu' } },
+  { title: { fr: 'La flûte de roseau', en: 'The Reed Flute' }, goal: { fr: 'Joue de la flûte sur le ponton du lac (Acte II, suite à venir)', en: 'Play the flute on the lake jetty (Act II continues soon)' } },
 ];
 
 export const UI = {
@@ -469,6 +483,41 @@ export const BESTIARY: Record<string, BeastLore> = {
     text: {
       fr: 'Le maître la peignait pour les élèves impatients : « Elle attend, elle attend, puis c’est fini. » L’encre lui a laissé l’attente et a pris la patience.',
       en: 'The master painted it for impatient pupils: “It waits, it waits, then it is over.” The ink left it the waiting and took the patience.',
+    },
+  },
+  tadpole: {
+    name: { fr: 'Têtard', en: 'Tadpole' }, where: { fr: 'Le Grand Bassin', en: 'The Great Basin' },
+    text: {
+      fr: 'Une virgule d’encre qui a appris à nager. Seul, il fait rire ; par dizaines, il fait reculer. Le Roi Crapaud les appelle d’un coassement.',
+      en: 'A comma of ink that learned to swim. Alone, it is laughable; by the dozen, it makes you step back. The Toad King calls them with a croak.',
+    },
+  },
+  kappa: {
+    name: { fr: 'Kappa', en: 'Kappa' }, where: { fr: 'Les berges, les citernes', en: 'Riverbanks, cisterns' },
+    text: {
+      fr: 'Un diablotin des eaux à carapace. De face, la carapace détourne le pinceau ; une boucle l’enserre, un coup dans le dos le surprend. Et après chaque assaut, il s’incline — l’eau de sa coupelle se renverse, et il est sans défense.',
+      en: 'A shelled water imp. From the front, its shell turns the brush aside; a loop closes around it, a blow in the back surprises it. And after each lunge it bows — the water spills from its dish, and it is defenceless.',
+    },
+  },
+  tanuki: {
+    name: { fr: 'Tanuki farceur', en: 'Trickster Tanuki' }, where: { fr: 'Partout où il y a des lanternes', en: 'Wherever there are lanterns' },
+    text: {
+      fr: 'Il se fait lanterne de pierre et attend. La feuille posée sur son toit le trahit toujours. Il vole les bourses et s’enfuit en riant ; rattrape-le, et il rend tout, avec les intérêts.',
+      en: 'It turns itself into a stone lantern and waits. The leaf on its roof always gives it away. It steals purses and runs off laughing; catch it, and it gives everything back, with interest.',
+    },
+  },
+  toad: {
+    name: { fr: 'Le Roi Crapaud', en: 'The Toad King' }, where: { fr: 'Au fond du Grand Bassin', en: 'At the bottom of the Great Basin' },
+    text: {
+      fr: 'Autrefois, un crapaud de jade à trois pattes : il buvait la pluie de trop et rendait celle qui manquait. L’orage l’a rempli d’encre, et il n’a plus jamais voulu rendre. Dans l’eau, il guérit ; l’or l’en chasse, l’indigo l’y enferme.',
+      en: 'Once a three-legged jade toad: he drank the rain that was too much and gave back what was missing. The storm filled him with ink, and he never wanted to give back again. In the water he heals; gold drives him out, indigo locks him in.',
+    },
+  },
+  queen: {
+    name: { fr: 'La Reine des mantes', en: 'The Mantis Queen' }, where: { fr: 'Le cœur de la Bambouseraie', en: 'The heart of the Bamboo Grove' },
+    text: {
+      fr: 'Elle a coupé le jardin de Maître Yu pour y faire son nid. Elle se fond dans les bambous ; seul le bruissement des feuilles la trahit. Esquive sa charge : elle s’écrase contre les tiges.',
+      en: 'She cut down Master Yu’s garden to make her nest. She melts into the bamboo; only the rustle of leaves gives her away. Dodge her charge: she crashes into the stalks.',
     },
   },
 };

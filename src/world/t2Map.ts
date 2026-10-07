@@ -4,7 +4,7 @@ import type { Npc } from '../game/npc';
 import { save } from '../game/progression';
 import { lang } from '../i18n';
 import { MapSource, Mark, blob, polyline } from '../ui/mapArt';
-import { T2, T2_NORTH, T2_ROADS, T2_PONDS, T2_STREAM, T2_STREAM_HALF, T2_BRIDGE, T2_FIXED, T2_CAMPS, T2_SHRINES, T2_SLUICES, T2_REGIONS, T2_VILLAGE, T2_LAKE, T2_HILL, T2_PAGODA, TERRACES } from './terraces';
+import { T2, T2_NORTH, T2_ROADS, T2_PONDS, T2_STREAM, T2_STREAM_HALF, T2_BRIDGE, T2_FIXED, T2_CAMPS, T2_SHRINES, T2_SLUICES, T2_REGIONS, T2_VILLAGE, T2_LAKE, T2_HILL, T2_PAGODA, T2_BASIN, T2_QUEEN, T2_STAIR_LAMPS, T2_JETTY, TERRACES } from './terraces';
 
 export function t2MapSource(g: Game): MapSource {
   return {
@@ -35,6 +35,16 @@ export function t2MapSource(g: Game): MapSource {
         ctx.ellipse(T2_HILL.x, T2_HILL.y, r * 1.15, r * 0.85, 0, 0, Math.PI * 2);
         ctx.stroke();
       }
+      // the Great Basin's stone rim, the queen's clearing
+      ctx.fillStyle = 'rgba(92,90,88,0.55)';
+      ctx.fillRect(T2_BASIN.x - 3.4, T2_BASIN.y - 2.2, 6.8, 4.4);
+      ctx.fillStyle = 'rgba(30,34,40,0.8)';
+      ctx.fillRect(T2_BASIN.x - 2.6, T2_BASIN.y - 1.5, 5.2, 3);
+      ctx.strokeStyle = 'rgba(80,110,70,0.6)';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.ellipse(T2_QUEEN.x, T2_QUEEN.y, T2_QUEEN.r, T2_QUEEN.r * 0.8, 0, 0, Math.PI * 2);
+      ctx.stroke();
       for (const p of T2_PONDS) {
         ctx.fillStyle = 'rgba(64,98,156,0.5)';
         ctx.beginPath();
@@ -76,6 +86,10 @@ export function t2MapSource(g: Game): MapSource {
       for (const c of T2_CAMPS) if (!save.camps.includes(c.id)) out.push({ x: c.x, y: c.y, kind: 'camp' });
       T2_SLUICES.forEach(([x, y], i) => out.push({ x, y, kind: save.sluices.includes(i) ? 'shrineOn' : 'relic' }));
       out.push({ x: T2_PAGODA.x, y: T2_PAGODA.y + 1, kind: 'door' });
+      out.push({ x: T2_BASIN.x, y: T2_BASIN.y, kind: save.main >= 15 ? 'down' : 'basin' });
+      if (!save.bosses.includes('queen') && save.main >= 19) out.push({ x: T2_QUEEN.x, y: T2_QUEEN.y, kind: 'boss' });
+      if (save.quests.lanterns && !save.quests.lanterns.done) for (const [x, y] of T2_STAIR_LAMPS) out.push({ x, y, kind: 'side' });
+      if (save.main >= 21) out.push({ x: T2_JETTY[0], y: T2_JETTY[1], kind: 'goal' });
       out.push({ x: 1, y: 70, kind: 'door' });
       for (const e of g.world.entities) {
         if (e.label !== 'npc' || e.dead) continue;

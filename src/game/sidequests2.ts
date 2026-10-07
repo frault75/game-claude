@@ -96,4 +96,69 @@ export const SIDE_QUESTS2: QuestDef[] = [
     ],
     reward: () => ({ xp: 200, rarity: 'magic' }),
   },
+  {
+    id: 'jadeToad',
+    title: { fr: 'Le crapaud de fortune', en: 'The Fortune Toad' },
+    giver: 'lin',
+    available: () => save.main >= STEP.sluices,
+    offer: {
+      fr: [
+        'Mon crapaud de fortune ! Un petit crapaud de jade à trois pattes, une pièce dans la bouche. Il gardait ma caisse depuis que j’ai ouvert boutique.',
+        'Cette nuit, une lanterne de pierre est entrée chez moi. Oui, une lanterne. Elle est repartie avec mon crapaud, en riant. Des tanuki, j’en mettrais ma main au feu.',
+        'Leur terrier est dans les bois de l’est, au-delà du lac. Méfie-toi des lanternes qui ont une feuille sur le toit.',
+      ],
+      en: [
+        'My fortune toad! A little three-legged jade toad, a coin in its mouth. It has guarded my till since I opened shop.',
+        'Last night a stone lantern walked into my shop. Yes, a lantern. It left with my toad, laughing. Tanuki, I would bet my hand on it.',
+        'Their den is in the east woods, beyond the lake. Beware of lanterns with a leaf on the roof.',
+      ],
+    },
+    accept: { fr: 'Je te rapporte ton crapaud.', en: 'I’ll bring your toad back.' },
+    later: { fr: 'Plus tard, Lin.', en: 'Later, Lin.' },
+    stages: [
+      { goal: { fr: 'Chasse les tanuki de leur terrier, dans les bois de l’est', en: 'Drive the tanuki out of their den, in the east woods' }, kind: 'kill', label: 'tanuki', count: 4 },
+      { goal: { fr: 'Fouille le terrier : le crapaud de jade y est caché', en: 'Search the den: the jade toad is hidden there' }, kind: 'find', thing: 'jadeToad', at: { room: 'terraces', x: 191.5, y: 57.8 } },
+      {
+        goal: { fr: 'Rends son crapaud de fortune à Lin', en: 'Give Lin back her fortune toad' },
+        kind: 'talk', npc: 'lin',
+        say: {
+          fr: ['Le voilà ! Et il a encore sa pièce. Les tanuki n’ont même pas su la lui prendre, ces amateurs.', 'Tiens, prends ça. Et reviens quand tu veux : pour toi, la boutique est toujours ouverte.'],
+          en: ['There it is! And it still has its coin. The tanuki could not even get it off him, the amateurs.', 'Here, take this. And come back whenever you like: for you, the shop is always open.'],
+        },
+      },
+    ],
+    reward: () => ({ xp: 260, rarity: 'rare', perk: ['coins', 120, { fr: '+120 pièces : Lin ne compte pas quand elle est contente.', en: '+120 coins: Lin does not count when she is happy.' }] }),
+  },
+  {
+    id: 'lanterns',
+    title: { fr: 'Les lanternes de l’escalier', en: 'The Lanterns of the Stair' },
+    giver: 'gong',
+    available: () => !!save.quests.beads?.done,
+    offer: {
+      fr: [
+        'Les quatre lanternes de pierre, le long de l’escalier de la pagode… Elles brûlaient jour et nuit, pour que les morts trouvent le chemin du ciel.',
+        'Depuis l’orage, elles sont froides, et les spectres errent sur les marches. Les moines les allumaient avec la foudre d’or du maître. Tu as l’or, n’est-ce pas ?',
+        'Allume-les toutes les quatre. Mais prends garde : la lumière réveille ce qui dort sur l’escalier.',
+      ],
+      en: [
+        'The four stone lanterns along the pagoda stair… They burned day and night, so the dead could find the way to the sky.',
+        'Since the storm they are cold, and the wraiths wander the steps. The monks lit them with the master’s golden lightning. You have the gold, don’t you?',
+        'Light all four. But beware: the light wakes what sleeps on the stair.',
+      ],
+    },
+    accept: { fr: 'Je les allumerai.', en: 'I will light them.' },
+    later: { fr: 'Plus tard, mon frère.', en: 'Later, brother.' },
+    stages: [
+      { goal: { fr: 'Allume les quatre lanternes de l’escalier avec la foudre d’or', en: 'Light the four stair lanterns with golden lightning' }, kind: 'event', event: 'stairLamp', count: 4, distinct: true },
+      {
+        goal: { fr: 'Retourne voir Frère Gong', en: 'Return to Brother Gong' },
+        kind: 'talk', npc: 'gong',
+        say: {
+          fr: ['Je les vois d’ici… Quatre petites lunes sur l’escalier. Les morts vont pouvoir rentrer chez eux.', 'Le maître disait qu’un trait bien placé vaut mieux que cent traits rapides. Garde ceci en mémoire — et ce point de sagesse avec.'],
+          en: ['I can see them from here… Four little moons on the stair. The dead will be able to go home.', 'The master said one well-placed stroke is worth a hundred quick ones. Keep that in mind — and this point of wisdom with it.'],
+        },
+      },
+    ],
+    reward: () => ({ xp: 240, perk: ['points', 1, { fr: 'Un point de trait en plus dans l’Arbre des traits.', en: 'One extra point in the Tree of Strokes.' }] }),
+  },
 ];

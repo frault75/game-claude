@@ -22,6 +22,7 @@ export const PALETTES: Record<string, Palette> = {
   lake: { paper: '#E8E4D6', ink: '#18212A', a: '#D59AAE', b: '#5D86A0' },
   pass: { paper: '#E2E1DA', ink: '#1C1E22', a: '#8C98A8', b: '#B6A890' },
   pagoda: { paper: '#DED6C4', ink: '#15120F', a: '#B4473A', b: '#C8A24A' },
+  cistern: { paper: '#D6D6C6', ink: '#111A18', a: '#5E8C7A', b: '#8C7C58' },
   /** The blank page once restored: true ink returns. */
   blankInked: { paper: '#F7F3E9', ink: '#141414', a: '#D7A3A0', b: '#3F5F82' },
 };

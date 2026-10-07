@@ -2,6 +2,7 @@
  * The open world: Willow Hamlet and its people, the orchard, the river and the old bridge,
  * the Plum Plain with its camps and shrines, the Ram King's stone circle, the ways down into the cave and the temple.
  */
+import { Tadpole, Kappa, Tanuki } from '../beasts3';
 import type { RoomDef } from '../room';
 import { T2_ENTRY } from '../../world/terraces';
 import { Frog, MistGoat, MistWraith, JadeMantis } from '../beasts2';
@@ -84,6 +85,9 @@ export function makeEnemy(kind: EnemyKind, x: number, y: number): Creature {
     case 'goat': return new MistGoat(x, y);
     case 'wraith': return new MistWraith(x, y);
     case 'mantis': return new JadeMantis(x, y);
+    case 'tadpole': return new Tadpole(x, y);
+    case 'kappa': return new Kappa(x, y);
+    case 'tanuki': return new Tanuki(x, y);
   }
 }
 

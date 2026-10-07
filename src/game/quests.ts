@@ -24,6 +24,12 @@ export const STEP = {
   meetHeron: 13,
   sluices: 14,
   toad: 15,
+  basinDeep: 16,
+  toadBack: 17,
+  hermit: 18,
+  queen: 19,
+  yuBack: 20,
+  lotus: 21,
 } as const;
 
 /** Title and goal of the current step (with progress where it counts). */
@@ -35,7 +41,7 @@ export function questLine(): [string, string] {
     goal += ` (${n}/${ORCHARD_CAMPS.length})`;
   }
   if (save.main === STEP.sluices) goal += ` (${save.sluices.length}/3)`;
-  if (save.main >= STEP.toad) {
+  if (save.main >= MAIN.length) {
     const beasts = Object.keys(BESTIARY).length;
     goal = lang === 'fr'
       ? `Camps ${save.camps.length}/${CAMPS.length} · bestiaire ${save.bestiary.length}/${beasts}`
