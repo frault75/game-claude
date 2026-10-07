@@ -10,7 +10,7 @@ export const NAMES3: Record<string, Tr> = {
   kaze: { fr: 'Kaze', en: 'Kaze' },
 };
 
-export const SNOW: Record<'meet' | 'bells' | 'back', TrList> = {
+export const SNOW: Record<'meet' | 'bells' | 'back' | 'kings' | 'seal' | 'after', TrList> = {
   meet: {
     fr: [
       'Un trait rouge sur la neige. Les cloches me l’avaient dit, avant de se taire.',
@@ -46,15 +46,71 @@ export const SNOW: Record<'meet' | 'bells' | 'back', TrList> = {
       'Écoute. La page est tendue de nouveau : on l’entend vibrer sous la neige.',
       'Je dois te dire ce que je n’ai dit à personne. Ce qui efface le papier vient du sommet. Du maître lui-même — ou de ce qu’il en reste.',
       'Il y a une chose que seuls les plus vieux d’entre nous savent : chaque peinture du maître se termine par un trait rouge. Sa signature. Celle de ce rouleau-ci, il ne l’a jamais posée.',
-      'Repose-toi. Quand tu seras prêt, nous parlerons du chemin qui monte au-dessus de la vallée effacée.',
+      'Le chemin qui monte au-dessus de la vallée effacée est fermé par son sceau. Avant de monter, il l’a brisé en deux, comme on ferme une porte derrière soi.',
+      'Le Roi des Neiges a emporté une moitié dans la Forêt de givre. C’était le plus doux des yétis : il portait le maître sur son dos quand la neige était trop haute. L’autre moitié, le Dragon de papier l’a emportée sur le Glacier — mille grues pliées pour un seul vœu.',
+      'Rapporte-moi les deux moitiés. Je les rejoindrai. Alors tu monteras voir ce qui efface le monde.',
     ],
     en: [
       'Listen. The page is taut again: you can hear it hum under the snow.',
       'I must tell you what I have told no one. What erases the paper comes from the summit. From the master himself — or what is left of him.',
       'There is one thing only the oldest of us know: every painting of the master ends with a red stroke. His signature. This scroll’s, he never laid down.',
-      'Rest. When you are ready, we will talk about the path that climbs above the erased valley.',
+      'The path that climbs above the erased valley is shut by his seal. Before he went up, he broke it in two, the way one closes a door behind oneself.',
+      'The Snow King carried one half into the Frost Forest. He was the gentlest of the yetis: he carried the master on his back when the snow was too deep. The other half the Paper Dragon took onto the Glacier — a thousand cranes folded for a single wish.',
+      'Bring me both halves. I will join them. Then you will climb and see what is erasing the world.',
     ],
   },
+  kings: {
+    fr: [
+      'Le Roi des Neiges souffle un givre qui gèle jusqu’au souffle. Rien ne l’arrête, sauf le jade vivant : fais pousser une haie entre lui et toi.',
+      'Le Dragon de papier vole trop haut pour ton pinceau. Mais le papier craint la foudre : l’or le jettera sur la glace. Et après chaque plongeon, il doit se replier — c’est là qu’il faut frapper.',
+    ],
+    en: [
+      'The Snow King breathes a frost that freezes breath itself. Nothing stops it but living jade: grow a hedge between him and you.',
+      'The Paper Dragon flies too high for your brush. But paper fears lightning: gold will throw it down onto the ice. And after every dive it must fold itself again — that is when to strike.',
+    ],
+  },
+  seal: {
+    fr: [
+      'Les deux moitiés… Regarde : leurs bords s’emboîtent comme deux mains.',
+      'Ce n’est pas son nom qui est gravé là. C’est un seul trait. Rouge. Le même que toi.',
+      'Le sceau ouvre le chemin du sommet, au-dessus de la vallée effacée. Va. Et quoi que tu trouves là-haut, souviens-toi : tu es un trait, pas une tache.',
+    ],
+    en: [
+      'Both halves… Look: their edges fit together like two hands.',
+      'It is not his name carved there. It is a single stroke. Red. The same as you.',
+      'The seal opens the path to the summit, above the erased valley. Go. And whatever you find up there, remember: you are a stroke, not a blot.',
+    ],
+  },
+  after: {
+    fr: ['Le chemin du sommet t’attend, au nord de la vallée effacée. La neige retient son souffle.'],
+    en: ['The summit path awaits you, north of the erased valley. The snow is holding its breath.'],
+  },
+};
+
+export const KING_UI = {
+  boss: { fr: 'Le Roi des Neiges', en: 'The Snow King' },
+  wait: { fr: 'D’énormes traces dans la neige, et un grondement sous les pins. Pas encore.', en: 'Huge tracks in the snow, and a rumbling under the pines. Not yet.' },
+  hint: { fr: 'Esquive sa boule de neige : il s’écrasera contre les pins, étourdi.', en: 'Dodge his snowball: he will crash into the pines, dazed.' },
+  breath: { fr: 'Son souffle gèle tout… sauf le jade vivant. Fais pousser une haie entre vous.', en: 'His breath freezes everything… except living jade. Grow a hedge between you.' },
+  blocked: { fr: 'Le givre se brise sur le bambou !', en: 'The frost shatters on the bamboo!' },
+  call: { fr: 'Il appelle ses yétis !', en: 'He calls his yetis!' },
+  down: { fr: 'Le Roi des Neiges tombe à genoux. Dans sa fourrure, une moitié de sceau rouge.', en: 'The Snow King falls to his knees. In his fur, half of a red seal.' },
+};
+
+export const DRAGON_UI = {
+  boss: { fr: 'Le Dragon de papier', en: 'The Paper Dragon' },
+  wait: { fr: 'Un nid immense de papier plié. Quelque chose dort dessous. Pas encore.', en: 'A huge nest of folded paper. Something sleeps under it. Not yet.' },
+  hint: { fr: 'Il vole trop haut : attends qu’il se pose après son plongeon.', en: 'It flies too high: wait until it lands after its dive.' },
+  gold: { fr: 'La foudre d’or le jette sur la glace !', en: 'Gold lightning throws it down onto the ice!' },
+  fold: { fr: 'Sa queue se déplie en grues !', en: 'Its tail unfolds into cranes!' },
+  down: { fr: 'Le Dragon de papier se déplie une dernière fois. Au creux du dernier pli, l’autre moitié du sceau.', en: 'The Paper Dragon unfolds one last time. In the hollow of the last fold, the other half of the seal.' },
+};
+
+export const SEAL_UI = {
+  half: { fr: 'Moitié du sceau du maître', en: 'Half of the master’s seal' },
+  both: { fr: 'Les deux moitiés du sceau. Rapporte-les à Mère Neige.', en: 'Both halves of the seal. Bring them to Mother Snow.' },
+  joined: { fr: 'Le sceau du maître, entier. Un seul trait rouge.', en: 'The master’s seal, whole. A single red stroke.' },
+  summit: { fr: 'Le chemin du sommet est encore pris dans les nuages… (la suite de l’Acte III arrive)', en: 'The summit path is still lost in the clouds… (the rest of Act III is coming)' },
 };
 
 export const IDLE3: Record<string, TrList> = {
