@@ -194,7 +194,7 @@ export class Sketch extends Boss {
         const d = Math.hypot(p.x - x, p.y - y);
         let da = Math.atan2(p.y - y, p.x - x) - a;
         da = Math.abs(Math.atan2(Math.sin(da), Math.cos(da)));
-        if (d < 2.6 && da < 0.95) p.hurt(1, x, y);
+        if (d < 2.6 && da < 0.95) p.hurt(2, x, y);
         w.vfx.strikeArc(x, y + 0.6, a, this.combo);
         sfx.impact(false);
       },
@@ -213,7 +213,7 @@ export class Sketch extends Boss {
     w.tele.add({ kind: 'circle', r: 2.9 }, cx, cy, 0, dur, {
       hold: 0.1,
       onFire: () => {
-        if (Math.hypot(p.x - cx, p.y - cy) < 2.95 && p.state !== 'dash') p.hurt(2, cx, cy);
+        if (Math.hypot(p.x - cx, p.y - cy) < 2.95 && p.state !== 'dash') p.hurt(3, cx, cy);
         w.vfx.ripple(cx, cy, 3);
         w.shake(0.25, 0.25);
         sfx.impact(true);
@@ -224,7 +224,7 @@ export class Sketch extends Boss {
             hold: 0.08,
             onFire: () => {
               const d = Math.hypot(p.x - cx, p.y - cy);
-              if (d > 3.1 && d < 5.2 && p.state !== 'dash') p.hurt(1, cx, cy);
+              if (d > 3.1 && d < 5.2 && p.state !== 'dash') p.hurt(2, cx, cy);
               w.vfx.ripple(cx, cy, 4.6);
               sfx.impact(false);
             },
@@ -307,7 +307,7 @@ export class Sketch extends Boss {
         this.dashLeft -= step;
         if (Math.random() < 0.7) w.vfx.dust(this.x, this.y + 0.3, 1, INK);
         if (!this.hitThisDash && Math.hypot(p.x - this.x, p.y - this.y) < 0.95 && p.state !== 'dash') {
-          if (p.hurt(2, this.x, this.y)) this.hitThisDash = true;
+          if (p.hurt(3, this.x, this.y)) this.hitThisDash = true;
         }
         if (this.dashLeft <= 0.01 || moved < step * 0.3) {
           this.keepIn();
