@@ -43,6 +43,8 @@ export interface Stage {
   event?: string;
   /** Count distinct values (shrines visited…) instead of occurrences. */
   distinct?: boolean;
+  /** For a distinct event: where each value happens, marked on the map until it is seen. */
+  spots?: Where[];
   /** Which step comes next (default: the following one; 'end' finishes the quest). */
   next?: (q: QState, npc?: string) => number | 'end';
 }
@@ -250,6 +252,12 @@ export class Questbook {
       if (a.st.kind === 'find' && a.st.at && a.st.at.room === room) {
         const at = this.where(a.st.at);
         if (at) out.push({ x: at[0], y: at[1], kind: 'side' });
+      } else if (a.st.kind === 'event' && a.st.spots) {
+        a.st.spots.forEach((sp, i) => {
+          if (sp.room !== room || a.q.seen?.includes(i)) return;
+          const at = this.where(sp);
+          if (at) out.push({ x: at[0], y: at[1], kind: 'side' });
+        });
       } else if (a.st.kind === 'talk') {
         for (const e of g.world.entities) {
           const id = (e as unknown as { id?: string }).id;

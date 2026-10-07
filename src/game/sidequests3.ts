@@ -1,7 +1,8 @@
-/** Act III side quests: the librarian's torn sutras, the yak herder's lost peace. */
+/** Act III side quests: the librarian's torn sutras, the yak herder's lost peace, the painter's white, the novice's bells. */
 import type { QuestDef } from './questbook';
 import { save } from './progression';
 import { STEP } from './quests';
+import { P3_VISTAS, P3_GRELOTS } from '../world/peaks';
 
 export const SIDE_QUESTS3: QuestDef[] = [
   {
@@ -76,5 +77,84 @@ export const SIDE_QUESTS3: QuestDef[] = [
       },
     ],
     reward: () => ({ xp: 360, perk: ['life', 1, { fr: 'Une vie de plus : le thé au beurre de yak.', en: 'One more life: yak-butter tea.' }] }),
+  },
+  {
+    id: 'suzu',
+    title: { fr: 'Le blanc de Suzu', en: 'Suzu’s White' },
+    giver: 'suzu',
+    available: () => save.main >= STEP.bells,
+    offer: {
+      fr: [
+        'Trois ans que je suis là-haut, et je n’ai toujours rien peint. Chaque fois que je pose le pinceau sur la neige, elle cesse d’être de la neige. Elle devient de l’encre.',
+        'Mère Neige dit que le blanc ne se peint pas : il se laisse. Mais comment est-ce qu’on laisse quelque chose ?',
+        'Il y a trois endroits où je m’asseyais pour regarder : au bord du lac gelé, sur les pentes du vent, à l’orée de la forêt de givre. Une pierre plate à chacun. Va t’y asseoir à ma place, et trace un cercle autour de la pierre. Un cercle laisse le blanc au milieu. C’est peut-être ça.',
+      ],
+      en: [
+        'Three years I have been up here, and I still have not painted anything. Every time I put the brush on the snow, it stops being snow. It becomes ink.',
+        'Mother Snow says white is not painted: it is left. But how does one leave something?',
+        'There are three places where I used to sit and look: by the frozen lake, on the windswept slopes, at the edge of the frost forest. A flat stone at each. Go and sit there in my place, and draw a circle round the stone. A circle leaves the white in the middle. Perhaps that is it.',
+      ],
+    },
+    accept: { fr: 'J’irai tracer tes cercles.', en: 'I will go and draw your circles.' },
+    later: { fr: 'Plus tard, Suzu.', en: 'Later, Suzu.' },
+    stages: [
+      {
+        goal: { fr: 'Trace un cercle autour des trois pierres de Suzu (lac, pentes, forêt)', en: 'Draw a circle round Suzu’s three stones (lake, slopes, forest)' },
+        kind: 'event', event: 'vista', distinct: true, count: 3,
+        spots: P3_VISTAS.map(([x, y]) => ({ room: 'peaks', x, y })),
+      },
+      {
+        goal: { fr: 'Retourne voir Suzu', en: 'Return to Suzu' },
+        kind: 'talk', npc: 'suzu',
+        say: {
+          fr: ['Tu les as tracés ? … Alors c’est ça. Le cercle ne peint pas le blanc. Il le garde.', 'Regarde : j’ai enfin peint quelque chose. Trois cercles vides. C’est le plus beau tableau que j’aie jamais fait — et il n’y a rien dedans.', 'Prends ceci. Je n’en ai plus besoin : je sais maintenant ce que je cherchais.'],
+          en: ['You drew them? … Then that is it. The circle does not paint the white. It keeps it.', 'Look: I have finally painted something. Three empty circles. It is the most beautiful painting I have ever made — and there is nothing in it.', 'Take this. I do not need it any more: now I know what I was looking for.'],
+        },
+      },
+    ],
+    reward: () => ({ xp: 420, rarity: 'rare' }),
+  },
+  {
+    id: 'grelots',
+    title: { fr: 'Les grelots de Pema', en: 'Pema’s Bells' },
+    giver: 'pema',
+    available: () => save.main >= STEP.bells,
+    offer: {
+      fr: [
+        'Chut ! Ne le dis pas à Mère Neige. J’ai perdu les grelots du grand portail. Les trois.',
+        'Je voulais juste voir si les renards aimaient la musique… Ils l’aiment trop. Ils les ont emportés. Un dans la forêt, un sur les pentes… et le dernier, je l’ai entendu tinter du côté de la vallée effacée.',
+        'Si tu me les rapportes, je te montrerai comment on fait sonner trois grelots d’une seule main. C’est un secret de novice.',
+      ],
+      en: [
+        'Shh! Don’t tell Mother Snow. I lost the bells of the great gate. All three.',
+        'I only wanted to see whether the foxes liked music… They like it too much. They carried them off. One into the forest, one onto the slopes… and the last one I heard tinkling over by the erased valley.',
+        'If you bring them back, I will show you how to ring three bells with one hand. It is a novice’s secret.',
+      ],
+    },
+    accept: { fr: 'Je retrouverai tes grelots.', en: 'I will find your bells.' },
+    later: { fr: 'Plus tard, Pema.', en: 'Later, Pema.' },
+    stages: [
+      {
+        goal: { fr: 'Retrouve le grelot emporté dans la forêt', en: 'Find the bell carried into the forest' }, kind: 'find', thing: 'grelot', at: { room: 'peaks', x: P3_GRELOTS[0][0], y: P3_GRELOTS[0][1] },
+        read: { name: { fr: 'Grelot du portail', en: 'Gate bell' }, text: { fr: ['Un petit grelot de bronze, dans la neige entre deux pins. Il tinte comme un rire.'], en: ['A little bronze bell in the snow between two pines. It tinkles like a laugh.'] } },
+      },
+      {
+        goal: { fr: 'Retrouve le grelot perdu sur les pentes', en: 'Find the bell lost on the slopes' }, kind: 'find', thing: 'grelot', at: { room: 'peaks', x: P3_GRELOTS[1][0], y: P3_GRELOTS[1][1] },
+        read: { name: { fr: 'Grelot du portail', en: 'Gate bell' }, text: { fr: ['Le deuxième grelot, dans une trace de renard. Il sent un peu le renard.'], en: ['The second bell, in a fox track. It smells a little of fox.'] } },
+      },
+      {
+        goal: { fr: 'Retrouve le grelot au bord de la vallée effacée', en: 'Find the bell at the edge of the erased valley' }, kind: 'find', thing: 'grelot', at: { room: 'peaks', x: P3_GRELOTS[2][0], y: P3_GRELOTS[2][1] },
+        read: { name: { fr: 'Grelot du portail', en: 'Gate bell' }, text: { fr: ['Le troisième grelot, au bord d’un trou dans le papier. Il ne tinte presque plus : le blanc lui a mangé sa voix.'], en: ['The third bell, at the edge of a hole in the paper. It barely tinkles: the white has eaten its voice.'] } },
+      },
+      {
+        goal: { fr: 'Rapporte les trois grelots à Pema', en: 'Bring the three bells to Pema' },
+        kind: 'talk', npc: 'pema',
+        say: {
+          fr: ['Les trois ! … Le dernier est tout pâle. Il a eu peur, le pauvre. Ça lui reviendra.', 'Regarde : une main, trois grelots, un seul geste. Voilà. Maintenant tu es un peu novice, toi aussi.', 'Et ça, c’est pour toi. Je l’ai trouvé sous mon lit. Ne demande pas.'],
+          en: ['All three! … The last one is all pale. It was frightened, poor thing. It will come back.', 'Look: one hand, three bells, a single gesture. There. Now you are a bit of a novice too.', 'And this is for you. I found it under my bed. Don’t ask.'],
+        },
+      },
+    ],
+    reward: () => ({ xp: 380, rarity: 'rare', perk: ['coins', 40, { fr: '40 pièces (les économies de Pema).', en: '40 coins (Pema’s savings).' }] }),
   },
 ];
