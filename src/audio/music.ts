@@ -130,6 +130,12 @@ export const THEMES: Record<string, Theme> = {
     calmLead: ['bell', 'bowed'], fightLead: ['bowed', 'pluck'],
     pad: 1, padBright: 0.3, drums: 0.9, register: 5, bell: 0.3, rest: 0.38,
   },
+  cistern: {
+    root: 48, scale: HIRA, bpm: 58,
+    progressions: [[0, 3, 4, 0], [0, 1, 0, 4], [3, 4, 1, 0], [0, 4, 3, 1]],
+    calmLead: ['bell', 'pluck', 'bowed'], fightLead: ['bowed', 'pluck'],
+    pad: 1, padBright: 0.22, drums: 0.95, register: 5, bell: 0.3, rest: 0.42,
+  },
   practice: {
     root: 62, scale: PENTA, bpm: 70,
     progressions: [[0, 3, 4, 0]],

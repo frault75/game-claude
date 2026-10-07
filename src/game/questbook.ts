@@ -170,7 +170,8 @@ export class Questbook {
     }
     if (rw.perk) {
       const [k, v, text] = rw.perk;
-      save.perks[k] = (save.perks[k] ?? 0) + v;
+      if (k === 'coins') save.coins += v;
+      else save.perks[k] = (save.perks[k] ?? 0) + v;
       if (k === 'gourd') { save.gourdMax += v; save.gourd += v; }
       writeSave();
       g.after(1.6, () => g.hud.showHint(tr(text), 4));

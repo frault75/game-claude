@@ -13,6 +13,9 @@ import { Pickup } from '../pickups';
 import { Stele } from '../npc';
 import { MotherOfBlots } from '../bosses/mother';
 import { DrownedWarden } from '../bosses/warden';
+import { ToadKing, ToadPool } from '../bosses/toadKing';
+import { T2_BASIN_SPAWN } from '../../world/terraces';
+import { BASIN_UI } from '../../i18n/lore2';
 import { generateDungeon, DungeonMap, DungeonSpec, DRoom, V } from '../../world/dungeon';
 import { paintDungeon, DungeonStyle } from '../../world/dungeonPaint';
 import type { EnemyKind } from '../../world/layout';
@@ -35,7 +38,7 @@ import { MapSource, Mark } from '../../ui/mapArt';
 
 interface FloorDef {
   id: string;
-  area: 'cave' | 'temple';
+  area: 'cave' | 'temple' | 'basin';
   style: DungeonStyle;
   floor: number;
   spec: DungeonSpec;
@@ -45,7 +48,7 @@ interface FloorDef {
   up: { to: string; spawn: () => V };
   /** The floor below, if any. */
   down?: string;
-  boss?: 'mother' | 'warden';
+  boss?: 'mother' | 'warden' | 'toad';
   mural: string;
   well?: boolean;
 }
@@ -74,6 +77,19 @@ const FLOORS: FloorDef[] = [
     spec: { seed: 4421, w: 70, h: 56, rooms: 6, minRoom: 8, maxRoom: 12, corridor: 3, boss: { w: 18, h: 14 } },
     enemies: ['soldier', 'lantern', 'soldier', 'lantern', 'totem', 'wisp', 'brute'],
     up: { to: 'temple1', spawn: () => mapOf('temple1').downSpawn }, boss: 'warden', mural: 'temple2', well: true,
+  },
+  // Act II: the Great Basin under the terraces, where the Toad King drinks the water
+  {
+    id: 'basin1', area: 'basin', style: 'cistern', floor: 1, tier: 4,
+    spec: { seed: 5501, w: 70, h: 54, rooms: 8, minRoom: 7, maxRoom: 12, corridor: 3 },
+    enemies: ['tadpole', 'frog', 'kappa', 'tadpole', 'wraith', 'frog', 'kappa'],
+    up: { to: 'terraces', spawn: () => T2_BASIN_SPAWN }, down: 'basin2', mural: 'basin1', well: true,
+  },
+  {
+    id: 'basin2', area: 'basin', style: 'cistern', floor: 2, tier: 4,
+    spec: { seed: 6607, w: 72, h: 58, rooms: 6, minRoom: 8, maxRoom: 12, corridor: 3, boss: { w: 20, h: 15 } },
+    enemies: ['kappa', 'tadpole', 'frog', 'splitter', 'kappa', 'wraith', 'tadpole'],
+    up: { to: 'basin1', spawn: () => mapOf('basin1').downSpawn }, boss: 'toad', mural: 'basin2', well: true,
   },
 ];
 
@@ -396,14 +412,21 @@ function buildFloor(def: FloorDef, room: RoomDef, b: Parameters<RoomDef['build']
   // the story moves on when the child comes down
   if (def.id === 'cave1' && save.main === STEP.findCave) setMain(g, STEP.caveDeep);
   if (def.id === 'temple1' && save.main === STEP.findTemple) setMain(g, STEP.templeDeep);
-  const name = caveArea ? L(UI.enterCave) : L(UI.enterTemple);
+  if (def.id === 'basin1' && save.main === STEP.toad) setMain(g, STEP.basinDeep);
+  const name = caveArea ? L(UI.enterCave) : def.area === 'basin' ? L(BASIN_UI.name) : L(UI.enterTemple);
   g.after(0.4, () => void g.story.show([name, `${L(UI.floor)} ${def.floor}`], { size: 44, y: r.uiH / 2 - 200, hold: 1.6, italic: false, stagger: 0.4 }));
 
   // ---------- the guardian ----------
-  let bossE: MotherOfBlots | DrownedWarden | null = null;
+  let bossE: MotherOfBlots | DrownedWarden | ToadKing | null = null;
   const e = map.end;
-  const bossId = def.boss === 'mother' ? 'mother' : 'warden';
-  const ink: InkId = def.boss === 'mother' ? 'indigo' : 'gold';
+  const bossId = def.boss ?? 'warden';
+  const ink: InkId | null = def.boss === 'mother' ? 'indigo' : def.boss === 'warden' ? 'gold' : null;
+  const surface = (): V => (caveArea ? SURFACE.cave : def.area === 'basin' ? T2_BASIN_SPAWN : SURFACE.temple);
+  // the Toad King's black pools
+  const pools: ToadPool[] = [];
+  if (def.boss === 'toad' && !save.bosses.includes('toad')) {
+    for (const [px, py] of [[e.x + e.w * 0.2, e.y + e.h * 0.32], [e.x + e.w * 0.8, e.y + e.h * 0.32], [e.cx, e.y + e.h * 0.76]]) pools.push(b.add(new ToadPool(px, py, 2.0)));
+  }
   const doors: [number, number, number, number][] = [];
   if (def.boss) {
     // corridor mouths into the guardian's room, closed during the fight
@@ -439,7 +462,7 @@ function buildFloor(def: FloorDef, room: RoomDef, b: Parameters<RoomDef['build']
     doorSprites.length = 0;
   };
   const spawnRelic = () => {
-    if (save.inks.includes(ink)) return;
+    if (!ink || save.inks.includes(ink)) return;
     const relic = b.add(new Relic(e.cx, e.cy + 1.5, ink));
     relic.onTake = () => {
       unlockInk(g, ink);
@@ -449,7 +472,7 @@ function buildFloor(def: FloorDef, room: RoomDef, b: Parameters<RoomDef['build']
   };
   const spawnRift = () => {
     const rift = b.add(new Rift(e.cx, e.y + e.h - 2.6));
-    rift.onEnter = () => void g.travel('overworld', caveArea ? SURFACE.cave : SURFACE.temple);
+    rift.onEnter = () => void g.travel(def.area === 'basin' ? 'terraces' : 'overworld', surface());
   };
   if (def.boss && save.bosses.includes(bossId)) {
     spawnRelic();
@@ -460,6 +483,13 @@ function buildFloor(def: FloorDef, room: RoomDef, b: Parameters<RoomDef['build']
     if (def.boss === 'mother') {
       bossE = b.add(new MotherOfBlots(e.cx, e.cy + 1, e));
       g.hud.showBoss(L(UI.bossMother));
+    } else if (def.boss === 'toad') {
+      for (const pl of pools) pl.frozen = 0;
+      const tk = b.add(new ToadKing(e.cx, e.cy + 0.5, e, pools));
+      tk.onDive = () => g.hud.showHint(L(BASIN_UI.diveHint), 5);
+      tk.onAllFrozen = () => g.hintOnce('toadFrozen', L(BASIN_UI.frozenHint), 3.5);
+      bossE = tk;
+      g.hud.showBoss(L(BASIN_UI.bossToad));
     } else {
       const wd = b.add(new DrownedWarden(e.cx, e.cy + 1.5, e));
       wd.onArmour = () => { g.hud.showHint(L(UI.wardenHint), 3.5); g.after(4, () => g.flags.add('wardenArmour')); };
@@ -477,13 +507,16 @@ function buildFloor(def: FloorDef, room: RoomDef, b: Parameters<RoomDef['build']
       save.bosses.push(bossId);
       writeSave();
       discover(g, bossId);
-      giveXp(g, def.boss === 'mother' ? 220 : 380);
+      giveXp(g, def.boss === 'mother' ? 220 : def.boss === 'toad' ? 560 : 380);
       for (let i = 0; i < 4; i++) b.add(new Pickup(boss.x, boss.y, i % 2 ? 'ink' : 'life', i % 2 ? 10 : 2));
-      dropLoot(g, boss.x, boss.y, 'boss', def.boss === 'mother' ? 4 : 8);
+      if (def.boss === 'toad') for (let i = 0; i < 5; i++) b.add(new Pickup(boss.x + (i - 2) * 0.5, boss.y, 'coin', 12));
+      dropLoot(g, boss.x, boss.y, 'boss', def.boss === 'mother' ? 4 : def.boss === 'toad' ? 11 : 8);
+      for (const pl of pools) pl.drain();
       for (const en of w.entities) if (en.team === 'enemy' && en !== boss && en.label !== 'urn') (en as Creature).onHit?.({ dmg: 999, fromX: boss.x, fromY: boss.y, kind: 'enso' });
       g.after(1.6, () => {
         openDoors();
-        void g.story.show([L(def.boss === 'mother' ? UI.motherDown : UI.wardenDown)], { size: 38, y: r.uiH / 2 - 200, hold: 3 });
+        void g.story.show([L(def.boss === 'mother' ? UI.motherDown : def.boss === 'toad' ? BASIN_UI.toadDown : UI.wardenDown)], { size: 38, y: r.uiH / 2 - 200, hold: 3 });
+        if (def.boss === 'toad') { save.sluices = [0, 1, 2]; if (save.main < STEP.toadBack) setMain(g, STEP.toadBack); }
         spawnRelic();
         g.after(2, () => { spawnRift(); g.hud.showHint(L(UI.rift), 4); });
       });
@@ -497,6 +530,7 @@ function buildFloor(def: FloorDef, room: RoomDef, b: Parameters<RoomDef['build']
         if (p.pigmentFrac < 0.25) g.hintOnce('wardenUrns', L(UI.urnHint), 4);
         else if (save.ink !== 'indigo' && g.flags.has('wardenArmour')) g.hintOnce('wardenIndigo', L(UI.indigoHint), 4);
       }
+      if (def.boss === 'toad' && !bossE.defeated && bossE.state === 'inflate') g.hintOnce('toadBelly', L(BASIN_UI.bellyHint), 3);
       music.boss = bossE.defeated ? 0.2 : 1;
       return;
     }
@@ -513,7 +547,8 @@ function buildFloor(def: FloorDef, room: RoomDef, b: Parameters<RoomDef['build']
       bossE = null;
       openDoors();
       g.hud.hideBoss();
-      for (const en of w.entities) if ((en.label === 'blotlet' || en.label === 'wisp' || en.label === 'urn') && !(en as Creature).home) en.destroy();
+      for (const en of w.entities) if ((en.label === 'blotlet' || en.label === 'wisp' || en.label === 'urn' || en.label === 'tadpole' || en.label === 'inkdrop') && !(en as Creature).home) en.destroy();
+      for (const pl of pools) pl.frozen = 0;
     }
   };
   // where to go: the stairs down, the guardian, or the way out
@@ -521,7 +556,7 @@ function buildFloor(def: FloorDef, room: RoomDef, b: Parameters<RoomDef['build']
     let target: V | null = null;
     if (def.down) target = map.down;
     else if (!save.bosses.includes(bossId)) target = [e.cx, e.cy];
-    else if (!save.inks.includes(ink)) target = [e.cx, e.cy + 1.5];
+    else if (ink && !save.inks.includes(ink)) target = [e.cx, e.cy + 1.5];
     else target = [e.cx, e.y + e.h - 2.6];
     g.objective = target;
     const vh = r.viewH / r.zoom, vw = vh * (r.pxW / r.pxH);
@@ -543,7 +578,7 @@ function floorMap(def: FloorDef, map: DungeonMap): MapSource {
     sight: 7.5,
     view: 14,
     paint(ctx) {
-      ctx.fillStyle = def.area === 'cave' ? 'rgba(96,88,80,0.34)' : 'rgba(120,104,72,0.34)';
+      ctx.fillStyle = def.area === 'cave' ? 'rgba(96,88,80,0.34)' : def.area === 'basin' ? 'rgba(78,108,100,0.34)' : 'rgba(120,104,72,0.34)';
       for (let y = 0; y < map.h; y++) for (let x = 0; x < map.w; x++) if (map.grid[y * map.w + x] === 1) ctx.fillRect(x - 0.02, y - 0.02, 1.04, 1.04);
       ctx.strokeStyle = 'rgba(36,32,30,0.85)';
       ctx.lineWidth = 0.32;
@@ -555,7 +590,7 @@ function floorMap(def: FloorDef, map: DungeonMap): MapSource {
       const out: Mark[] = [{ x: map.up[0], y: map.up[1], kind: 'up' }];
       if (def.down) out.push({ x: map.down[0], y: map.down[1], kind: 'down' });
       if (def.well) out.push({ x: map.start.cx + 2.5, y: map.start.cy - 0.5, kind: 'basin' });
-      const bossId = def.boss === 'mother' ? 'mother' : 'warden';
+      const bossId = def.boss ?? 'warden';
       if (def.boss && !save.bosses.includes(bossId)) out.push({ x: map.end.cx, y: map.end.cy, kind: 'boss' });
       return out;
     },

@@ -1,12 +1,12 @@
 /** Something a quest looks for, lying in the world: a kite in a tree, a doll in the reeds, a helmet in the dark. */
 import { Entity } from './entity';
 import { Sprite, Frame, frameFrom, ySort } from '../gfx/sprite';
-import { Painter, INK, VERMILION, PIG_B, mixPig } from '../gfx/paint';
+import { Painter, INK, VERMILION, PIG_A, PIG_B, mixPig } from '../gfx/paint';
 import { washPoly, noisyOutline, roughen } from '../gfx/wash';
 import { stroke } from '../gfx/brush';
 import { SPRITE_PPU } from '../gfx/gen/flora';
 
-export type ThingId = 'kite' | 'root' | 'gall' | 'spring' | 'helmet' | 'doll' | 'oil' | 'tea' | 'net';
+export type ThingId = 'kite' | 'root' | 'gall' | 'spring' | 'helmet' | 'doll' | 'oil' | 'tea' | 'net' | 'jadeToad';
 
 const art = new Map<ThingId, { pig: Frame; red: Frame }>();
 
@@ -65,6 +65,17 @@ function paint(id: ThingId): { pig: Frame; red: Frame } {
       }
       p.circle(0.35, 0.75, 0.06, INK, 0.9);
       stroke(r, [[-0.42, 0.78], [-0.2, 0.86]], { width: 0.05, pig: VERMILION, load: 0.9, seed: 49 });
+      break;
+    case 'jadeToad':
+      // the three-legged money toad, a coin in its mouth
+      washPoly(p, noisyOutline(0, 0.32, 0.36, 0.24, 0.12, 50), { pig: mixPig(INK, PIG_A, 0.6), density: 0.7, soft: 0.05, edge: 0.8, seed: 50 });
+      p.circle(-0.12, 0.6, 0.07, mixPig(INK, PIG_A, 0.6), 0.9);
+      p.circle(0.14, 0.6, 0.07, mixPig(INK, PIG_A, 0.6), 0.9);
+      stroke(p, [[-0.3, 0.12], [-0.38, 0.0]], { width: 0.06, load: 0.9, seed: 51 });
+      stroke(p, [[0.3, 0.12], [0.38, 0.0]], { width: 0.06, load: 0.9, seed: 52 });
+      stroke(p, [[0, 0.1], [0, -0.02]], { width: 0.06, load: 0.9, seed: 53 });
+      p.circle(0, 0.38, 0.08, INK, 0.9);
+      stroke(r, [[-0.06, 0.38], [0.06, 0.38]], { width: 0.04, pig: VERMILION, load: 0.9, seed: 54 });
       break;
   }
   const f = { pig: frameFrom(p), red: frameFrom(r) };

@@ -59,7 +59,7 @@ function startAudio() {
 window.addEventListener('pointerdown', startAudio, { once: false });
 window.addEventListener('keydown', startAudio, { once: false });
 
-if (debugMode) (window as unknown as Record<string, unknown>).__v = { game, input, renderer };
+if (debugMode) (window as unknown as Record<string, unknown>).__v = { game, input, renderer, save };
 
 async function start() {
   let hasSave = false;

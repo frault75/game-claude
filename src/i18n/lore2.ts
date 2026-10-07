@@ -9,9 +9,10 @@ export const NAMES2: Record<string, Tr> = {
   gong: { fr: 'Frère Gong', en: 'Brother Gong' },
   lin: { fr: 'Lin, la marchande', en: 'Lin, the merchant' },
   kaze: { fr: 'Kaze', en: 'Kaze' },
+  yu: { fr: 'Maître Yu, l’ermite', en: 'Master Yu, the hermit' },
 };
 
-export const HERON: Record<'meet' | 'sluices' | 'toad', TrList> = {
+export const HERON: Record<'meet' | 'sluices' | 'toad' | 'toadBack' | 'hermit', TrList> = {
   meet: {
     fr: [
       'Un trait rouge… Alors le maître a tenu parole. Il disait qu’il enverrait quelqu’un si l’encre débordait.',
@@ -31,8 +32,69 @@ export const HERON: Record<'meet' | 'sluices' | 'toad', TrList> = {
     en: ['Three sluices: one at the end of the south-west path, one east of the terraces, the last to the north, near Old Cheng. He knows every drop of these hills.'],
   },
   toad: {
-    fr: ['L’eau descend… mais écoute. Ce n’est pas le chant de l’eau. Quelque chose a bu tout ce qui coulait, en bas, dans le grand bassin.', 'Repose-toi, petit trait. Les moines disaient que la patience est la moitié du chemin.'],
-    en: ['The water is flowing down… but listen. That is not the song of water. Something has been drinking everything that ran, down in the great basin.', 'Rest, little stroke. The monks said patience is half the road.'],
+    fr: [
+      'L’eau descend… mais écoute. Ce n’est pas le chant de l’eau. Quelque chose boit tout ce qui coule, en bas, dans le Grand Bassin.',
+      'C’est la vieille citerne, au sud des terrasses. Autrefois, nous y portions le crapaud de jade, pour qu’il bénisse les pluies. Il buvait l’eau de trop, et rendait celle qui manquait.',
+      'Si l’orage l’a trouvé avant nous… Descends. Et prends garde à l’eau noire : ce qui y plonge en ressort plus fort.',
+    ],
+    en: [
+      'The water flows down… but listen. That is not the song of water. Something is drinking everything that runs, down in the Great Basin.',
+      'It is the old cistern, south of the terraces. Long ago we carried the jade toad down there, so he would bless the rains. He drank the water that was too much, and gave back what was missing.',
+      'If the storm found him before we did… Go down. And beware the black water: whatever dives into it comes out stronger.',
+    ],
+  },
+  toadBack: {
+    fr: [
+      'Écoute ! Le lac se remplit. Les hérons pêchent de nouveau. Tu as rendu l’eau aux terrasses, petit trait — le riz te le rendra.',
+      'Maintenant, la pagode. Frère Gong en connaît la porte, mais la porte ne s’ouvre qu’aux sept prières, et les moines les ont emportées avec eux.',
+      'Une seule personne dehors les connaît encore : Maître Yu. Il a quitté la pagode il y a trente ans pour peindre les bambous plutôt que les réciter. Il vit au fond de la Bambouseraie, à l’est, passé le pont.',
+    ],
+    en: [
+      'Listen! The lake is filling. The herons are fishing again. You gave the water back to the terraces, little stroke — the rice will give it back to you.',
+      'Now, the pagoda. Brother Gong knows its door, but the door opens only to the seven prayers, and the monks took them with them.',
+      'Only one person outside still knows them: Master Yu. He left the pagoda thirty years ago to paint the bamboo rather than recite it. He lives deep in the Bamboo Grove, to the east, past the bridge.',
+    ],
+  },
+  hermit: {
+    fr: ['Maître Yu vit au fond de la Bambouseraie, à l’est, passé le pont. Il est bourru, mais il n’a jamais refusé un thé à personne.'],
+    en: ['Master Yu lives deep in the Bamboo Grove, to the east, past the bridge. He is gruff, but he has never refused anyone a cup of tea.'],
+  },
+};
+
+export const YU: Record<'meet' | 'queen' | 'back' | 'after', TrList> = {
+  meet: {
+    fr: [
+      'Hm. Un trait rouge dans mes bambous. La Dame t’envoie, je parie.',
+      'Les sept prières ? Ce ne sont pas des mots, petit. Ce sont des souffles. Les moines les récitaient sans respirer ; c’est pour ça que je suis parti.',
+      'Je peux t’apprendre la première, celle du lac. Mais pas tant que la Reine des mantes coupe mon jardin pour y faire son nid. Elle est dans la clairière, à l’ouest d’ici.',
+      'Tue-la. Ensuite on parlera de souffles.',
+    ],
+    en: [
+      'Hm. A red stroke in my bamboo. The Lady sent you, I bet.',
+      'The seven prayers? They are not words, child. They are breaths. The monks recited them without breathing; that is why I left.',
+      'I can teach you the first one, the lake’s. But not while the Mantis Queen is cutting down my garden to make her nest. She is in the clearing, west of here.',
+      'Kill her. Then we will talk about breaths.',
+    ],
+  },
+  queen: {
+    fr: ['Elle se cache dans les bambous. Écoute les feuilles : quand elles bruissent sans vent, c’est elle.', 'Et quand elle charge, écarte-toi. Le bambou est plus dur que son orgueil.'],
+    en: ['She hides in the bamboo. Listen to the leaves: when they rustle without wind, it is her.', 'And when she charges, step aside. Bamboo is harder than her pride.'],
+  },
+  back: {
+    fr: [
+      'Le calme est revenu. Écoute : c’est la bambouseraie qui respire.',
+      'Tiens. Une flûte de roseau, taillée dans une tige qu’elle avait épargnée. La première prière est un chant ; les lotus du lac s’en souviennent, ils s’ouvrent pour lui.',
+      'Joue-la sur le ponton, à l’ouest du lac. Au-delà des lotus, sur l’île, le Héron d’encre garde ce que les moines ont caché. Ne le regarde pas dans les yeux trop longtemps.',
+    ],
+    en: [
+      'Quiet again. Listen: that is the grove breathing.',
+      'Here. A reed flute, cut from a stalk she spared. The first prayer is a song; the lotus of the lake remember it, they open for it.',
+      'Play it on the jetty, on the lake’s west shore. Beyond the lotus, on the island, the Ink Heron guards what the monks hid. Do not look it in the eye too long.',
+    ],
+  },
+  after: {
+    fr: ['Peins lentement. Le bambou pousse un nœud à la fois.', 'Tu veux du thé ? Non ? Tant pis. Le thé, lui, attendra.'],
+    en: ['Paint slowly. Bamboo grows one knot at a time.', 'You want tea? No? Too bad. The tea will wait.'],
   },
 };
 
@@ -60,6 +122,10 @@ export const IDLE2: Record<string, TrList> = {
   lin: {
     fr: ['Mon cousin Lun te vend des babioles ? Moi, je te vends ce qui sert. Regarde.'],
     en: ['My cousin Lun sells you trinkets? I sell you what is useful. Have a look.'],
+  },
+  yu: {
+    fr: ['Peins lentement. Le bambou pousse un nœud à la fois.'],
+    en: ['Paint slowly. Bamboo grows one knot at a time.'],
   },
   kaze: {
     fr: ['Je t’attendais. Le brouillard du col cache des choses que même le maître n’a pas peintes. Avance prudemment.', 'Le jade est la couleur de la patience. Ce n’est pas un hasard s’il l’a confié à ces gens-là.'],
@@ -105,4 +171,28 @@ export const SLUICE_UI = {
   open: { fr: 'La roue tourne : l’eau claire redescend les terrasses.', en: 'The wheel turns: clear water flows down the terraces.' },
   wait: { fr: 'L’encre ne s’écoulera pas tant qu’il reste quelque chose dans le bassin.', en: 'The ink will not drain while anything remains in the basin.' },
   name: { fr: 'Vanne', en: 'Sluice' },
+};
+
+export const BASIN_UI = {
+  name: { fr: 'Le Grand Bassin', en: 'The Great Basin' },
+  flooded: { fr: 'La vieille citerne est noyée d’encre. Il faudrait que l’eau des terrasses redescende…', en: 'The old cistern is drowned in ink. The terraces’ water would have to come down first…' },
+  drained: { fr: 'L’eau noire s’est retirée du Grand Bassin : un escalier descend dans l’ombre.', en: 'The black water has drained from the Great Basin: a stair goes down into the dark.' },
+  bossToad: { fr: 'Le Roi Crapaud', en: 'The Toad King' },
+  diveHint: { fr: 'Il plonge pour boire et guérir ! L’or frappé dans son bassin l’en chasse ; l’indigo l’y enferme.', en: 'He dives to drink and heal! Gold struck into his pool drives him out; indigo locks him in.' },
+  frozenHint: { fr: 'Tous les bassins sont gelés : il ne peut plus plonger.', en: 'Every pool is frozen: he can no longer dive.' },
+  bellyHint: { fr: 'Son ventre gonfle… Frappe fort avant qu’il ne crache !', en: 'His belly swells… Strike hard before he spits!' },
+  toadDown: { fr: 'Le Roi Crapaud recrache toute l’eau qu’il avait bue. Là-haut, le lac se remplit.', en: 'The Toad King spits out all the water he drank. Up above, the lake is filling.' },
+};
+
+export const QUEEN_UI = {
+  boss: { fr: 'La Reine des mantes', en: 'The Mantis Queen' },
+  hint: { fr: 'Écarte-toi de sa charge : elle s’écrasera contre les bambous.', en: 'Step aside from her charge: she will crash into the bamboo.' },
+  rustle: { fr: 'Les bambous bruissent sans vent…', en: 'The bamboo rustles without wind…' },
+  down: { fr: 'La Reine des mantes s’effondre. Le vent revient dans la Bambouseraie.', en: 'The Mantis Queen collapses. The wind returns to the Bamboo Grove.' },
+  wait: { fr: 'Une clairière de bambous coupés. Quelque chose y a fait son nid.', en: 'A clearing of cut bamboo. Something has made its nest here.' },
+};
+
+export const LAMP_UI = {
+  lit: { fr: 'La lanterne s’allume.', en: 'The lantern lights up.' },
+  cold: { fr: 'Une lanterne de pierre, froide. Il faudrait la foudre pour l’allumer.', en: 'A stone lantern, cold. It would take lightning to light it.' },
 };

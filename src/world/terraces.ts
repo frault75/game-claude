@@ -21,6 +21,18 @@ export const T2_VILLAGE = { x: 118, y: 44, r: 14 };
 export const T2_LAKE = { x: 162, y: 28, rx: 22, ry: 13 };
 export const T2_HILL = { x: 70, y: 86 };
 export const T2_PAGODA = { x: 100, y: 136 };
+/** The Great Basin: the old cistern under the terraces, where the water goes down (a dungeon). */
+export const T2_BASIN = { x: 86, y: 30 };
+export const T2_BASIN_SPAWN: V = [86, 34.4];
+/** Master Yu's hut, deep in the Bamboo Grove, and the clearing where the Mantis Queen nests. */
+export const T2_HERMIT = { x: 188, y: 106 };
+export const T2_QUEEN = { x: 162, y: 128, r: 7.5 };
+/** The tanuki den in the far east woods. */
+export const T2_DEN = { x: 190, y: 60 };
+/** The stone lanterns along the pagoda stair. */
+export const T2_STAIR_LAMPS: V[] = [[97, 110], [103, 110], [97, 124], [103, 124]];
+/** The jetty on the lake's west shore. */
+export const T2_JETTY: V = [139, 30];
 /** Where the pass meets Act I's valley. */
 export const T2_ENTRY: V = [5, 70];
 
@@ -72,7 +84,6 @@ export const T2_PONDS: PondDef[] = [
   { ...T2_LAKE, seed: 2201 },
   { x: 40, y: 96, rx: 3.6, ry: 2.2, seed: 2202 },
   { x: 150, y: 76, rx: 4.2, ry: 2.6, seed: 2203 },
-  { x: 86, y: 30, rx: 4, ry: 2.4, seed: 2204 },
   { x: 182, y: 70, rx: 3.4, ry: 2.2, seed: 2205 },
 ];
 
@@ -99,16 +110,20 @@ export const T2_CAMPS: CampDef[] = [
   { id: 101, x: 32, y: 60, r: 5, tier: 3, members: ['goat', 'wraith', 'wisp', 'goat'], elites: 1 },
   { id: 102, x: 58, y: 98, r: 5, tier: 3, members: ['frog', 'frog', 'frog', 'wisp'], elites: 0 },
   { id: 103, x: 86, y: 108, r: 5, tier: 3, members: ['frog', 'frog', 'splitter'], elites: 1 },
-  { id: 104, x: 88, y: 74, r: 5, tier: 3, members: ['frog', 'wraith', 'frog', 'frog'], elites: 0 },
+  { id: 104, x: 88, y: 74, r: 5, tier: 3, members: ['frog', 'wraith', 'tanuki', 'frog'], elites: 0 },
   { id: 105, x: 52, y: 74, r: 5, tier: 3, members: ['frog', 'goat', 'frog'], elites: 1 },
   { id: 106, x: 156, y: 102, r: 5, tier: 4, members: ['mantis', 'mantis', 'wraith'], elites: 0 },
   { id: 107, x: 178, y: 122, r: 6, tier: 4, members: ['mantis', 'mantis', 'mantis', 'wraith'], elites: 1 },
   { id: 108, x: 170, y: 96, r: 5, tier: 4, members: ['mantis', 'frog', 'mantis'], elites: 0 },
-  { id: 109, x: 138, y: 18, r: 5, tier: 3, members: ['frog', 'frog', 'wisp', 'frog'], elites: 0 },
+  { id: 109, x: 138, y: 18, r: 5, tier: 3, members: ['frog', 'kappa', 'wisp', 'frog'], elites: 0 },
   { id: 110, x: 186, y: 44, r: 5, tier: 4, members: ['frog', 'mantis', 'wraith'], elites: 1 },
   { id: 111, x: 90, y: 124, r: 5, tier: 4, members: ['goat', 'wraith', 'brute'], elites: 1 },
   { id: 112, x: 112, y: 126, r: 5, tier: 4, members: ['wraith', 'wraith', 'mantis'], elites: 0 },
-  { id: 113, x: 146, y: 47, r: 4, tier: 3, members: ['frog', 'frog', 'frog'], elites: 0 },
+  { id: 113, x: 146, y: 47, r: 4, tier: 3, members: ['frog', 'frog', 'frog', 'kappa'], elites: 0 },
+  { id: 114, x: 190, y: 60, r: 5, tier: 4, members: ['tanuki', 'tanuki', 'tanuki', 'tanuki'], elites: 1 },
+  { id: 115, x: 150, y: 64, r: 4, tier: 3, members: ['kappa', 'kappa', 'frog'], elites: 0 },
+  { id: 116, x: 64, y: 40, r: 5, tier: 3, members: ['tanuki', 'frog', 'tanuki', 'wisp'], elites: 0 },
+  { id: 117, x: 176, y: 136, r: 5, tier: 4, members: ['mantis', 'tanuki', 'mantis'], elites: 1 },
 ];
 
 export const T2_SHRINES = [
@@ -152,6 +167,9 @@ export const T2_FIXED: Fixed[] = (() => {
     // the pagoda's gate and old pillars on the stair
     { kind: 'templeGate', x: T2_PAGODA.x, y: T2_PAGODA.y },
     { kind: 'pillar', x: 96, y: 128 }, { kind: 'pillar', x: 104, y: 128 }, { kind: 'pillar', x: 96, y: 118 }, { kind: 'pillar', x: 104, y: 118 },
+    // Master Yu's hut in the grove
+    { kind: 'hut', x: T2_HERMIT.x, y: T2_HERMIT.y, v: 2, flip: true },
+    { kind: 'fence', x: T2_HERMIT.x - 4.2, y: T2_HERMIT.y - 2.4, v: 1 },
     // ruins in the pass and by the lake
     { kind: 'broken', x: 26, y: 78, v: 1 }, { kind: 'ruinWall', x: 30, y: 66, v: 0 },
     { kind: 'broken', x: 176, y: 20, v: 2 }, { kind: 'ruinWall', x: 146, y: 14, v: 1 },
@@ -193,6 +211,13 @@ function isClearing(x: number, y: number): boolean {
   for (const c of T2_CAMPS) if (Math.hypot(x - c.x, y - c.y) < c.r + 2) return true;
   for (const s of T2_SHRINES) if (Math.hypot(x - s.x, y - s.y) < 3) return true;
   for (const s of T2_SLUICES) if (Math.hypot(x - s[0], y - s[1]) < 3) return true;
+  for (const s of T2_STAIR_LAMPS) if (Math.hypot(x - s[0], y - s[1]) < 1.6) return true;
+  if (Math.hypot(x - T2_BASIN.x, y - T2_BASIN.y) < 6) return true;
+  if (Math.hypot(x - T2_HERMIT.x, y - (T2_HERMIT.y - 3)) < 8.5) return true;
+  // a path into the hermit's garden from the bridge road
+  if (y > 100 && y < 104 && x > 154 && x < T2_HERMIT.x) return true;
+  if (Math.hypot(x - T2_QUEEN.x, y - T2_QUEEN.y) < T2_QUEEN.r + 0.5) return true;
+  if (Math.hypot(x - T2_JETTY[0], y - T2_JETTY[1]) < 3) return true;
   for (const p of T2_PONDS) if (((x - p.x) / (p.rx + 1.5)) ** 2 + ((y - p.y) / (p.ry + 1.5)) ** 2 < 1) return true;
   for (const f of T2_FIXED) if (f.kind !== 'mountains' && f.kind !== 'fence' && Math.hypot(x - f.x, y - f.y) < 3) return true;
   if (Math.hypot(x - T2_ENTRY[0], y - T2_ENTRY[1]) < 5) return true;
@@ -283,6 +308,52 @@ export const TERRACES: Land = {
         washBlob(g, x, y, r.range(0.35, 0.7), r.range(0.22, 0.4), { pig: mixPig(INK, PIG_A, 0.7), density: 0.28, soft: 0.15, seed: r.int(1, 1e6) });
         if (r.chance(0.15)) g.dab(x + 0.2, y + 0.15, 0.18, PIG_A, 0.6, 0.4);
       }
+    }
+    // the Great Basin: a stone apron around the old cistern
+    if (near(T2_BASIN.x, T2_BASIN.y, 6)) {
+      washBlob(g, T2_BASIN.x, T2_BASIN.y, 5.2, 3.6, { pig: INK, density: 0.07, soft: 0.8, seed: 2801 });
+      const r = new Rng(2802);
+      for (let i = 0; i < 40; i++) {
+        const a = r.range(0, Math.PI * 2), d = r.range(3.4, 5);
+        const x = T2_BASIN.x + Math.cos(a) * d, y = T2_BASIN.y + Math.sin(a) * d * 0.7;
+        if (x < x0 - 1 || x > x0 + S + 1 || y < y0 - 1 || y > y0 + S + 1) continue;
+        stampAt(g, st.stones[r.int(0, st.stones.length - 1)], x, y, r.chance(0.5), 0.85);
+      }
+    }
+    // the queen's clearing: cut bamboo, stumps in a ring
+    if (near(T2_QUEEN.x, T2_QUEEN.y, T2_QUEEN.r + 1)) {
+      washPoly(g, noisyOutline(T2_QUEEN.x, T2_QUEEN.y, T2_QUEEN.r, T2_QUEEN.r * 0.8, 0.1, 2811), { pig: mixPig(INK, PIG_A, 0.5), density: 0.07, soft: 0.6, seed: 2811 });
+      const r = new Rng(2812);
+      for (let i = 0; i < 26; i++) {
+        const a = (i / 26) * Math.PI * 2 + r.range(-0.08, 0.08), d = T2_QUEEN.r + r.range(-0.4, 0.4);
+        const x = T2_QUEEN.x + Math.cos(a) * d, y = T2_QUEEN.y + Math.sin(a) * d * 0.8;
+        g.circle(x, y, r.range(0.12, 0.2), mixPig(INK, PIG_A, 0.4), 0.7);
+        stroke(g, [[x - 0.12, y + 0.02], [x + 0.12, y - 0.02]], { width: 0.03, load: 0.6, seed: r.int(1, 1e6) });
+      }
+      for (let i = 0; i < 18; i++) {
+        const x = T2_QUEEN.x + r.range(-T2_QUEEN.r, T2_QUEEN.r) * 0.8, y = T2_QUEEN.y + r.range(-T2_QUEEN.r, T2_QUEEN.r) * 0.6;
+        const a = r.range(0, Math.PI);
+        stroke(g, [[x, y], [x + Math.cos(a) * 1.2, y + Math.sin(a) * 0.4]], { width: 0.06, pig: mixPig(INK, PIG_A, 0.6), load: 0.4, dry: 0.5, seed: r.int(1, 1e6), taperEnd: 0.8 });
+      }
+    }
+    // the hermit's garden: raked gravel, three stones
+    if (near(T2_HERMIT.x, T2_HERMIT.y - 3, 5)) {
+      const cx = T2_HERMIT.x - 1, cy = T2_HERMIT.y - 3.6;
+      for (let k = 0; k < 5; k++) {
+        const pts: V[] = [];
+        for (let j = 0; j <= 16; j++) pts.push([cx - 3 + j * 0.375, cy - 0.8 + k * 0.4 + Math.sin(j * 0.6 + k) * 0.06]);
+        stroke(g, pts, { width: 0.03, load: 0.3, dry: 0.8, seed: 2820 + k, press: 0, taperStart: 0.05, taperEnd: 0.05 });
+      }
+      for (const [dx, dy, rr] of [[-1.8, 0, 0.45], [0.6, 0.3, 0.3], [1.9, -0.2, 0.2]] as [number, number, number][]) washPoly(g, noisyOutline(cx + dx, cy + dy, rr, rr * 0.7, 0.2, 2830 + rr * 10), { pig: INK, density: 0.5, soft: 0.1, edge: 0.7, seed: 2830 });
+    }
+    // the jetty: planks out over the water
+    if (near(T2_JETTY[0], T2_JETTY[1], 4)) {
+      const [jx, jy] = T2_JETTY;
+      for (let k = 0; k < 7; k++) {
+        const x = jx + 0.6 + k * 0.55;
+        washPoly(g, [[x, jy - 0.7], [x + 0.45, jy - 0.7], [x + 0.45, jy + 0.7], [x, jy + 0.7]], { pig: mixPig(INK, PIG_B, 0.6), density: 0.3, soft: 0.05, edge: 0.7, seed: 2840 + k });
+      }
+      for (const yy of [jy - 0.75, jy + 0.75]) stroke(g, [[jx + 0.5, yy], [jx + 4.5, yy]], { width: 0.06, load: 0.8, seed: 2850 + yy });
     }
     // the north: mountain foot
     if (y0 + S > T2_NORTH - 3) {
