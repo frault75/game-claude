@@ -9,7 +9,7 @@ import type { World } from '../world';
 import { Entity } from '../entity';
 import { Creature } from '../enemies';
 import { Chunks } from '../../world/chunks';
-import { PEAKS, P3, P3_ENTRY, P3_NORTH, P3_PONDS, P3_CAMPS, P3_SHRINES, P3_REGIONS, P3_MONASTERY, P3_BELLS, P3_CREVASSES, P3_TEARS, P3_KING, P3_DRAGON, P3_SUMMIT, P3_GATE, P3_HAND, p3RingArc, p3RegionAt } from '../../world/peaks';
+import { PEAKS, P3, P3_ENTRY, P3_NORTH, P3_PONDS, P3_CAMPS, P3_SHRINES, P3_REGIONS, P3_MONASTERY, P3_BELLS, P3_CREVASSES, P3_TEARS, P3_KING, P3_DRAGON, P3_SUMMIT, P3_GATE, P3_HAND, P3_VISTAS, p3RingArc, p3RegionAt } from '../../world/peaks';
 import { p3MapSource } from '../../world/p3Map';
 import type { EnemyKind } from '../../world/layout';
 import { Sprite, Frame, frameFrom, ySort, LAYER } from '../../gfx/sprite';
@@ -261,6 +261,22 @@ export const peaks: RoomDef = {
       for (const n of people) n.marker = mainBusiness[n.id]?.() || g.quests.wants(n.id) ? 'quest' : 'none';
     });
 
+    // loops drawn on the peaks: several things listen (the valley bell, Suzu's stones)
+    const loopHooks: ((e: Parameters<NonNullable<Game['onEnso']>>[0]) => void)[] = [];
+    g.onEnso = (e) => { for (const h of loopHooks) h(e); };
+
+    // ---------- Suzu's stones: a circle round each keeps the white ----------
+    const vistas = P3_VISTAS.map(([x, y], i) => b.add(new VistaStone(i, x, y)));
+    loopHooks.push((e) => {
+      const q = g.quests.state('suzu');
+      if (!q || q.done) return;
+      for (const v of vistas) {
+        if (!pointInPoly(v.x, v.y + 0.2, e.poly)) continue;
+        v.circled();
+        g.quests.event('vista', v.index);
+      }
+    });
+
     // ---------- the three bells ----------
     const bellsRung = () => [0, 1, 2].filter((i) => save.perks['bell' + i]).length;
     const rang = (bell: PeakBell) => {
@@ -329,7 +345,7 @@ export const peaks: RoomDef = {
         if (vb.faded) { g.hud.showHint(L(BELL3_UI.erased), 4); return; }
         rang(vb);
       };
-      g.onEnso = (e) => {
+      loopHooks.push((e) => {
         if (!vb.faded || !(pointInPoly(vb.x, vb.y + 1, e.poly) || pointInPoly(vb.x, vb.y, e.poly))) return;
         vb.faded = false;
         save.perks.bell2painted = 1;
@@ -337,7 +353,7 @@ export const peaks: RoomDef = {
         w.vfx.splat(vb.x, vb.y + 1.4, 0, 14, 1.2);
         g.hud.showHint(L(BELL3_UI.repainted), 3);
         sfx.uiConfirm();
-      };
+      });
     }
     // a word at the crevasse's edge
     w.scripts.push(() => {
@@ -677,5 +693,58 @@ class PlantedBrush extends Entity {
     const s = this.addSprite(new Sprite(brushArt));
     s.setPos(this.x, this.y);
     s.mesh.renderOrder = ySort(this.y);
+  }
+}
+
+let stoneArt: { pig: Frame; red: Frame } | null = null;
+/** One of Suzu's flat stones, where she sat to look at the white. A circle drawn round it keeps the white. */
+class VistaStone extends Entity {
+  private ring!: Sprite;
+  private glow = 0;
+  constructor(readonly index: number, x: number, y: number) {
+    super();
+    this.x = x; this.y = y;
+    this.label = 'vista';
+  }
+  init(w: World): void {
+    if (!stoneArt) {
+      const p = new Painter(2.4, 1.4, SPRITE_PPU, -1.2, -0.5);
+      const q = new Painter(2.4, 1.4, SPRITE_PPU, -1.2, -0.5);
+      p.glaze(); q.glaze();
+      const o: [number, number][] = [[-0.85, 0.05], [-0.4, -0.18], [0.5, -0.15], [0.9, 0.08], [0.55, 0.32], [-0.5, 0.3]];
+      washPoly(p, o, { pig: mixPig(INK, PIG_B, 0.3), density: 0.32, soft: 0.1, edge: 0.8, seed: 3701 });
+      stroke(p, [...o, o[0]], { width: 0.04, load: 0.85, seed: 3702, taperStart: 0.02, taperEnd: 0.02 });
+      // a little red brush mark where she sat
+      stroke(q, [[-0.15, 0.14], [0.05, 0.1], [0.18, 0.16]], { width: 0.06, pig: VERMILION, load: 0.9, seed: 3703 });
+      stoneArt = { pig: frameFrom(p), red: frameFrom(q) };
+    }
+    const s = this.addSprite(new Sprite(stoneArt.pig));
+    const r = this.addSprite(new Sprite(stoneArt.red), true);
+    for (const sp of [s, r]) { sp.setPos(this.x, this.y); sp.mesh.renderOrder = ySort(this.y + 0.4); }
+    // the circle, once drawn, stays faintly on the snow
+    const c = new Painter(3.4, 2.4, SPRITE_PPU / 2, -1.7, -1.2);
+    c.glaze();
+    const pts: [number, number][] = [];
+    for (let k = 0; k <= 40; k++) { const a = (k / 40) * Math.PI * 1.9 + 0.4; pts.push([Math.cos(a) * 1.4, Math.sin(a) * 0.9]); }
+    stroke(c, pts, { width: 0.07, load: 0.8, dry: 0.4, seed: 3704 + this.index, taperStart: 0.1, taperEnd: 0.4 });
+    this.ring = this.addSprite(new Sprite(c));
+    this.ring.setPos(this.x, this.y + 0.1);
+    this.ring.mesh.renderOrder = LAYER.shadow;
+    const q = save.quests.suzu;
+    this.ring.opacity = q && (q.done || q.seen?.includes(this.index)) ? 0.6 : 0;
+    void w;
+  }
+  circled(): void {
+    if (this.ring.opacity > 0) return;
+    this.glow = 1.2;
+    this.world.vfx.ripple(this.x, this.y, 1.6);
+    sfx.uiConfirm();
+  }
+  update(dt: number): void {
+    if (this.glow > 0) {
+      this.glow -= dt;
+      this.ring.opacity = Math.min(0.6, (1.2 - this.glow) * 0.8);
+      this.ring.reveal = Math.min(1.5, (1.2 - this.glow) * 1.5);
+    }
   }
 }

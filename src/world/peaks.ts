@@ -30,6 +30,10 @@ export const P3_ISLE = { x: 172, y: 100, r: 3.2, ring: 6 };
 /** The Snow King's hollow, deep in the Frost Forest, and the Paper Dragon's nest on the Glacier. */
 export const P3_KING = { x: 38, y: 134, r: 8.5 };
 export const P3_DRAGON = { x: 168, y: 136, r: 9.5 };
+/** Suzu's three stones, where she sat to look at the white: by the frozen lake, on the windswept slopes, at the forest's edge. */
+export const P3_VISTAS: V[] = [[123, 29], [126, 78], [50, 88]];
+/** Where the snow foxes dropped Pema's three little bells: the forest, the slopes, the edge of the erased valley. */
+export const P3_GRELOTS: V[] = [[20, 92], [80, 96], [116, 126]];
 /** The summit is ringed by a wall of cloud; one sealed gate faces the valley. The hand waits before the hut. */
 export const P3_RING = 11.5;
 export const P3_GATE = { x: 100, y: 146 - 11.5 };
@@ -224,6 +228,7 @@ function isClearing(x: number, y: number): boolean {
   // the guardians' grounds, wide to the south: pines in front would hide the fight
   for (const a of [P3_KING, P3_DRAGON]) { const dy = y - a.y; if (Math.hypot(x - a.x, dy < 0 ? dy / 1.9 : dy * 1.1) < a.r + 1.5) return true; }
   if (Math.hypot(x - P3_SUMMIT.x, y - P3_SUMMIT.y) < P3_RING + 3) return true;
+  for (const [sx, sy] of [...P3_VISTAS, ...P3_GRELOTS]) if (Math.hypot(x - sx, y - sy) < 3.2) return true;
   for (const p of P3_PONDS) if (((x - p.x) / (p.rx + 1.5)) ** 2 + ((y - p.y) / (p.ry + 1.5)) ** 2 < 1) return true;
   for (const c of P3_CREVASSES) if (inPoly(x, y, c)) return true;
   for (const t of P3_TEARS) if (inPoly(x, y, t)) return true;
