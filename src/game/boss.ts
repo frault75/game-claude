@@ -22,6 +22,7 @@ export abstract class Boss extends Entity {
   constructor() {
     super();
     this.team = 'enemy';
+    this.camFocus = true;
   }
 
   setState(s: string): void {

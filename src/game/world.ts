@@ -330,6 +330,18 @@ export class World {
     this.updateCamera(rawDt);
   }
 
+  /** The nearest guardian still fighting, if it is close: the camera keeps both in view. */
+  private guardianNear(): [number, number] | null {
+    const p = this.player;
+    let best: Entity | null = null, bd = 16;
+    for (const e of this.entities) {
+      if (!e.camFocus || e.dead || (e as Entity & { defeated?: boolean }).defeated) continue;
+      const d = Math.hypot(e.x - p.x, e.y - p.y);
+      if (d < bd) { bd = d; best = e; }
+    }
+    return best ? [best.x, best.y + 1.5] : null;
+  }
+
   updateCamera(dt: number): void {
     const p = this.player;
     const [ax, ay] = p.aim;
@@ -347,10 +359,11 @@ export class World {
       return;
     }
     let tx = p.x + ax * 1.4 + p.vx * 0.04, ty = p.y + 0.5 + ay * 1.0 + p.vy * 0.04;
-    if (this.camLook) {
+    const look = this.camLook ?? this.guardianNear();
+    if (look) {
       const vh = this.r.viewH / this.r.zoom, vw = vh * (this.r.pxW / this.r.pxH);
-      tx += Math.max(-vw * 0.26, Math.min(vw * 0.26, (this.camLook[0] - p.x) * 0.45));
-      ty += Math.max(-vh * 0.26, Math.min(vh * 0.26, (this.camLook[1] - p.y) * 0.45));
+      tx += Math.max(-vw * 0.26, Math.min(vw * 0.26, (look[0] - p.x) * 0.45));
+      ty += Math.max(-vh * 0.26, Math.min(vh * 0.26, (look[1] - p.y) * 0.45));
     }
     const k = Math.min(1, dt * 7);
     this.camX += (tx - this.camX) * k;
