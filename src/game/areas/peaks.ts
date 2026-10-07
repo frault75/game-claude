@@ -9,7 +9,7 @@ import type { World } from '../world';
 import { Entity } from '../entity';
 import { Creature } from '../enemies';
 import { Chunks } from '../../world/chunks';
-import { PEAKS, P3, P3_ENTRY, P3_NORTH, P3_PONDS, P3_CAMPS, P3_SHRINES, P3_REGIONS, P3_MONASTERY, P3_BELLS, P3_CREVASSES, P3_TEARS, P3_KING, P3_DRAGON, P3_SUMMIT, p3RegionAt } from '../../world/peaks';
+import { PEAKS, P3, P3_ENTRY, P3_NORTH, P3_PONDS, P3_CAMPS, P3_SHRINES, P3_REGIONS, P3_MONASTERY, P3_BELLS, P3_CREVASSES, P3_TEARS, P3_KING, P3_DRAGON, P3_SUMMIT, P3_GATE, P3_HAND, p3RingArc, p3RegionAt } from '../../world/peaks';
 import { p3MapSource } from '../../world/p3Map';
 import type { EnemyKind } from '../../world/layout';
 import { Sprite, Frame, frameFrom, ySort, LAYER } from '../../gfx/sprite';
@@ -20,7 +20,7 @@ import { shadow } from '../../gfx/gen/ground';
 import { SPRITE_PPU } from '../../gfx/gen/flora';
 import { lang, t } from '../../i18n';
 import { L, LL } from '../../i18n/lore';
-import { NAMES3, SNOW, IDLE3, REGION_LORE3, ACT3_TITLE, BELL3_UI, KING_UI, DRAGON_UI, SEAL_UI } from '../../i18n/lore3';
+import { NAMES3, SNOW, IDLE3, REGION_LORE3, ACT3_TITLE, BELL3_UI, KING_UI, DRAGON_UI, SEAL_UI, SUMMIT_UI, HAND_UI, MASTER, MASTER_NAME, CHOICE_END, REVEAL, ENDINGS } from '../../i18n/lore3';
 import { music } from '../../audio/music';
 import { sfx } from '../../audio/sfx';
 import { save, writeSave } from '../progression';
@@ -32,10 +32,12 @@ import { dropLoot } from '../loot';
 import { Boss } from '../boss';
 import { SnowKing } from '../bosses/snowKing';
 import { PaperDragon } from '../bosses/paperDragon';
+import { MasterHand } from '../bosses/masterHand';
+import { buildSealGate, buildPlantedBrush } from '../../gfx/gen/bestiary5';
 import { makeEnemy, sharedArt, sharedStamps, GROUND_DETAIL_PPU, Shrine } from './overworld';
 import { runCamps } from '../camps';
 import { Events } from '../events';
-import { act3Shots } from '../../ui/cinematic';
+import { act3Shots, revealShots, endingShots } from '../../ui/cinematic';
 import type { Choice } from '../../ui/dialog';
 import { pointInPoly } from '../physics';
 
@@ -238,7 +240,8 @@ export const peaks: RoomDef = {
           void g.story.show([L(SEAL_UI.joined)], { size: 38, y: r.uiH / 2 - 200, hold: 3 });
           setMain(g, STEP.summit);
         });
-      } else speak(snow, LL(SNOW.after));
+      } else if (save.perks.ending) speak(snow, LL(save.perks.ending === 1 ? SNOW.endSign : SNOW.endBrush));
+      else speak(snow, LL(SNOW.after));
     };
     suzu.onTalk = () => speak(suzu, LL(IDLE3.suzu), undefined, [
       { label: lang === 'fr' ? 'Voir tes marchandises' : 'See your goods', act: () => g.shop.open(suzu.displayName) },
@@ -439,10 +442,114 @@ export const peaks: RoomDef = {
         if (save.main >= STEP.kings) startDragon();
         else g.hintOnce('dragonWait', L(DRAGON_UI.wait), 4);
       }
-      if (save.main === STEP.summit && Math.hypot(p.x - P3_SUMMIT.x, p.y - P3_SUMMIT.y) < 12) g.hintOnce('summitSoon', L(SEAL_UI.summit), 5);
+    });
+
+    // ---------- the summit: the cloud wall, the sealed gate, the master's hand ----------
+    for (const arc of p3RingArc()) for (let i = 0; i < arc.length - 1; i++) w.addCollider({ kind: 'seg', ax: arc[i][0], ay: arc[i][1], bx: arc[i + 1][0], by: arc[i + 1][1], r: 0.45 }, 'cloudWall');
+    const gate = b.add(new SealGate(P3_GATE.x, P3_GATE.y, !!save.perks.summitOpen));
+    const gateBar = () => w.addCollider({ kind: 'seg', ax: P3_GATE.x - 1.7, ay: P3_GATE.y, bx: P3_GATE.x + 1.7, by: P3_GATE.y, r: 0.4 }, 'sealGate');
+    if (!save.perks.summitOpen) gateBar();
+    let gateHintT = 0;
+    w.scripts.push((dt) => {
+      gateHintT -= dt;
+      const p = w.player;
+      if (save.perks.summitOpen || Math.hypot(p.x - P3_GATE.x, p.y - P3_GATE.y) > 3.4) return;
+      if (save.perks.seal) {
+        save.perks.summitOpen = 1;
+        writeSave();
+        w.removeColliders('sealGate');
+        gate.open();
+        sfx.uiConfirm();
+        void g.story.show([L(SUMMIT_UI.opens)], { size: 34, y: r.uiH / 2 - 200, hold: 3 });
+      } else if (gateHintT <= 0) { g.hud.showHint(L(SUMMIT_UI.sealed), 4); gateHintT = 10; }
+    });
+    if (save.perks.ending !== 2) b.add(new PlantedBrush(P3_SUMMIT.x + 2.2, P3_SUMMIT.y - 2.8));
+    let hand: MasterHand | null = null;
+    let handWaking = false;
+    const finale = (kind: 1 | 2) => {
+      save.perks.ending = kind;
+      if (save.main < STEP.epilogue) save.main = STEP.epilogue;
+      writeSave();
+      g.washTarget = 0;
+      w.removeColliders('handGate');
+      g.after(1.2, () => void g.story.show([L(SUMMIT_UI.after)], { size: 32, y: r.uiH / 2 - 200, hold: 5 }));
+      music.play('summit');
+    };
+    const meetMaster = (mx: number, my: number) => {
+      const m = b.add(new Npc('master', L(MASTER_NAME), { seed: 7, scale: 1.25, robe: INK, robeDensity: 0.4, hair: 'white', hat: 'none', bent: 0.35, beard: true }, mx, my));
+      m.ghostly = true;
+      const who = { name: L(MASTER_NAME), ...m.portrait() };
+      const choose = (kind: 1 | 2) => g.after(0.3, () => g.talk(who, LL(kind === 1 ? MASTER.sign : MASTER.brush), () => g.after(0.8, () => {
+        const e = kind === 1 ? ENDINGS.sign : ENDINGS.brush;
+        g.cine.child = g.player.frames;
+        g.cine.play(endingShots(kind === 1 ? 'sign' : 'brush', { title: L(e.title), lines: LL(e.lines), end: L(kind === 1 ? ENDINGS.end : ENDINGS.almost), thanks: L(ENDINGS.thanks) }), () => {
+          m.destroy();
+          finale(kind);
+        });
+      })));
+      g.after(1, () => g.talk(who, LL(MASTER.words), undefined, [
+        { label: L(CHOICE_END.sign), act: () => choose(1) },
+        { label: L(CHOICE_END.brush), act: () => choose(2) },
+      ]));
+    };
+    const startHand = () => {
+      const H = P3_HAND;
+      const hd = b.add(new MasterHand(H.x, H.y + 3, H));
+      hand = hd;
+      w.addCollider({ kind: 'seg', ax: P3_GATE.x - 1.7, ay: P3_GATE.y, bx: P3_GATE.x + 1.7, by: P3_GATE.y, r: 0.4 }, 'handGate');
+      g.hud.showBoss(L(HAND_UI.boss));
+      sfx.wave();
+      hd.onEvent = (what) => {
+        if (what === 'strip') g.hintOnce('handStrip', L(HAND_UI.strip), 5);
+        else if (what === 'grasp') g.hud.showHint(L(HAND_UI.grasp), 2.5);
+        else if (what === 'paint') g.hintOnce('handPaint', L(HAND_UI.paint), 3);
+        else g.hud.showHint(L(HAND_UI.doubt), 4);
+      };
+      hd.onDefeat = () => {
+        music.boss = 0;
+        g.hud.hideBoss();
+        save.bosses.push('hand');
+        writeSave();
+        discover(g, 'hand');
+        giveXp(g, 2000);
+        dropLoot(g, hd.x, hd.y, 'boss', 14);
+        for (let i = 0; i < 4; i++) b.add(new Pickup(hd.x, hd.y, i % 2 ? 'ink' : 'life', i % 2 ? 14 : 3));
+        for (const en of w.entities) if (en.label === 'eraser' && !(en as Creature).home) (en as Creature).onHit?.({ dmg: 9999, fromX: hd.x, fromY: hd.y, kind: 'enso' });
+        g.after(1.2, () => void g.story.show([L(HAND_UI.stops)], { size: 36, y: r.uiH / 2 - 200, hold: 3 }));
+        g.after(5, () => {
+          hd.clearStrips();
+          g.cine.child = g.player.frames;
+          g.cine.play(revealShots(LL(REVEAL)), () => {
+            hd.destroy();
+            hand = null;
+            meetMaster(P3_SUMMIT.x, P3_SUMMIT.y - 2);
+          });
+        });
+      };
+    };
+    w.scripts.push(() => {
+      const p = w.player;
+      if (hand) { g.hud.bossFrac = hand.frac; if (!hand.defeated) { music.boss = 1; w.camLook = [hand.x, hand.y + 3]; } return; }
+      if (handWaking || save.main !== STEP.summit || save.bosses.includes('hand') || p.state === 'dead') return;
+      if (Math.hypot(p.x - P3_HAND.x, p.y - P3_HAND.y) < 6) {
+        handWaking = true;
+        void g.story.show([L(SUMMIT_UI.hut)], { size: 34, y: r.uiH / 2 - 200, hold: 2.4 });
+        g.after(2.8, () => {
+          void g.story.show([L(SUMMIT_UI.rises)], { size: 34, y: r.uiH / 2 - 200, hold: 2.6 });
+          startHand();
+          handWaking = false;
+        });
+      }
     });
 
     g.onRespawn = () => {
+      if (hand && !hand.defeated) {
+        hand.destroy();
+        hand = null;
+        w.removeColliders('handGate');
+        g.hud.hideBoss();
+        for (const en of w.entities) if (en.label === 'eraser' && !(en as Creature).home) en.destroy();
+      }
       for (const f of fights) {
         if (!f.boss || f.boss.defeated) continue;
         f.boss.destroy();
@@ -467,7 +574,7 @@ export const peaks: RoomDef = {
       music.play(R.music);
       g.fadePalette(R.palette);
       // the erased valley: the colours themselves fade
-      g.washTarget = reg === 'erased' ? 0.55 : 0;
+      g.washTarget = reg === 'erased' && !save.perks.ending ? 0.55 : 0;
       if (reg === 'monastery' && save.main === STEP.monastery) setMain(g, STEP.snow);
       const key = 'p3' + reg;
       if (!save.regions.includes(key) && REGION_LORE3[reg]) {
@@ -493,7 +600,7 @@ export const peaks: RoomDef = {
           const d = Math.hypot(a.x - p.x, a.y - p.y);
           if (d < bd) { bd = d; target = [a.x, a.y]; }
         }
-      } else if (m === STEP.summit) target = [P3_SUMMIT.x, P3_SUMMIT.y - 6];
+      } else if (m === STEP.summit) target = save.perks.summitOpen ? [P3_HAND.x, P3_HAND.y] : [P3_GATE.x, P3_GATE.y];
       else if (m === STEP.bells) {
         let bd = Infinity;
         for (const bl of bells) {
@@ -517,3 +624,58 @@ export const peaks: RoomDef = {
     }
   },
 };
+
+let gateArt: ReturnType<typeof buildSealGate> | null = null;
+/** The red gate in the cloud wall: sealed by a paper talisman until the master's seal comes. */
+class SealGate extends Entity {
+  private pig!: Sprite;
+  private red!: Sprite;
+  private burnT = -1;
+  constructor(x: number, y: number, private isOpen: boolean) {
+    super();
+    this.x = x; this.y = y;
+    this.label = 'gate';
+  }
+  init(): void {
+    if (!gateArt) gateArt = buildSealGate(5801);
+    const k = this.isOpen ? 1 : 0;
+    this.pig = this.addSprite(new Sprite(gateArt.pig[k]));
+    this.red = this.addSprite(new Sprite(gateArt.red[k]), true);
+    for (const s of [this.pig, this.red]) { s.setPos(this.x, this.y); s.mesh.renderOrder = ySort(this.y); }
+  }
+  open(): void {
+    this.isOpen = true;
+    this.burnT = 0;
+    this.world.vfx.splat(this.x, this.y + 1.5, 0, 14, 1.2, 'red');
+  }
+  update(dt: number): void {
+    if (this.burnT < 0) return;
+    // the talisman burns away without a flame
+    this.burnT += dt;
+    this.pig.dissolve = Math.min(1, this.burnT / 1.2);
+    this.red.dissolve = Math.min(1, this.burnT / 1.2);
+    if (Math.random() < dt * 20) this.world.vfx.flame(this.x + (Math.random() - 0.5) * 2.4, this.y + 0.6 + Math.random() * 1.8, 0.4);
+    if (this.burnT > 1.2) {
+      this.pig.setTexture(gateArt!.pig[1].tex);
+      this.red.setTexture(gateArt!.red[1].tex);
+      this.pig.dissolve = this.red.dissolve = 0;
+      this.burnT = -1;
+    }
+  }
+}
+
+let brushArt: Frame | null = null;
+/** The master's brush, planted in the snow by his hut. */
+class PlantedBrush extends Entity {
+  constructor(x: number, y: number) {
+    super();
+    this.x = x; this.y = y;
+    this.label = 'brush';
+  }
+  init(): void {
+    if (!brushArt) brushArt = buildPlantedBrush(5901);
+    const s = this.addSprite(new Sprite(brushArt));
+    s.setPos(this.x, this.y);
+    s.mesh.renderOrder = ySort(this.y);
+  }
+}

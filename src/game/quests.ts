@@ -43,6 +43,7 @@ export const STEP = {
   kings: 31,
   sealBack: 32,
   summit: 33,
+  epilogue: 34,
 } as const;
 
 /** Title and goal of the current step (with progress where it counts). */

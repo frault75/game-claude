@@ -10,7 +10,7 @@ export const NAMES3: Record<string, Tr> = {
   kaze: { fr: 'Kaze', en: 'Kaze' },
 };
 
-export const SNOW: Record<'meet' | 'bells' | 'back' | 'kings' | 'seal' | 'after', TrList> = {
+export const SNOW: Record<'meet' | 'bells' | 'back' | 'kings' | 'seal' | 'after' | 'endSign' | 'endBrush', TrList> = {
   meet: {
     fr: [
       'Un trait rouge sur la neige. Les cloches me l’avaient dit, avant de se taire.',
@@ -84,6 +84,14 @@ export const SNOW: Record<'meet' | 'bells' | 'back' | 'kings' | 'seal' | 'after'
   after: {
     fr: ['Le chemin du sommet t’attend, au nord de la vallée effacée. La neige retient son souffle.'],
     en: ['The summit path awaits you, north of the erased valley. The snow is holding its breath.'],
+  },
+  endSign: {
+    fr: ['Ce matin, il y avait un petit sceau rouge tout en bas du ciel. Je l’ai salué. Il m’a semblé qu’il me rendait mon salut.', 'Les cloches sonnent toutes seules, maintenant. Pour rien. Pour le plaisir.'],
+    en: ['This morning there was a little red seal at the very bottom of the sky. I bowed to it. It seemed to bow back.', 'The bells ring by themselves now. For nothing. For the joy of it.'],
+  },
+  endBrush: {
+    fr: ['Tu as son pinceau. Ne le tiens pas trop serré : il le tenait comme un oiseau.', 'Cette nuit, un pin nouveau a poussé derrière le monastère. Je me doutais bien que c’était toi.'],
+    en: ['You have his brush. Do not hold it too tight: he held it like a bird.', 'Last night a new pine grew behind the monastery. I suspected it was you.'],
   },
 };
 
@@ -190,4 +198,115 @@ export const BELL3_UI = {
   silent: { fr: 'Une cloche muette, couverte de givre.', en: 'A silent bell, covered in frost.' },
   stair: { fr: 'L’escalier se perd dans les nuages. Pas encore.', en: 'The stair vanishes into the clouds. Not yet.' },
   crevasse: { fr: 'Pas de fond. Mais une encre fraîche porte au-dessus du vide…', en: 'No bottom. But fresh ink holds you above the void…' },
+};
+
+export const SUMMIT_UI = {
+  sealed: { fr: 'Une porte rouge dans les nuages, scellée d’un papier. Il faudrait le sceau du maître.', en: 'A red gate in the clouds, sealed with a paper talisman. It would take the master’s seal.' },
+  opens: { fr: 'Le sceau reconnaît son trait. Le papier brûle sans flamme, et la porte s’ouvre.', en: 'The seal knows its stroke. The paper burns without a flame, and the gate opens.' },
+  hut: { fr: 'Une hutte, un pinceau planté dans la neige, et le silence…', en: 'A hut, a brush planted in the snow, and silence…' },
+  rises: { fr: 'Derrière la hutte, une manche d’encre descend du ciel. Une main.', en: 'Behind the hut, a sleeve of ink comes down out of the sky. A hand.' },
+  after: { fr: 'Le monde est à toi. Il reste des quêtes, des coffres, des secrets — et des pages blanches.', en: 'The world is yours. There are still quests, chests, secrets — and blank pages.' },
+};
+
+export const HAND_UI = {
+  boss: { fr: 'La Main du maître', en: 'The Master’s Hand' },
+  strip: { fr: 'Elle efface la page ! Une encre fraîche te porte au-dessus du vide.', en: 'It wipes the page away! Fresh ink carries you over the void.' },
+  grasp: { fr: 'Elle a effacé ton encre !', en: 'It wiped your ink away!' },
+  paint: { fr: 'Elle peint des effaceurs…', en: 'It paints erasers…' },
+  doubt: { fr: 'La main tremble. Elle doute. Frappe quand elle reste ouverte.', en: 'The hand trembles. It doubts. Strike while it hangs open.' },
+  stops: { fr: 'La main s’ouvre. Le pinceau glisse entre ses doigts.', en: 'The hand opens. The brush slips from its fingers.' },
+};
+
+export const MASTER_NAME = { fr: 'Le maître', en: 'The master' };
+
+export const MASTER: Record<'words' | 'sign' | 'brush', TrList> = {
+  words: {
+    fr: [
+      'Petit trait… Tu es monté jusqu’ici.',
+      'J’ai cru que mon dernier tableau était raté. Une goutte de trop, une tache, et tout était perdu. Alors j’ai voulu effacer la tache. Puis tout effacer, et recommencer. Ma main n’a plus su s’arrêter.',
+      'Mais toi, tu as rendu les couleurs, une à une. Tu as soigné le hameau, les rizières, la montagne. La tache fait partie du tableau, maintenant. C’est même elle qui le rend vivant.',
+      'Un tableau n’est fini que lorsqu’on le signe. Si tu te poses en bas du rouleau, le monde sera achevé : plus rien ne l’effacera jamais. Mais tu ne marcheras plus.',
+      'Ou bien… prends mon pinceau. Le monde restera inachevé — et vivant. Et c’est toi qui le peindras, trait après trait.',
+    ],
+    en: [
+      'Little stroke… You climbed all the way up here.',
+      'I thought my last painting had failed. One drop too many, a blot, and everything was lost. So I tried to wipe away the blot. Then to wipe everything, and begin again. My hand could not stop any more.',
+      'But you gave the colours back, one by one. You healed the hamlet, the terraces, the mountain. The blot is part of the painting now. It is even what makes it alive.',
+      'A painting is only finished when it is signed. If you lay yourself down at the bottom of the scroll, the world will be complete: nothing will ever erase it again. But you will walk no more.',
+      'Or else… take my brush. The world will stay unfinished — and alive. And you will be the one to paint it, stroke after stroke.',
+    ],
+  },
+  sign: {
+    fr: ['Alors pose-toi là, en bas, à droite. Là où je t’ai toujours attendu.'],
+    en: ['Then lay yourself there, at the bottom, on the right. Where I have always waited for you.'],
+  },
+  brush: {
+    fr: ['Il est bien trop grand pour toi. Il l’était pour moi aussi, au début.'],
+    en: ['It is far too big for you. It was for me too, at first.'],
+  },
+};
+
+export const CHOICE_END = {
+  sign: { fr: 'Signer le rouleau', en: 'Sign the scroll' },
+  brush: { fr: 'Prendre le pinceau', en: 'Take the brush' },
+};
+
+/** The revelation, after the hand lets go. */
+export const REVEAL: TrList = {
+  fr: [
+    'Le maître n’est jamais redescendu de la montagne.',
+    'Là-haut, il peignait son dernier rouleau. Pas un paysage : tout un monde.',
+    'Mais sa main était vieille. Elle trembla. Une goutte de trop tomba sur le papier.',
+    'L’orage, c’était lui.',
+    'Il voulut effacer la tache. Puis il ne put plus s’arrêter : sa main effaçait tout.',
+    'Juste avant, il avait posé son dernier trait. Sa signature, en bas du rouleau. Rouge.',
+    'La signature glissa du rouleau… et se mit à marcher.',
+    'Tu n’es pas ce qui reste du maître. Tu es la fin de son tableau.',
+  ],
+  en: [
+    'The master never came down from the mountain.',
+    'Up there he was painting his last scroll. Not a landscape: a whole world.',
+    'But his hand was old. It trembled. One drop too many fell onto the paper.',
+    'The storm was him.',
+    'He tried to wipe the blot away. Then he could not stop: his hand was wiping everything.',
+    'Just before, he had laid down his last stroke. His signature, at the bottom of the scroll. Red.',
+    'The signature slipped off the scroll… and began to walk.',
+    'You are not what is left of the master. You are the end of his painting.',
+  ],
+};
+
+export const ENDINGS = {
+  sign: {
+    title: { fr: 'Le dernier trait', en: 'The Last Stroke' },
+    lines: {
+      fr: [
+        'Le petit trait rouge se posa en bas du rouleau, là où le maître l’avait toujours attendu.',
+        'Le monde fut achevé. Le vermillon, l’indigo, l’or et le jade ne s’effacèrent plus jamais.',
+        'Au hameau des Saules, les enfants disent que le sceau, tout en bas du ciel, cligne parfois de l’œil.',
+      ],
+      en: [
+        'The little red stroke lay down at the bottom of the scroll, where the master had always waited for it.',
+        'The world was complete. Vermilion, indigo, gold and jade never faded again.',
+        'In Willow Hamlet, the children say that the seal, at the very bottom of the sky, sometimes winks.',
+      ],
+    } as TrList,
+  },
+  brush: {
+    title: { fr: 'Le trait suivant', en: 'The Next Stroke' },
+    lines: {
+      fr: [
+        'Le petit trait prit le pinceau du maître. Il était bien trop grand pour lui.',
+        'Le rouleau ne fut jamais fini. Chaque matin, quelque part, un trait nouveau apparaît : un pont, un arbre, un ami.',
+        'Et le vieux maître, enfin, put se reposer.',
+      ],
+      en: [
+        'The little stroke took the master’s brush. It was far too big for it.',
+        'The scroll was never finished. Every morning, somewhere, a new stroke appears: a bridge, a tree, a friend.',
+        'And the old master, at last, could rest.',
+      ],
+    } as TrList,
+  },
+  end: { fr: 'Fin', en: 'The End' },
+  almost: { fr: 'Fin… ou presque.', en: 'The end… almost.' },
+  thanks: { fr: 'Merci d’avoir joué.', en: 'Thank you for playing.' },
 };
