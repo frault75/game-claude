@@ -265,6 +265,18 @@ export const MURALS: Record<string, Tr> = {
     fr: 'Les marques de l’eau sur les murs, année après année. La dernière est noire, et beaucoup trop haute. Quelqu’un a écrit dessous : « Il ne rend plus rien. »',
     en: 'Water marks on the walls, year after year. The last one is black, and far too high. Someone wrote beneath it: “He gives nothing back now.”',
   },
+  pagoda1: {
+    fr: 'Une fresque de sept moines, chacun devant une porte. Le premier respire, les yeux fermés. Sous ses pieds : « L’eau monte, l’eau se retire. »',
+    en: 'A fresco of seven monks, each before a door. The first one breathes, eyes closed. Beneath his feet: “Water rises, water recedes.”',
+  },
+  pagoda2: {
+    fr: 'Des pages de prières déchirées, collées au mur par l’encre. Toutes les lignes ont été effacées, sauf une : « Ne réveillez pas l’abbé. »',
+    en: 'Torn prayer pages, stuck to the wall by ink. Every line has been erased but one: “Do not wake the abbot.”',
+  },
+  pagoda3: {
+    fr: 'Le portrait de l’abbé. Son visage a été gratté jusqu’au mur, puis scellé d’un sceau rouge. Quelqu’un a écrit à côté, d’une main tremblante : « Il a bu dans la jarre. »',
+    en: 'The abbot’s portrait. His face has been scraped down to the wall, then sealed with a red seal. Someone wrote beside it, with a trembling hand: “He drank from the jar.”',
+  },
   temple1: {
     fr: 'Les prêtres de l’or priaient en silence, les mains ouvertes, pour que la lumière ne s’échappe pas.',
     en: 'The priests of gold prayed in silence, hands open, so the light would not escape.',
@@ -307,7 +319,9 @@ export const MAIN: QuestStep[] = [
   { title: { fr: 'La flûte de roseau', en: 'The Reed Flute' }, goal: { fr: 'Joue de la flûte sur le ponton, à l’ouest du lac', en: 'Play the flute on the jetty, west of the lake' } },
   { title: { fr: 'Le Héron d’encre', en: 'The Ink Heron' }, goal: { fr: 'Suis le chemin de lotus jusqu’à l’île du Héron d’encre', en: 'Follow the lotus path to the Ink Heron’s island' } },
   { title: { fr: 'La prière du lac', en: 'The Prayer of the Lake' }, goal: { fr: 'Porte la prière du lac à Frère Gong, devant la pagode', en: 'Bring the Prayer of the Lake to Brother Gong, before the pagoda' } },
-  { title: { fr: 'La Pagode du Ciel', en: 'The Sky Pagoda' }, goal: { fr: 'Les portes sont ouvertes… (l’ascension arrive bientôt)', en: 'The doors stand open… (the climb is coming soon)' } },
+  { title: { fr: 'La Pagode du Ciel', en: 'The Sky Pagoda' }, goal: { fr: 'Monte jusqu’au sommet de la Pagode du Ciel', en: 'Climb to the top of the Sky Pagoda' } },
+  { title: { fr: 'Le jade', en: 'The Jade' }, goal: { fr: 'Rapporte le jade à la Dame Héron-Blanc', en: 'Bring the jade to Lady White Heron' } },
+  { title: { fr: 'Fin de l’Acte II', en: 'End of Act II' }, goal: { fr: 'Le blanc manque encore, loin au nord… (Acte III à venir)', en: 'The white is still missing, far to the north… (Act III coming)' } },
 ];
 
 export const UI = {
@@ -514,6 +528,27 @@ export const BESTIARY: Record<string, BeastLore> = {
     text: {
       fr: 'Autrefois, un crapaud de jade à trois pattes : il buvait la pluie de trop et rendait celle qui manquait. L’orage l’a rempli d’encre, et il n’a plus jamais voulu rendre. Dans l’eau, il guérit ; l’or l’en chasse, l’indigo l’y enferme.',
       en: 'Once a three-legged jade toad: he drank the rain that was too much and gave back what was missing. The storm filled him with ink, and he never wanted to give back again. In the water he heals; gold drives him out, indigo locks him in.',
+    },
+  },
+  monk: {
+    name: { fr: 'Moine d’encre', en: 'Ink Monk' }, where: { fr: 'La Pagode du Ciel', en: 'The Sky Pagoda' },
+    text: {
+      fr: 'Les moines qui se sont enfermés la nuit de l’orage. Ils prient encore, mais pour l’encre. Quand un frère est blessé, ils s’arrêtent pour prier, et les plaies se referment : frappe celui qui prie d’abord.',
+      en: 'The monks who shut themselves in on the night of the storm. They still pray, but for the ink. When a brother is hurt they stop to pray, and wounds close: strike the one praying first.',
+    },
+  },
+  bell: {
+    name: { fr: 'Cloche hantée', en: 'Haunted Bell' }, where: { fr: 'La Pagode du Ciel', en: 'The Sky Pagoda' },
+    text: {
+      fr: 'Elle sonnait l’heure des prières. Maintenant elle sonne d’elle-même, et le son sort en anneaux qui brisent les os. Elle ne bouge pas : c’est déjà ça.',
+      en: 'It rang the hour of prayer. Now it rings by itself, and the sound comes out in rings that break bones. It does not move: that is something.',
+    },
+  },
+  faceless: {
+    name: { fr: 'Le Moine sans visage', en: 'The Faceless Monk' }, where: { fr: 'Au sommet de la Pagode du Ciel', en: 'At the top of the Sky Pagoda' },
+    text: {
+      fr: 'L’abbé de la pagode. La nuit de l’orage, il a bu dans la jarre de jade pour la protéger, et l’encre lui a effacé le visage, puis l’a scellé de rouge. Il peint des lignes qui brûlent en séchant, il efface la page, et ses ombres le protègent. Quand il boit encore à la jarre, frappe fort ou fige-le : il s’étrangle.',
+      en: 'The abbot of the pagoda. On the night of the storm he drank from the jade jar to protect it, and the ink erased his face, then sealed it in red. He paints lines that burn as they dry, he erases the page, and his shadows protect him. When he drinks from the jar again, strike hard or freeze him: he chokes.',
     },
   },
   inkheron: {

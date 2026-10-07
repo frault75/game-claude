@@ -12,7 +12,7 @@ export const NAMES2: Record<string, Tr> = {
   yu: { fr: 'Maître Yu, l’ermite', en: 'Master Yu, the hermit' },
 };
 
-export const HERON: Record<'meet' | 'sluices' | 'toad' | 'toadBack' | 'hermit', TrList> = {
+export const HERON: Record<'meet' | 'sluices' | 'toad' | 'toadBack' | 'hermit' | 'jade' | 'after', TrList> = {
   meet: {
     fr: [
       'Un trait rouge… Alors le maître a tenu parole. Il disait qu’il enverrait quelqu’un si l’encre débordait.',
@@ -54,6 +54,24 @@ export const HERON: Record<'meet' | 'sluices' | 'toad' | 'toadBack' | 'hermit', 
       'Now, the pagoda. Brother Gong knows its door, but the door opens only to the seven prayers, and the monks took them with them.',
       'Only one person outside still knows them: Master Yu. He left the pagoda thirty years ago to paint the bamboo rather than recite it. He lives deep in the Bamboo Grove, to the east, past the bridge.',
     ],
+  },
+  jade: {
+    fr: [
+      'Tu l’as. Je le sens d’ici : l’odeur des pousses après la pluie.',
+      'Le maître disait que le jade est la couleur de la patience. Il ne tranche pas, il ne gèle pas, il ne foudroie pas. Il fait pousser. Il guérit.',
+      'Les terrasses te le rendront, petit trait. Mais écoute-moi bien : le maître a broyé quatre couleurs, et pourtant il en manque une. Le blanc. Celui du papier.',
+      'On dit qu’il l’a laissé tout là-haut, au nord, dans les montagnes où il n’y a plus que lui. Si le blanc s’efface, il n’y aura plus de page pour peindre.',
+    ],
+    en: [
+      'You have it. I can smell it from here: the scent of shoots after rain.',
+      'The master said jade is the colour of patience. It does not cut, it does not freeze, it does not strike. It makes things grow. It heals.',
+      'The terraces will give it back to you, little stroke. But listen well: the master ground four colours, and yet one is missing. White. The white of the paper.',
+      'They say he left it high up, to the north, in the mountains where there is nothing but white. If the white fades, there will be no page left to paint on.',
+    ],
+  },
+  after: {
+    fr: ['Le riz repousse. Les hérons pêchent. Va, petit trait : le nord t’attend, et la page avec lui.'],
+    en: ['The rice grows again. The herons fish. Go, little stroke: the north awaits you, and the page with it.'],
   },
   hermit: {
     fr: ['Maître Yu vit au fond de la Bambouseraie, à l’est, passé le pont. Il est bourru, mais il n’a jamais refusé un thé à personne.'],
@@ -229,4 +247,34 @@ export const PAGODA_UI = {
   opened: { fr: 'Les portes de la Pagode du Ciel s’ouvrent dans un souffle de poussière et d’encens.', en: 'The doors of the Sky Pagoda open in a breath of dust and incense.' },
   soon: { fr: 'Les portes sont ouvertes. Un escalier monte dans l’ombre… (l’ascension arrive bientôt)', en: 'The doors stand open. A stair climbs into the dark… (the climb is coming soon)' },
   shut: { fr: 'Les portes de la pagode sont scellées de l’intérieur.', en: 'The pagoda doors are sealed from within.' },
+};
+
+export const SUMMIT_UI = {
+  name: { fr: 'La Pagode du Ciel', en: 'The Sky Pagoda' },
+  boss: { fr: 'Le Moine sans visage', en: 'The Faceless Monk' },
+  erased: { fr: 'La page s’efface sous tes pieds : plus d’encre, plus de pigment !', en: 'The page is erased under your feet: no ink, no pigment left!' },
+  shield: { fr: 'Ses ombres le protègent : détruis-les d’abord !', en: 'His shadows protect him: destroy them first!' },
+  drink: { fr: 'Il boit à la jarre de jade ! Frappe fort ou fige-le !', en: 'He drinks from the jade jar! Strike hard or freeze him!' },
+  choke: { fr: 'Il s’étrangle !', en: 'He chokes!' },
+  down: { fr: 'Le sceau rouge s’efface. Un visage revient, paisible : « Merci, petit trait. Prends le jade : il a assez attendu. »', en: 'The red seal fades. A face comes back, peaceful: “Thank you, little stroke. Take the jade: it has waited long enough.”' },
+};
+
+export const ACT2_END = {
+  lines: {
+    fr: [
+      'Le jade revint aux terrasses, et le vert remonta les marches d’eau une à une, comme un poème qu’on récite.',
+      'Les hérons revinrent pêcher les reflets.',
+      'Et le riz, qui avait tant attendu, se remit à pousser.',
+      'Mais loin au nord, sur des montagnes que personne n’avait peintes, le blanc s’effaçait.',
+    ],
+    en: [
+      'The jade returned to the terraces, and green climbed back up the steps of water one by one, like a poem recited.',
+      'The herons came back to fish for reflections.',
+      'And the rice, which had waited so long, began to grow again.',
+      'But far to the north, on mountains no one had painted, the white was fading.',
+    ],
+  },
+  end: { fr: 'Fin de l’Acte II', en: 'End of Act II' },
+  next: { fr: 'Acte III', en: 'Act III' },
+  nextName: { fr: 'Les Cimes blanches', en: 'The White Peaks' },
 };

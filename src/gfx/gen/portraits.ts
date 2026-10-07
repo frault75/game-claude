@@ -5,7 +5,7 @@ import { buildCrowFrames, buildScarecrowFrames, buildBoarFrames, buildFoxFrames,
 import { getTotemFrames } from '../../game/enemies';
 import { buildFrogFrames, buildGoatFrames, buildWraithFrames, buildMantisFrames } from './bestiary2';
 import { buildWardenFrames } from '../../game/bosses/warden';
-import { buildTadpoleFrames, buildKappaFrames, buildTanukiFrames, buildToadKingFrames, buildQueenFrames, buildHeronFrames } from './bestiary3';
+import { buildTadpoleFrames, buildKappaFrames, buildTanukiFrames, buildToadKingFrames, buildQueenFrames, buildHeronFrames, buildMonkFrames, buildBellFrames, buildFacelessFrames } from './bestiary3';
 
 const MAKERS: Record<string, () => Frame> = {
   blot: () => buildBlotFrames(1201)[0],
@@ -35,6 +35,9 @@ const MAKERS: Record<string, () => Frame> = {
   toad: () => buildToadKingFrames(5001).pig[0],
   queen: () => buildQueenFrames(5201).pig[1],
   inkheron: () => buildHeronFrames(5301).pig[0],
+  monk: () => buildMonkFrames(3901)[3],
+  bell: () => buildBellFrames(4001)[0],
+  faceless: () => buildFacelessFrames(5401).pig[0],
 };
 
 const cache = new Map<string, Frame>();

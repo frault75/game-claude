@@ -14,8 +14,10 @@ import { Stele } from '../npc';
 import { MotherOfBlots } from '../bosses/mother';
 import { DrownedWarden } from '../bosses/warden';
 import { ToadKing, ToadPool } from '../bosses/toadKing';
-import { T2_BASIN_SPAWN } from '../../world/terraces';
-import { BASIN_UI } from '../../i18n/lore2';
+import { FacelessMonk, JadeJar } from '../bosses/facelessMonk';
+import { T2_BASIN_SPAWN, T2_PAGODA } from '../../world/terraces';
+import { BASIN_UI, SUMMIT_UI } from '../../i18n/lore2';
+import { INKS } from '../inks';
 import { generateDungeon, DungeonMap, DungeonSpec, DRoom, V } from '../../world/dungeon';
 import { paintDungeon, DungeonStyle } from '../../world/dungeonPaint';
 import type { EnemyKind } from '../../world/layout';
@@ -38,7 +40,7 @@ import { MapSource, Mark } from '../../ui/mapArt';
 
 interface FloorDef {
   id: string;
-  area: 'cave' | 'temple' | 'basin';
+  area: 'cave' | 'temple' | 'basin' | 'pagoda';
   style: DungeonStyle;
   floor: number;
   spec: DungeonSpec;
@@ -48,7 +50,7 @@ interface FloorDef {
   up: { to: string; spawn: () => V };
   /** The floor below, if any. */
   down?: string;
-  boss?: 'mother' | 'warden' | 'toad';
+  boss?: 'mother' | 'warden' | 'toad' | 'faceless';
   mural: string;
   well?: boolean;
 }
@@ -90,6 +92,25 @@ const FLOORS: FloorDef[] = [
     spec: { seed: 6607, w: 72, h: 58, rooms: 6, minRoom: 8, maxRoom: 12, corridor: 3, boss: { w: 20, h: 15 } },
     enemies: ['kappa', 'tadpole', 'frog', 'splitter', 'kappa', 'wraith', 'tadpole'],
     up: { to: 'basin1', spawn: () => mapOf('basin1').downSpawn }, boss: 'toad', mural: 'basin2', well: true,
+  },
+  // the Sky Pagoda: three floors up to the jade
+  {
+    id: 'pagoda1', area: 'pagoda', style: 'pagoda', floor: 1, tier: 4,
+    spec: { seed: 7701, w: 64, h: 52, rooms: 8, minRoom: 7, maxRoom: 12, corridor: 3 },
+    enemies: ['monk', 'wraith', 'lantern', 'monk', 'bell', 'mantis'],
+    up: { to: 'terraces', spawn: () => [T2_PAGODA.x, T2_PAGODA.y - 2.6] }, down: 'pagoda2', mural: 'pagoda1', well: true,
+  },
+  {
+    id: 'pagoda2', area: 'pagoda', style: 'pagoda', floor: 2, tier: 4,
+    spec: { seed: 8803, w: 66, h: 54, rooms: 8, minRoom: 7, maxRoom: 12, corridor: 3 },
+    enemies: ['monk', 'bell', 'wraith', 'kappa', 'monk', 'lantern', 'mantis'],
+    up: { to: 'pagoda1', spawn: () => mapOf('pagoda1').downSpawn }, down: 'pagoda3', mural: 'pagoda2', well: true,
+  },
+  {
+    id: 'pagoda3', area: 'pagoda', style: 'pagoda', floor: 3, tier: 4,
+    spec: { seed: 9907, w: 68, h: 56, rooms: 6, minRoom: 8, maxRoom: 12, corridor: 3, boss: { w: 20, h: 16 } },
+    enemies: ['monk', 'bell', 'wraith', 'monk', 'brute', 'lantern'],
+    up: { to: 'pagoda2', spawn: () => mapOf('pagoda2').downSpawn }, boss: 'faceless', mural: 'pagoda3', well: true,
   },
 ];
 
@@ -219,7 +240,8 @@ class Relic extends Entity {
     this.addSprite(new Sprite(p));
     const c = new Painter(1.2, 0.8, SPRITE_PPU, -0.6, 0.5);
     c.over();
-    c.ctx.fillStyle = this.ink === 'indigo' ? 'rgba(51,84,148,1)' : 'rgba(219,168,51,1)';
+    const [cr, cg, cb] = INKS[this.ink].rgb;
+    c.ctx.fillStyle = `rgba(${Math.round(cr * 255)},${Math.round(cg * 255)},${Math.round(cb * 255)},1)`;
     c.ctx.beginPath();
     c.ctx.ellipse(0, 0.9, 0.26, 0.09, 0, 0, Math.PI * 2);
     c.ctx.fill();
@@ -413,15 +435,18 @@ function buildFloor(def: FloorDef, room: RoomDef, b: Parameters<RoomDef['build']
   if (def.id === 'cave1' && save.main === STEP.findCave) setMain(g, STEP.caveDeep);
   if (def.id === 'temple1' && save.main === STEP.findTemple) setMain(g, STEP.templeDeep);
   if (def.id === 'basin1' && save.main === STEP.toad) setMain(g, STEP.basinDeep);
-  const name = caveArea ? L(UI.enterCave) : def.area === 'basin' ? L(BASIN_UI.name) : L(UI.enterTemple);
+  const name = caveArea ? L(UI.enterCave) : def.area === 'basin' ? L(BASIN_UI.name) : def.area === 'pagoda' ? L(SUMMIT_UI.name) : L(UI.enterTemple);
   g.after(0.4, () => void g.story.show([name, `${L(UI.floor)} ${def.floor}`], { size: 44, y: r.uiH / 2 - 200, hold: 1.6, italic: false, stagger: 0.4 }));
 
   // ---------- the guardian ----------
-  let bossE: MotherOfBlots | DrownedWarden | ToadKing | null = null;
+  let bossE: MotherOfBlots | DrownedWarden | ToadKing | FacelessMonk | null = null;
   const e = map.end;
   const bossId = def.boss ?? 'warden';
-  const ink: InkId | null = def.boss === 'mother' ? 'indigo' : def.boss === 'warden' ? 'gold' : null;
-  const surface = (): V => (caveArea ? SURFACE.cave : def.area === 'basin' ? T2_BASIN_SPAWN : SURFACE.temple);
+  const ink: InkId | null = def.boss === 'mother' ? 'indigo' : def.boss === 'warden' ? 'gold' : def.boss === 'faceless' ? 'jade' : null;
+  const surface = (): V => (caveArea ? SURFACE.cave : def.area === 'basin' ? T2_BASIN_SPAWN : def.area === 'pagoda' ? [T2_PAGODA.x, T2_PAGODA.y - 2.6] : SURFACE.temple);
+  // the jade jar at the top of the pagoda
+  const jar = def.boss === 'faceless' ? b.add(new JadeJar(e.cx, e.y + e.h - 3.2)) : null;
+  if (jar && save.bosses.includes('faceless')) jar.open();
   // the Toad King's black pools
   const pools: ToadPool[] = [];
   if (def.boss === 'toad' && !save.bosses.includes('toad')) {
@@ -463,16 +488,17 @@ function buildFloor(def: FloorDef, room: RoomDef, b: Parameters<RoomDef['build']
   };
   const spawnRelic = () => {
     if (!ink || save.inks.includes(ink)) return;
-    const relic = b.add(new Relic(e.cx, e.cy + 1.5, ink));
+    const relic = b.add(new Relic(e.cx, jar ? jar.y - 1.6 : e.cy + 1.5, ink));
     relic.onTake = () => {
       unlockInk(g, ink);
       if (ink === 'indigo') { if (save.main <= STEP.caveDeep) setMain(g, STEP.indigoBack); }
+      else if (ink === 'jade') { if (save.main < STEP.jadeBack) setMain(g, STEP.jadeBack); }
       else if (save.main <= STEP.templeDeep) setMain(g, STEP.goldBack);
     };
   };
   const spawnRift = () => {
     const rift = b.add(new Rift(e.cx, e.y + e.h - 2.6));
-    rift.onEnter = () => void g.travel(def.area === 'basin' ? 'terraces' : 'overworld', surface());
+    rift.onEnter = () => void g.travel(def.area === 'basin' || def.area === 'pagoda' ? 'terraces' : 'overworld', surface());
   };
   if (def.boss && save.bosses.includes(bossId)) {
     spawnRelic();
@@ -483,6 +509,14 @@ function buildFloor(def: FloorDef, room: RoomDef, b: Parameters<RoomDef['build']
     if (def.boss === 'mother') {
       bossE = b.add(new MotherOfBlots(e.cx, e.cy + 1, e));
       g.hud.showBoss(L(UI.bossMother));
+    } else if (def.boss === 'faceless') {
+      const fm = b.add(new FacelessMonk(e.cx, e.cy - 1, e, jar!));
+      fm.onErase = () => g.hud.showHint(L(SUMMIT_UI.erased), 3);
+      fm.onShield = () => g.hintOnce('facelessShield', L(SUMMIT_UI.shield), 3.5);
+      fm.onDrink = () => g.hud.showHint(L(SUMMIT_UI.drink), 3);
+      fm.onChoke = () => g.hud.showHint(L(SUMMIT_UI.choke), 2);
+      bossE = fm;
+      g.hud.showBoss(L(SUMMIT_UI.boss));
     } else if (def.boss === 'toad') {
       for (const pl of pools) pl.frozen = 0;
       const tk = b.add(new ToadKing(e.cx, e.cy + 0.5, e, pools));
@@ -507,15 +541,16 @@ function buildFloor(def: FloorDef, room: RoomDef, b: Parameters<RoomDef['build']
       save.bosses.push(bossId);
       writeSave();
       discover(g, bossId);
-      giveXp(g, def.boss === 'mother' ? 220 : def.boss === 'toad' ? 560 : 380);
+      giveXp(g, def.boss === 'mother' ? 220 : def.boss === 'toad' ? 560 : def.boss === 'faceless' ? 900 : 380);
       for (let i = 0; i < 4; i++) b.add(new Pickup(boss.x, boss.y, i % 2 ? 'ink' : 'life', i % 2 ? 10 : 2));
       if (def.boss === 'toad') for (let i = 0; i < 5; i++) b.add(new Pickup(boss.x + (i - 2) * 0.5, boss.y, 'coin', 12));
-      dropLoot(g, boss.x, boss.y, 'boss', def.boss === 'mother' ? 4 : def.boss === 'toad' ? 11 : 8);
+      dropLoot(g, boss.x, boss.y, 'boss', def.boss === 'mother' ? 4 : def.boss === 'toad' ? 11 : def.boss === 'faceless' ? 14 : 8);
+      jar?.open();
       for (const pl of pools) pl.drain();
       for (const en of w.entities) if (en.team === 'enemy' && en !== boss && en.label !== 'urn') (en as Creature).onHit?.({ dmg: 999, fromX: boss.x, fromY: boss.y, kind: 'enso' });
       g.after(1.6, () => {
         openDoors();
-        void g.story.show([L(def.boss === 'mother' ? UI.motherDown : def.boss === 'toad' ? BASIN_UI.toadDown : UI.wardenDown)], { size: 38, y: r.uiH / 2 - 200, hold: 3 });
+        void g.story.show([L(def.boss === 'mother' ? UI.motherDown : def.boss === 'toad' ? BASIN_UI.toadDown : def.boss === 'faceless' ? SUMMIT_UI.down : UI.wardenDown)], { size: 38, y: r.uiH / 2 - 200, hold: def.boss === 'faceless' ? 4.5 : 3 });
         if (def.boss === 'toad') { save.sluices = [0, 1, 2]; if (save.main < STEP.toadBack) setMain(g, STEP.toadBack); }
         spawnRelic();
         g.after(2, () => { spawnRift(); g.hud.showHint(L(UI.rift), 4); });
@@ -547,7 +582,7 @@ function buildFloor(def: FloorDef, room: RoomDef, b: Parameters<RoomDef['build']
       bossE = null;
       openDoors();
       g.hud.hideBoss();
-      for (const en of w.entities) if ((en.label === 'blotlet' || en.label === 'wisp' || en.label === 'urn' || en.label === 'tadpole' || en.label === 'inkdrop') && !(en as Creature).home) en.destroy();
+      for (const en of w.entities) if ((en.label === 'blotlet' || en.label === 'wisp' || en.label === 'urn' || en.label === 'tadpole' || en.label === 'inkdrop' || en.label === 'shadowmonk') && !(en as Creature).home) en.destroy();
       for (const pl of pools) pl.frozen = 0;
     }
   };
@@ -556,7 +591,7 @@ function buildFloor(def: FloorDef, room: RoomDef, b: Parameters<RoomDef['build']
     let target: V | null = null;
     if (def.down) target = map.down;
     else if (!save.bosses.includes(bossId)) target = [e.cx, e.cy];
-    else if (ink && !save.inks.includes(ink)) target = [e.cx, e.cy + 1.5];
+    else if (ink && !save.inks.includes(ink)) target = [e.cx, jar ? jar.y - 1.6 : e.cy + 1.5];
     else target = [e.cx, e.y + e.h - 2.6];
     g.objective = target;
     const vh = r.viewH / r.zoom, vw = vh * (r.pxW / r.pxH);
@@ -578,7 +613,7 @@ function floorMap(def: FloorDef, map: DungeonMap): MapSource {
     sight: 7.5,
     view: 14,
     paint(ctx) {
-      ctx.fillStyle = def.area === 'cave' ? 'rgba(96,88,80,0.34)' : def.area === 'basin' ? 'rgba(78,108,100,0.34)' : 'rgba(120,104,72,0.34)';
+      ctx.fillStyle = def.area === 'cave' ? 'rgba(96,88,80,0.34)' : def.area === 'basin' ? 'rgba(78,108,100,0.34)' : def.area === 'pagoda' ? 'rgba(150,84,64,0.34)' : 'rgba(120,104,72,0.34)';
       for (let y = 0; y < map.h; y++) for (let x = 0; x < map.w; x++) if (map.grid[y * map.w + x] === 1) ctx.fillRect(x - 0.02, y - 0.02, 1.04, 1.04);
       ctx.strokeStyle = 'rgba(36,32,30,0.85)';
       ctx.lineWidth = 0.32;

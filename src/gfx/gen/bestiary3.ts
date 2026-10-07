@@ -337,3 +337,156 @@ export function buildLotusFrames(seed: number): Frame[] {
   }
   return out;
 }
+
+/** Ink monk, faces +x: [walk a, walk b, strike, pray]. A possessed monk with a staff. */
+export function buildMonkFrames(seed: number): Frame[] {
+  const out: Frame[] = [];
+  const robe = mixPig(INK, PIG_A, 0.55);
+  for (let i = 0; i < 4; i++) {
+    const p = new Painter(2.6, 3, SPRITE_PPU, -1.3, -0.3);
+    const r = new Rng(seed + i * 17);
+    const st = i === 0 ? 0.08 : i === 1 ? -0.08 : 0;
+    // the robe: a bell of wash, darker at the hem
+    const robePts: V2[] = [[-0.42 + st, 0.02], [0.42 + st, 0.02], [0.3, 1.25], [0.15, 1.45], [-0.15, 1.45], [-0.3, 1.25]];
+    body(p, roughen(robePts, 0.02, seed + i, 0.04), 0.5, seed + i, robe);
+    washPoly(p, [[-0.42 + st, 0.02], [0.42 + st, 0.02], [0.38, 0.3], [-0.38, 0.3]], { pig: INK, density: 0.35, soft: 0.3, seed: seed + 5 + i });
+    // shaved head, bowed in prayer or raised to strike
+    const hy = i === 3 ? 1.55 : 1.7;
+    p.circle(0.04, hy, 0.2, mixPig(INK, PIG_B, 0.2), 0.7);
+    eyes(p, [[0.12, hy + 0.02, 0.04, i === 3 ? 0.01 : 0.035]]);
+    // the staff, the sleeves
+    if (i === 2) {
+      stroke(p, [[-0.1, 1.2], [0.6, 1.0], [1.2, 0.85]], { width: 0.08, load: 1, seed: r.int(1, 1e6) });
+      stroke(p, [[-0.6, 1.5], [0.4, 1.05], [1.15, 0.6]], { width: 0.06, pig: mixPig(INK, PIG_B, 0.6), load: 0.9, seed: r.int(1, 1e6) });
+    } else if (i === 3) {
+      stroke(p, [[-0.2, 1.1], [0.05, 1.3], [0.25, 1.1]], { width: 0.1, load: 1, seed: r.int(1, 1e6) });
+      stroke(p, [[0.5, 0], [0.5, 2.0]], { width: 0.06, pig: mixPig(INK, PIG_B, 0.6), load: 0.9, seed: r.int(1, 1e6) });
+      // prayer beads
+      for (let k = 0; k < 7; k++) p.circle(-0.15 + k * 0.05, 0.95 - Math.sin(k * 0.45) * 0.12, 0.035, INK, 0.9);
+    } else {
+      stroke(p, [[0.15, 1.2], [0.35, 0.85]], { width: 0.08, load: 1, seed: r.int(1, 1e6) });
+      stroke(p, [[0.4, -0.05], [0.42 + st, 2.05]], { width: 0.06, pig: mixPig(INK, PIG_B, 0.6), load: 0.9, seed: r.int(1, 1e6) });
+    }
+    out.push(frameFrom(p));
+  }
+  return out;
+}
+
+/** A temple bell spirit on its wooden frame: [still, swing a, swing b]. */
+export function buildBellFrames(seed: number): Frame[] {
+  const out: Frame[] = [];
+  for (let i = 0; i < 3; i++) {
+    const p = new Painter(2.8, 3.2, SPRITE_PPU, -1.4, -0.3);
+    const r = new Rng(seed + i);
+    p.glaze();
+    // the frame: two posts and a curved beam
+    for (const x of [-1.0, 1.0]) stroke(p, [[x, 0], [x, 2.6]], { width: 0.12, load: 1, dry: 0.4, seed: r.int(1, 1e6) });
+    stroke(p, [[-1.25, 2.55], [0, 2.75], [1.25, 2.55]], { width: 0.14, load: 1, seed: r.int(1, 1e6) });
+    // the bell swings
+    const sw = i === 1 ? 0.25 : i === 2 ? -0.25 : 0;
+    const cx = Math.sin(sw) * 1.2, top = 2.5;
+    stroke(p, [[0, top], [cx * 0.3, top - 0.25]], { width: 0.05, load: 1, seed: r.int(1, 1e6) });
+    const bell: V2[] = [];
+    for (let k = 0; k <= 16; k++) {
+      const t = k / 16;
+      const y = top - 0.25 - t * 1.4;
+      const w = 0.28 + t * t * 0.45;
+      bell.push([cx * (0.3 + t * 0.7) - w, y]);
+    }
+    for (let k = 16; k >= 0; k--) {
+      const t = k / 16;
+      const y = top - 0.25 - t * 1.4;
+      const w = 0.28 + t * t * 0.45;
+      bell.push([cx * (0.3 + t * 0.7) + w, y]);
+    }
+    body(p, bell, 0.62, seed + 10 + i, mixPig(INK, PIG_B, 0.55));
+    for (let k = 0; k < 3; k++) stroke(p, [[cx * 0.6 - 0.45, top - 0.7 - k * 0.3], [cx * 0.6 + 0.45, top - 0.7 - k * 0.3]], { width: 0.03, load: 0.6, dry: 0.5, seed: r.int(1, 1e6) });
+    // two hollow eyes on the bronze
+    eyes(p, [[cx * 0.7 - 0.18, top - 1.15, 0.07, 0.05], [cx * 0.7 + 0.18, top - 1.15, 0.07, 0.05]]);
+    out.push(frameFrom(p));
+  }
+  return out;
+}
+
+/**
+ * The Faceless Monk, faces +x: [stand, palm, paint, cast, drink, face]. Where his face was, the storm
+ * left a blank oval; the red layer stamps a vermilion seal there. The last frame gives him his face back.
+ */
+export function buildFacelessFrames(seed: number): Layered {
+  const pig: Frame[] = [], red: Frame[] = [];
+  const robe = mixPig(INK, PIG_A, 0.4);
+  for (let i = 0; i < 6; i++) {
+    const p = new Painter(7, 7, SPRITE_PPU / 1.6, -3.5, -0.5);
+    const q = new Painter(7, 7, SPRITE_PPU / 2.4, -3.5, -0.5);
+    q.glaze();
+    const r = new Rng(seed + i * 19);
+    const bend = i === 4 ? 0.5 : 0;
+    // the great robe, wide sleeves
+    const robePts: V2[] = [[-1.2, 0], [1.2, 0], [0.9, 2.2 - bend], [0.55, 3.2 - bend], [-0.55, 3.2 - bend], [-0.9, 2.2 - bend]];
+    body(p, roughen(robePts, 0.03, seed + i, 0.06), 0.55, seed + i, robe);
+    washPoly(p, [[-1.2, 0], [1.2, 0], [1.05, 0.6], [-1.05, 0.6]], { pig: INK, density: 0.4, soft: 0.3, seed: seed + 30 + i });
+    for (let k = 0; k < 4; k++) stroke(p, [[-0.6 + k * 0.4, 0.1], [-0.45 + k * 0.3, 2.6 - bend]], { width: 0.04, load: 0.45, dry: 0.6, seed: r.int(1, 1e6) });
+    // a stole of red cloth over one shoulder (red layer)
+    stroke(q, [[-0.5, 3.0 - bend], [0.2, 2.2 - bend], [0.7, 1.2]], { width: 0.22, pig: VERMILION, load: 0.6, dry: 0.5, seed: r.int(1, 1e6) });
+    // the head: a blank oval where the face was
+    const hx = 0.1 + bend * 0.8, hy = 3.65 - bend * 1.2;
+    p.reserve(() => { p.ctx.ellipse(hx, hy, 0.38, 0.46, 0, 0, Math.PI * 2); }, 1);
+    p.glaze();
+    stroke(p, (() => { const o: V2[] = []; for (let k = 0; k <= 24; k++) { const a = (k / 24) * Math.PI * 2; o.push([hx + Math.cos(a) * 0.38, hy + Math.sin(a) * 0.46]); } return o; })(), { width: 0.06, load: 0.9, seed: r.int(1, 1e6), taperStart: 0.02, taperEnd: 0.02 });
+    if (i === 5) {
+      // his face, given back: closed eyes, a quiet mouth
+      stroke(p, [[hx - 0.22, hy + 0.08], [hx - 0.08, hy + 0.04]], { width: 0.04, load: 1, seed: r.int(1, 1e6) });
+      stroke(p, [[hx + 0.08, hy + 0.04], [hx + 0.22, hy + 0.08]], { width: 0.04, load: 1, seed: r.int(1, 1e6) });
+      stroke(p, [[hx - 0.1, hy - 0.22], [hx + 0.1, hy - 0.2]], { width: 0.035, load: 0.8, seed: r.int(1, 1e6) });
+    } else {
+      // the seal of the storm, stamped where the face was
+      q.ctx.save();
+      washPoly(q, roughen([[hx - 0.2, hy - 0.2], [hx + 0.2, hy - 0.2], [hx + 0.2, hy + 0.2], [hx - 0.2, hy + 0.2]], 0.01, seed + 70 + i, 0.03), { pig: VERMILION, density: 0.95, soft: 0.05, seed: seed + 70 + i });
+      q.ctx.restore();
+      if (i === 3) q.dab(hx, hy, 0.9, VERMILION, 0.45, 0.2);
+    }
+    // arms: a palm thrust, a great brush raised, both hands up, a bowl to the lips
+    const sh: V2 = [0.5, 2.9 - bend];
+    if (i === 1) {
+      washPoly(p, roughen([[0.4, 2.8], [1.9, 2.4], [1.9, 2.0], [0.5, 2.3]], 0.02, seed + 80, 0.05), { pig: robe, density: 0.5, soft: 0.1, edge: 0.8, seed: seed + 80 });
+      p.circle(2.1, 2.2, 0.2, mixPig(INK, PIG_B, 0.3), 0.7);
+    } else if (i === 2) {
+      stroke(p, [sh, [1.0, 3.5], [1.2, 4.2]], { width: 0.18, pig: robe, load: 0.8, seed: r.int(1, 1e6) });
+      stroke(p, [[1.1, 3.6], [1.6, 5.2]], { width: 0.08, pig: mixPig(INK, PIG_B, 0.6), load: 1, seed: r.int(1, 1e6) });
+      washPoly(p, [[1.55, 5.15], [1.85, 5.6], [1.65, 5.95], [1.45, 5.5]], { pig: INK, density: 0.95, soft: 0.05, seed: seed + 85 });
+    } else if (i === 3) {
+      for (const sx of [1, -1]) stroke(p, [[sx * 0.5, 2.9], [sx * 1.1, 3.6], [sx * 1.3, 4.3]], { width: 0.2, pig: robe, load: 0.8, seed: r.int(1, 1e6) });
+    } else if (i === 4) {
+      stroke(p, [sh, [0.9, 2.4], [0.6, 2.75]], { width: 0.18, pig: robe, load: 0.8, seed: r.int(1, 1e6) });
+      washPoly(p, noisyOutline(0.7, 2.75, 0.25, 0.12, 0.1, seed + 88), { pig: mixPig(INK, PIG_A, 0.7), density: 0.8, soft: 0.05, seed: seed + 88 });
+    } else {
+      stroke(p, [sh, [0.75, 2.1], [0.4, 1.7]], { width: 0.18, pig: robe, load: 0.8, seed: r.int(1, 1e6) });
+      for (let k = 0; k < 9; k++) p.circle(0.3 + Math.sin(k * 0.6) * 0.15, 1.6 - k * 0.07, 0.045, INK, 0.9);
+    }
+    pig.push(frameFrom(p));
+    red.push(frameFrom(q));
+  }
+  return { pig, red };
+}
+
+/** The jade jar, sealed, at the top of the pagoda: [sealed, open]. */
+export function buildJarFrames(seed: number): Frame[] {
+  const out: Frame[] = [];
+  for (let i = 0; i < 2; i++) {
+    const p = new Painter(2.4, 2.6, SPRITE_PPU, -1.2, -0.3);
+    const o: V2[] = [];
+    for (let k = 0; k <= 24; k++) {
+      const t = k / 24;
+      const y = t * 1.6;
+      const w = 0.35 + Math.sin(t * Math.PI) * 0.45 - (t > 0.85 ? (t - 0.85) * 1.5 : 0);
+      o.push([w, y]);
+    }
+    const full: V2[] = [...o, ...o.slice().reverse().map(([x, y]): V2 => [-x, y])];
+    body(p, full, 0.62, seed + i, mixPig(INK, PIG_A, 0.7));
+    stroke(p, [[-0.35, 1.62], [0.35, 1.62]], { width: 0.1, load: 1, seed: seed + 5 });
+    for (let k = 0; k < 3; k++) stroke(p, [[-0.6, 0.5 + k * 0.3], [0.6, 0.5 + k * 0.3]], { width: 0.025, load: 0.5, dry: 0.6, seed: seed + 6 + k });
+    if (i === 0) washPoly(p, [[-0.32, 1.62], [0.32, 1.62], [0.25, 1.85], [-0.25, 1.85]], { pig: INK, density: 0.8, soft: 0.05, seed: seed + 9 });
+    out.push(frameFrom(p));
+  }
+  return out;
+}
