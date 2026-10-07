@@ -227,7 +227,7 @@ export class Dialog {
           if (hit >= 0) { this.choose(hit); return; }
         }
         inp.inkSelect = null;
-        inp.swallow();
+        inp.consume();
       } else if (inp.pressed('confirm') || inp.pressed('interact') || inp.pressed('dodge') || inp.pressed('attack') || inp.pressed('back')) {
         this.advance();
         inp.swallow();

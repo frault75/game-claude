@@ -165,14 +165,15 @@ export class Cinematic {
     const r = this.r;
     // skip: Esc or the corner label ends it; a tap or Space goes to the next shot
     let skipAll = inp.pressed('back');
-    let nextShot = inp.pressed('confirm') || inp.keyPressed('Space');
+    // a finger counts when it lifts (so that the corner label can be reached); a mouse when it presses
+    let nextShot = (inp.pressed('confirm') && inp.device !== 'touch') || inp.keyPressed('Space');
     for (const [sx, sy] of inp.orderTaps) {
       const [ux, uy] = inp.toUi(sx, sy);
       if (ux > r.uiW / 2 - 260 && uy < -r.uiH / 2 + 110) skipAll = true;
       else nextShot = true;
     }
     if (inp.drawEnd) nextShot = true;
-    inp.swallow();
+    inp.consume();
     if (skipAll) { sfx.ui(); this.finish(); return; }
     if (nextShot && this.t > 0.5) { this.next(); if (!this.active) return; }
     this.t += dt;

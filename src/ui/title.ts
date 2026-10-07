@@ -41,6 +41,16 @@ export class Title {
     return Math.min(this.r.uiW / 1500, this.r.uiH / 820);
   }
 
+  /** The choices' scale: on a tall phone the title shrinks to the width, but the choices must
+   *  stay big enough for a thumb. */
+  private ki(): number {
+    return Math.max(this.k(), Math.min(this.r.uiW / 900, this.r.uiH / 1100));
+  }
+
+  private itemY(i: number): number {
+    return -80 * this.k() - (110 + i * 74) * this.ki();
+  }
+
   open(hasSave: boolean): void {
     this.active = true;
     this.hasSave = hasSave;
@@ -48,14 +58,16 @@ export class Title {
     this.sel = 0;
     this.sure = false;
     this.leaving = -1;
-    const r = this.r, k = this.k();
-    const paper = maskSprite(r, 1350 * k, 940 * k, 'paper');
-    paper.setPos(0, 20 * k);
-    const mask = maskSprite(r, 1500 * k, 1000 * k);
-    mask.setPos(0, 20 * k);
-    const cover = maskSprite(r, 1250 * k, 860 * k, 'cover');
-    cover.setPos(0, 20 * k);
-    this.sprites.push(paper, mask, cover);
+    const r = this.r, k = this.k(), ki = this.ki();
+    // the sheet reaches down under the last choice (on a phone held upright they sit lower)
+    const low = this.itemY(hasSave ? 2 : 1) - 50 * ki;
+    const sheet = (w: number, h: number, kind?: 'paper' | 'cover') => {
+      const top = 20 * k + h / 2, bottom = Math.min(20 * k - h / 2, low + (1000 * k - h) / 2);
+      const s = maskSprite(r, w, top - bottom, kind);
+      s.setPos(0, (top + bottom) / 2);
+      return s;
+    };
+    this.sprites.push(sheet(1350 * k, 940 * k, 'paper'), sheet(1500 * k, 1000 * k), sheet(1250 * k, 860 * k, 'cover'));
     this.enso = new Ribbon(64, r.uiPig, { density: 0.95, dry: 0.45, taper: 0.55, order: LAYER.ui + 40 });
     const name = brushText('Trait', { size: 170 * k, ppu: 1.2, weight: 700, halo: false });
     this.name = new Sprite(name);
@@ -95,16 +107,21 @@ export class Title {
   private buildItems(): void {
     for (const it of this.items) it.s.dispose();
     this.items = [];
-    const k = this.k();
+    const ki = this.ki();
     const list: { id: Choice; label: string }[] = [];
     if (this.hasSave) list.push({ id: 'continue', label: tr('Continuer', 'Continue') });
     list.push({ id: 'new', label: this.sure ? tr('Tout effacer et recommencer ?', 'Erase everything and start again?') : tr('Nouvelle partie', 'New game') });
     list.push({ id: 'lang', label: lang === 'fr' ? 'Français · English' : 'English · Français' });
     list.forEach((c, i) => {
-      const a = brushText(c.label, { size: (c.id === 'lang' ? 30 : 44) * k, ppu: 1.4, italic: c.id === 'lang', weight: c.id === 'lang' ? 400 : 600, halo: false });
+      const opts = (size: number) => ({ size, ppu: 1.4, italic: c.id === 'lang', weight: c.id === 'lang' ? 400 : 600, halo: false });
+      const size = (c.id === 'lang' ? 30 : 44) * ki;
+      let a = brushText(c.label, opts(size));
+      // a long line on a narrow phone shrinks to fit, the red mark included
+      const room = this.r.uiW * 0.86 - 110 * ki;
+      if (a.w > room) a = brushText(c.label, opts(size * room / a.w));
       const s = new Sprite(a);
       s.mesh.renderOrder = LAYER.ui + 41;
-      const y = (-190 - i * 74) * k;
+      const y = this.itemY(i);
       s.setPos(0, y);
       s.opacity = 0;
       this.r.uiPig.add(s.mesh);
@@ -139,7 +156,7 @@ export class Title {
 
   update(dt: number): void {
     if (!this.active) return;
-    const inp = this.input, r = this.r, k = this.k();
+    const inp = this.input, r = this.r, k = this.k(), ki = this.ki();
     this.t += dt;
     const t = this.t;
     const ready = t > 3.1;
@@ -176,8 +193,8 @@ export class Title {
     if (this.enso) this.enso.mat.uniforms.density.value = 0.95 * fadeOut;
     const cur = this.items[this.sel];
     if (this.mark && cur) {
-      this.mark.setPos(-cur.w / 2 - 40 * k, cur.y);
-      this.mark.mesh.scale.set(k, k, 1);
+      this.mark.setPos(-cur.w / 2 - 40 * ki, cur.y);
+      this.mark.mesh.scale.set(ki, ki, 1);
       this.mark.opacity = ready ? fadeOut : 0;
     }
     if (this.leaving >= 0) {
@@ -187,14 +204,18 @@ export class Title {
         this.close();
         if (c === 'continue' || c === 'new') this.onChoose?.(c);
       }
-      inp.swallow();
+      inp.consume();
       return;
     }
-    // input: anything skips the painting; then choose
-    const hit = (ux: number, uy: number) => this.items.findIndex((it) => Math.abs(uy - it.y) < 34 * k && Math.abs(ux) < Math.max(200 * k, it.w / 2 + 40 * k));
+    // input: anything skips the painting; then choose. A row answers anywhere across the sheet,
+    // and up to halfway to its neighbours, so that a thumb cannot miss it.
+    const hit = (ux: number, uy: number) => this.items.findIndex((it) => Math.abs(uy - it.y) < 37 * ki && Math.abs(ux) < Math.max(330 * ki, it.w / 2 + 60 * ki));
     if (!ready) {
-      if (inp.orderTaps.length || inp.pressed('confirm') || inp.keyPressed('Space') || inp.keyPressed('Enter')) this.t = 3.1;
-      inp.swallow();
+      if (inp.orderTaps.length || inp.pressed('confirm') || inp.keyPressed('Space') || inp.keyPressed('Enter')) {
+        this.t = 3.1;
+        // the finger that skipped must not also choose when it lifts
+        inp.swallow();
+      } else inp.consume();
       return;
     }
     if (inp.pressed('up')) { this.sel = (this.sel + this.items.length - 1) % this.items.length; sfx.ui(); }
@@ -212,7 +233,7 @@ export class Title {
       const i = hit(ux, uy);
       if (i >= 0) { this.sel = i; act = i; }
     }
-    inp.swallow();
+    inp.consume();
     if (act >= 0) this.activate(act);
     void r;
   }

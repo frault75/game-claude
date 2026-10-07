@@ -230,7 +230,8 @@ export class Input {
       return;
     }
     if (g.mode === 'pending') {
-      if (Math.hypot(x - g.sx, y - g.sy) < DRAG_PX) return;
+      // on a panel a finger that shakes a little still taps
+      if (Math.hypot(x - g.sx, y - g.sy) < (this.uiMode ? DRAG_PX * 2 : DRAG_PX)) return;
       // a moving finger on the right always draws (the stick is for walking)
       g.mode = 'draw';
       this.drawStart = [g.sx, g.sy];
@@ -261,7 +262,8 @@ export class Input {
   tick(): void {
     const now = performance.now();
     const g = this.gesture;
-    if (g && g.mode === 'pending' && g.button === 'touch' && now - g.t0 > HOLD_MS) {
+    // on a panel a slow finger is still a tap: no hold there
+    if (g && g.mode === 'pending' && g.button === 'touch' && !this.uiMode && now - g.t0 > HOLD_MS) {
       g.mode = 'hold';
       this.holdPoint = [g.x, g.y];
     }
@@ -384,6 +386,21 @@ export class Input {
     this.drawEnd = false;
     this.holdPoint = null;
     this.leftHeld = false;
+  }
+
+  /** A panel has read this frame's orders: nobody else may, but a finger still down keeps its
+   *  gesture, so that lifting it a few frames later is still a tap (a real tap spans frames). */
+  consume(): void {
+    this.pressedNow.clear();
+    this.keysPressed.clear();
+    this.inkSelect = null;
+    this.inkCycle = 0;
+    this.orderTaps = [];
+    this.strokeTaps = [];
+    this.drawStart = null;
+    this.drawPoints = [];
+    this.drawEnd = false;
+    this.holdPoint = null;
   }
 
   /** Forget the current gesture and this frame's orders (dialogue opened or closed). */

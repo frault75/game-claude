@@ -400,7 +400,7 @@ export class Inventory {
       this.tap(ux, uy);
       if (!this.active) break;
     }
-    inp.swallow();
+    inp.consume();
   }
 
   private tap(x: number, y: number): void {
