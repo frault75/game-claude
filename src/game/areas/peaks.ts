@@ -9,17 +9,18 @@ import type { World } from '../world';
 import { Entity } from '../entity';
 import { Creature } from '../enemies';
 import { Chunks } from '../../world/chunks';
-import { PEAKS, P3, P3_ENTRY, P3_NORTH, P3_PONDS, P3_CAMPS, P3_SHRINES, P3_REGIONS, P3_MONASTERY, P3_BELLS, P3_CREVASSES, P3_TEARS, P3_KING, P3_DRAGON, P3_SUMMIT, P3_GATE, P3_HAND, P3_VISTAS, p3RingArc, p3RegionAt } from '../../world/peaks';
+import { PEAKS, P3, P3_ENTRY, P3_NORTH, P3_PONDS, P3_CAMPS, P3_SHRINES, P3_REGIONS, P3_MONASTERY, P3_BELLS, P3_CREVASSES, P3_TEARS, P3_KING, P3_DRAGON, P3_SUMMIT, P3_GATE, P3_HAND, P3_VISTAS, P3_HEART_STAIR, P3_RING, p3RingArc, p3RegionAt } from '../../world/peaks';
 import { p3MapSource } from '../../world/p3Map';
 import type { EnemyKind } from '../../world/layout';
 import { Sprite, Frame, frameFrom, ySort, LAYER } from '../../gfx/sprite';
-import { Painter, INK, PIG_A, PIG_B, VERMILION, mixPig } from '../../gfx/paint';
-import { washPoly } from '../../gfx/wash';
+import { Painter, INK, PIG_A, PIG_B, VERMILION, ERASE, mixPig } from '../../gfx/paint';
+import { washPoly, noisyOutline, roughen } from '../../gfx/wash';
 import { stroke } from '../../gfx/brush';
 import { shadow } from '../../gfx/gen/ground';
 import { SPRITE_PPU } from '../../gfx/gen/flora';
 import { lang, t } from '../../i18n';
 import { L, LL } from '../../i18n/lore';
+import { HEART_UI } from '../../i18n/heart';
 import { NAMES3, SNOW, IDLE3, REGION_LORE3, ACT3_TITLE, BELL3_UI, KING_UI, DRAGON_UI, SEAL_UI, SUMMIT_UI, HAND_UI, MASTER, MASTER_NAME, CHOICE_END, REVEAL, ENDINGS } from '../../i18n/lore3';
 import { music } from '../../audio/music';
 import { sfx } from '../../audio/sfx';
@@ -153,6 +154,8 @@ export const peaks: RoomDef = {
   post: { washed: 0, night: 0, fog: 0.3, fogScale: 0.08, fogDrift: [0.06, 0.01], gloom: 0 },
   exits: [
     { x: P3.w / 2 - 6, y: 0, w: 12, h: 1.2, to: 'terraces', spawn: [62, 137.5] },
+    // beside the summit gate, once it is open: down into the heart of the mountain
+    { x: P3_HEART_STAIR[0] - 1, y: P3_HEART_STAIR[1] - 0.6, w: 2, h: 1.2, to: 'heart1', open: () => !!save.perks.summitOpen },
   ],
   map: (g) => p3MapSource(g),
   build(b) {
@@ -477,7 +480,30 @@ export const peaks: RoomDef = {
         gate.open();
         sfx.uiConfirm();
         void g.story.show([L(SUMMIT_UI.opens)], { size: 34, y: r.uiH / 2 - 200, hold: 3 });
+        if (erasedOn()) {
+          erasedBar();
+          g.after(3.6, () => void g.story.show([L(HEART_UI.erased)], { size: 32, y: r.uiH / 2 - 200, hold: 5 }));
+        }
       } else if (gateHintT <= 0) { g.hud.showHint(L(SUMMIT_UI.sealed), 4); gateHintT = 10; }
+    });
+    // behind the open gate the path is wiped away, until the child comes up through the mountain
+    const erasedOn = () => !!save.perks.summitOpen && !save.perks.hollowDone && !save.bosses.includes('hand');
+    const erasedBar = () => w.addCollider({ kind: 'seg', ax: P3_GATE.x - 2, ay: P3_GATE.y + 0.7, bx: P3_GATE.x + 2, by: P3_GATE.y + 0.7, r: 0.45 }, 'erasedPath');
+    if (erasedOn()) erasedBar();
+    b.add(new ErasedPath(P3_GATE.x, P3_GATE.y + 2, erasedOn));
+    b.add(new HeartStair(P3_HEART_STAIR[0], P3_HEART_STAIR[1]));
+    let erasedHintT = 0;
+    w.scripts.push((dt) => {
+      erasedHintT -= dt;
+      const p = w.player;
+      if (erasedOn() && erasedHintT <= 0 && Math.hypot(p.x - P3_GATE.x, p.y - P3_GATE.y) < 2.6) { g.hud.showHint(L(HEART_UI.erased), 5); erasedHintT = 14; }
+      // up the master's stair: the summit, and the path coming back behind
+      if (save.perks.hollowDone && !save.perks.heartSummit && Math.hypot(p.x - P3_SUMMIT.x, p.y - P3_SUMMIT.y) < P3_RING) {
+        save.perks.heartSummit = 1;
+        writeSave();
+        w.removeColliders('erasedPath');
+        void g.story.show([L(HEART_UI.summit)], { size: 32, y: r.uiH / 2 - 200, hold: 3.5 });
+      }
     });
     if (save.perks.ending !== 2) b.add(new PlantedBrush(P3_SUMMIT.x + 2.2, P3_SUMMIT.y - 2.8));
     let hand: MasterHand | null = null;
@@ -616,7 +642,7 @@ export const peaks: RoomDef = {
           const d = Math.hypot(a.x - p.x, a.y - p.y);
           if (d < bd) { bd = d; target = [a.x, a.y]; }
         }
-      } else if (m === STEP.summit) target = save.perks.summitOpen ? [P3_HAND.x, P3_HAND.y] : [P3_GATE.x, P3_GATE.y];
+      } else if (m === STEP.summit) target = !save.perks.summitOpen ? [P3_GATE.x, P3_GATE.y] : erasedOn() ? [P3_HEART_STAIR[0], P3_HEART_STAIR[1]] : [P3_HAND.x, P3_HAND.y];
       else if (m === STEP.bells) {
         let bd = Infinity;
         for (const bl of bells) {
@@ -745,6 +771,70 @@ class VistaStone extends Entity {
       this.glow -= dt;
       this.ring.opacity = Math.min(0.6, (1.2 - this.glow) * 0.8);
       this.ring.reveal = Math.min(1.5, (1.2 - this.glow) * 1.5);
+    }
+  }
+}
+
+let erasedArt: Frame | null = null;
+/** Inside the open gate, the hand has wiped the path away: torn white, nothing to stand on. */
+class ErasedPath extends Entity {
+  constructor(x: number, y: number, private on: () => boolean) {
+    super();
+    this.x = x; this.y = y;
+    this.label = 'erasedpath';
+  }
+  init(): void {
+    if (!erasedArt) {
+      const p = new Painter(6, 4, SPRITE_PPU / 2, -3, -2);
+      p.glaze();
+      const o = roughen(noisyOutline(0, 0, 2.3, 1.4, 0.25, 6501), 0.12, 6502, 0.15);
+      washPoly(p, o, { pig: ERASE, density: 1, soft: 0.3, seed: 6503 });
+      stroke(p, o.slice(0, Math.floor(o.length * 0.45)), { width: 0.05, load: 0.5, dry: 0.7, seed: 6504, taperStart: 0.1, taperEnd: 0.4 });
+      erasedArt = frameFrom(p);
+    }
+    const s = this.addSprite(new Sprite(erasedArt), true);
+    s.setPos(this.x, this.y);
+    s.mesh.renderOrder = LAYER.groundDetail + 20;
+  }
+  update(): void {
+    const target = this.on() ? 1 : 0;
+    const s = this.sprites[0];
+    s.opacity += (target - s.opacity) * 0.05;
+  }
+}
+
+let heartStairArt: Frame | null = null;
+/** The stair cut into the ice beside the gate: it shows once the gate is open. */
+class HeartStair extends Entity {
+  private hinted = false;
+  constructor(x: number, y: number) {
+    super();
+    this.x = x; this.y = y;
+    this.label = 'heartstair';
+  }
+  init(): void {
+    if (!heartStairArt) {
+      const p = new Painter(3.2, 2.4, SPRITE_PPU / 2, -1.6, -1.2);
+      p.glaze();
+      washPoly(p, noisyOutline(0, 0, 1.3, 0.95, 0.14, 6511), { pig: mixPig(INK, PIG_A, 0.3), density: 0.4, soft: 0.05, edge: 0.9, seed: 6511 });
+      for (let k = 0; k < 4; k++) {
+        const yy = 0.42 - k * 0.3, hw = 0.95 - k * 0.12;
+        washPoly(p, [[-hw, yy - 0.26], [hw, yy - 0.26], [hw, yy], [-hw, yy]], { pig: INK, density: 0.22 + k * 0.18, soft: 0.05, edge: 0.5, seed: 6512 + k });
+      }
+      stroke(p, noisyOutline(0, 0, 1.35, 1.0, 0.14, 6511).slice(0, 14), { width: 0.06, pig: mixPig(INK, PIG_A, 0.6), load: 0.8, seed: 6520, taperStart: 0.1, taperEnd: 0.3 });
+      heartStairArt = frameFrom(p);
+    }
+    const s = this.addSprite(new Sprite(heartStairArt));
+    s.setPos(this.x, this.y);
+    s.mesh.renderOrder = LAYER.groundDetail + 20;
+  }
+  update(): void {
+    const open = !!save.perks.summitOpen;
+    this.sprites[0].opacity = open ? 1 : 0;
+    const p = this.world.player;
+    if (open && !this.hinted && Math.hypot(p.x - this.x, p.y - this.y) < 3) {
+      this.hinted = true;
+      this.world.vfx.glowAt(this.x, this.y, 1.6, 0.4);
     }
   }
 }

@@ -34,6 +34,9 @@ export const PALETTES: Record<string, Palette> = {
   glacier: { paper: '#F0F4F6', ink: '#14202B', a: '#6FB0CF', b: '#A9C4D6' },
   erased: { paper: '#F7F6F2', ink: '#6E6C68', a: '#BDB9B2', b: '#D2CEC6' },
   summit: { paper: '#F8F6EF', ink: '#121212', a: '#C23A2B', b: '#D2B060' },
+  // the heart of the mountain: halls of ice, then the master's studio
+  ice: { paper: '#E8EDEF', ink: '#121E28', a: '#7AABC6', b: '#A6B9C6' },
+  atelier: { paper: '#E4DCCB', ink: '#15120E', a: '#A84B3C', b: '#B49860' },
   /** The blank page once restored: true ink returns. */
   blankInked: { paper: '#F7F3E9', ink: '#141414', a: '#D7A3A0', b: '#3F5F82' },
 };

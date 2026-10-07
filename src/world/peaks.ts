@@ -38,6 +38,10 @@ export const P3_GRELOTS: V[] = [[20, 92], [80, 96], [116, 126]];
 export const P3_RING = 11.5;
 export const P3_GATE = { x: 100, y: 146 - 11.5 };
 export const P3_HAND = { x: 100, y: 141.5, r: 8 };
+/** Beside the gate, outside the cloud wall: the stair down into the heart of the mountain. */
+export const P3_HEART_STAIR: V = [105, 132];
+/** Where the master's stair comes out on the summit, inside the cloud wall. */
+export const P3_HEART_OUT: V = [93.5, 140];
 /** The cloud wall's arc, from the north edge down round the south and back up (the gate's gap at the bottom). */
 export function p3RingArc(gap = true): [number, number][][] {
   const out: [number, number][][] = [];

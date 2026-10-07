@@ -141,6 +141,16 @@ export const UNIQUES: UniqueDef[] = [
     flavor: { fr: '« Trop pressé », disait le maître.', en: '“Too hasty,” the master used to say.' },
     stats: { dmg: 16, speed: 8, crit: 8 }, quest: 'kazeBrush',
   },
+  {
+    slot: 'brush', base: 1, name: { fr: 'Le Pinceau sans rouge', en: 'The Brush Without Red' },
+    flavor: { fr: 'Celui de l’Esquisse. Il n’a jamais trempé dans le vermillon.', en: 'The Sketch’s own. It never dipped into vermilion.' },
+    stats: { dmg: 34, crit: 10, enso: 25 }, quest: 'sketchBrush',
+  },
+  {
+    slot: 'seal', base: 3, name: { fr: 'Le Sceau de l’atelier', en: 'The Studio Seal' },
+    flavor: { fr: 'Le maître l’apposait sur ce qu’il n’osait pas finir.', en: 'The master pressed it on what he did not dare to finish.' },
+    stats: { enso: 50, pigment: 6, crit: 8 }, quest: 'studioSeal',
+  },
 ];
 
 /** A quest's own unique item. */

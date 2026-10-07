@@ -192,6 +192,19 @@ export const THEMES: Record<string, Theme> = {
     calmLead: ['flute', 'bell'], fightLead: ['flute', 'bowed'],
     pad: 1, padBright: 0.6, drums: 0.5, register: 6, bell: 0.3, rest: 0.5,
   },
+  // the heart of the mountain
+  ice: {
+    root: 52, scale: SUS, bpm: 58,
+    progressions: [[0, 2, 0, 4], [0, 3, 2, 0], [4, 3, 0, 2], [0, 4, 3, 1]],
+    calmLead: ['bell', 'pluck', 'bell'], fightLead: ['pluck', 'bowed'],
+    pad: 0.95, padBright: 0.6, drums: 0.9, register: 6, bell: 0.34, rest: 0.45,
+  },
+  atelier: {
+    root: 50, scale: HIRA, bpm: 54,
+    progressions: [[0, 3, 4, 0], [0, 1, 3, 4], [3, 1, 0, 4], [0, 4, 1, 0]],
+    calmLead: ['bowed', 'pluck', 'bell'], fightLead: ['bowed', 'flute'],
+    pad: 1, padBright: 0.35, drums: 0.95, register: 5, bell: 0.22, rest: 0.5,
+  },
   practice: {
     root: 62, scale: PENTA, bpm: 70,
     progressions: [[0, 3, 4, 0]],

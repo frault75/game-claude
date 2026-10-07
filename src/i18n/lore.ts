@@ -285,6 +285,18 @@ export const MURALS: Record<string, Tr> = {
     fr: 'Un gardien de pierre, l’épée basse. Sous ses pieds, gravé : « Fige-moi, et je m’inclinerai. »',
     en: 'A stone warden, sword lowered. Under his feet, carved: “Freeze me, and I shall bow.”',
   },
+  heart1: {
+    fr: 'Sous la neige, la montagne est creuse comme un bol. Le maître descendait ici pour peindre au frais ce que le soleil aurait séché trop vite.',
+    en: 'Under the snow, the mountain is hollow like a bowl. The master came down here to paint, in the cool, what the sun would have dried too fast.',
+  },
+  heart2: {
+    fr: 'Ici pendent les rouleaux qu’il n’a jamais finis : un fleuve sans mer, un oiseau sans ciel, un visage sans yeux. Ils attendent. Les choses inachevées attendent toujours.',
+    en: 'Here hang the scrolls he never finished: a river with no sea, a bird with no sky, a face with no eyes. They wait. Unfinished things always wait.',
+  },
+  heart3: {
+    fr: 'Une natte, une pierre à encre usée jusqu’au creux, des centaines de pinceaux. Sur le mur, de sa main : « Finir, c’est accepter de lâcher. »',
+    en: 'A mat, an ink stone worn hollow, hundreds of brushes. On the wall, in his hand: “To finish is to agree to let go.”',
+  },
 };
 
 export interface QuestStep {
@@ -643,6 +655,13 @@ export const BESTIARY: Record<string, BeastLore> = {
     text: {
       fr: 'Ce qui restait du maître : sa main, qui voulait effacer la tache de son dernier tableau, et qui effaçait le monde avec. Elle ne savait plus s’arrêter. Une encre fraîche porte au-dessus de ce qu’elle efface. À la fin, elle a douté — et elle a lâché le pinceau.',
       en: 'What was left of the master: his hand, which wanted to wipe the blot off his last painting, and wiped the world along with it. It no longer knew how to stop. Fresh ink carries you over what it wipes away. In the end it doubted — and let go of the brush.',
+    },
+  },
+  sketch: {
+    name: { fr: 'L’Esquisse', en: 'The Sketch' }, where: { fr: 'La Galerie des inachevés, sous le sommet', en: 'The Gallery of the Unfinished, under the summit' },
+    text: {
+      fr: 'Le premier enfant du maître, peint tout en noir et rangé avec les essais. Il imitait chaque geste : la ruée, le coup de pinceau, le cercle. Il ne lui manquait que le rouge. Sors de ses cercles avant qu’ils se ferment ; frappe-le quand il reprend son souffle.',
+      en: 'The master’s first child, painted all in black and put away with the attempts. It copied every move: the dash, the brush stroke, the circle. All it lacked was red. Get out of its circles before they close; strike it while it catches its breath.',
     },
   },
   queen: {
